@@ -1,8 +1,6 @@
 // src/app/layout.tsx
-'use client';
-
 import type { Metadata } from "next";
-import { SessionProvider } from "next-auth/react";
+import ClientLayout from "./ClientLayout";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Wheat & Stone",
-  description: "Health, Heritage, and Truth in Every Bite",
+  description: "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
 };
 
 export default function RootLayout({
@@ -28,19 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={geistSans.variable}>
-        <SessionProvider>
-          <header style={{ background: "white", padding: "1rem" }}>
-            <a href="/">
-              <img
-                src="/logog.png"
-                alt="Wheat and Stone"
-                style={{ height: "150px" }}
-              />
-            </a>
-          </header>
-          {children}
-        </SessionProvider>
+      <body className={`${geistSans.variable} bg-white`}>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

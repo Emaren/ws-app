@@ -1,28 +1,20 @@
 'use client';
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from 'next-auth/react';
 
-export default function Home() {
-  const { data: session, status } = useSession();
-
-  if (status === "loading") return <div className="p-6">Loading...</div>;
-
-  if (!session) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
-    return null;
-  }
+export default function HomePage() {
+  const { data: session } = useSession();
 
   return (
-    <div className="p-6">
-      <h1 className="text-xl">Welcome back, {session.user?.email}</h1>
-      <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
-        className="mt-4 px-4 py-2 bg-white text-black rounded"
-      >
-        Logout
-      </button>
-    </div>
+    <main className="flex items-center justify-center min-h-[80vh] px-6 text-center">
+      <div className="max-w-xl">
+        <h1 className="text-3xl font-semibold mb-4 text-neutral-800 dark:text-white">
+          “This site changed the way I think about food.”
+        </h1>
+        <p className="text-lg text-neutral-600 dark:text-neutral-300">
+          - A satisfied Stoneholder
+        </p>
+      </div>
+    </main>
   );
 }
