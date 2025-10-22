@@ -24,11 +24,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+<body className={geistSans.variable}>
+  <header style={{ background: 'white', padding: '1rem' }}>
+    <a href="/">
+<img src="/logog.png" alt="Wheat and Stone" style={{ height: '150px' }} />
+    </a>
+  </header>
+  {children}
+</body>
     </html>
   );
 }
