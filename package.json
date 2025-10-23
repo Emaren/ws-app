@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --port 3111",
     "build": "next build",
-    "start": "next start -p 3011"
+    "start": "next start",
+    "studio:dev": "DATABASE_URL='file:./dev.db' prisma studio",
+    "studio:prod": "DATABASE_URL='file:/var/www/ws-app/prisma/prod.db' prisma studio --hostname 127.0.0.1 --port 5556 --browser none"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",

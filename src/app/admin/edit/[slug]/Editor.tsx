@@ -13,8 +13,18 @@ type EditableArticle = {
   coverUrl: string | null;
   content: string;
   status: ArticleStatus;      // "DRAFT" | "PUBLISHED"
-  publishedAt: string | null; // we pass ISO string from the server component
+  publishedAt: string | null; // ISO string from the server component
 };
+
+function normalizeSlug(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\- ]/g, "") // strip disallowed chars
+    .replace(/\s+/g, "-")         // spaces -> hyphens
+    .replace(/-+/g, "-")          // collapse hyphens
+    .replace(/^-|-$/g, "");       // trim leading/trailing hyphens
+}
 
 export default function Editor({ initialArticle }: { initialArticle: EditableArticle }) {
   const router = useRouter();
@@ -29,66 +39,82 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
+    if (isPending) return;
+
+    const nextSlug = normalizeSlug(slug);
+    if (!nextSlug) {
+      alert("Please provide a valid slug (lowercase letters, numbers, and hyphens).");
+      return;
+    }
+
     const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        slug,
+        slug: nextSlug,
         excerpt: excerpt || null,
         coverUrl: coverUrl || null,
         content,
         status,
       }),
     });
+
     if (!res.ok) {
-      const txt = await res.text();
-      alert(`Save failed: ${res.status} ${txt}`);
+      const txt = await res.text().catch(() => "");
+      alert(`Save failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
       return;
     }
-    if (slug !== initialArticle.slug) {
-      startTransition(() => router.replace(`/admin/edit/${encodeURIComponent(slug)}`));
+
+    if (nextSlug !== initialArticle.slug) {
+      startTransition(() => router.replace(`/admin/edit/${encodeURIComponent(nextSlug)}`));
     } else {
       startTransition(() => router.refresh());
     }
   }
 
   async function publish() {
+    if (isPending) return;
     const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "PUBLISHED" as ArticleStatus }),
     });
     if (!res.ok) {
-      const txt = await res.text();
-      alert(`Publish failed: ${res.status} ${txt}`);
+      const txt = await res.text().catch(() => "");
+      alert(`Publish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
       return;
     }
+    setStatus("PUBLISHED");
     startTransition(() => router.refresh());
   }
 
   async function unpublish() {
+    if (isPending) return;
     const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "DRAFT" as ArticleStatus }),
     });
     if (!res.ok) {
-      const txt = await res.text();
-      alert(`Unpublish failed: ${res.status} ${txt}`);
+      const txt = await res.text().catch(() => "");
+      alert(`Unpublish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
       return;
     }
+    setStatus("DRAFT");
     startTransition(() => router.refresh());
   }
 
   async function destroy() {
+    if (isPending) return;
     if (!confirm("Delete this article? This cannot be undone.")) return;
+
     const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
       method: "DELETE",
     });
     if (!res.ok) {
-      const txt = await res.text();
-      alert(`Delete failed: ${res.status} ${txt}`);
+      const txt = await res.text().catch(() => "");
+      alert(`Delete failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
       return;
     }
     startTransition(() => router.push("/admin"));
@@ -113,7 +139,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           <input
             className="border rounded-xl px-3 py-2"
             value={slug}
-            onChange={(e) => setSlug(e.target.value.trim())}
+            onChange={(e) => setSlug(e.target.value)}
             placeholder="my-article-slug"
             pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
             title="lowercase letters, numbers, and hyphens only"
