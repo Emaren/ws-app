@@ -3,11 +3,19 @@ import { prisma } from "@/lib/prisma";
 import ArticleView from "@/components/article/ArticleView";
 import AdRail from "@/components/article/AdRail";
 import CommentsSection from "@/components/article/CommentsSection";
+import { notFound } from "next/navigation";
 
-export default async function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = await prisma.article.findUnique({ where: { slug: params.slug } });
+export default async function ArticlePage(
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+
+  const article = await prisma.article.findUnique({
+    where: { slug },
+  });
+
   if (!article || article.status !== "PUBLISHED") {
-    return <div className="mx-auto max-w-3xl p-8">Not found.</div>;
+    notFound(); // render your App Router 404 page
   }
 
   return (

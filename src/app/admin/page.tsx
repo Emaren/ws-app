@@ -42,7 +42,7 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       <button
         onClick={() => router.push("/admin/new")}
-        className="mb-6 bg-black text-white px-4 py-2 rounded"
+        className="mb-6 bg-black text-white px-4 py-2 rounded cursor-pointer"
       >
         + New Article
       </button>

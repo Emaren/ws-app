@@ -50,7 +50,7 @@ export default function NewArticle() {
         <button
           type="submit"
           disabled={loading}
-          className="bg-black text-white px-6 py-2 rounded"
+          className="bg-black text-white px-6 py-2 rounded cursor-pointer"
         >
           {loading ? "Saving..." : "Create Article"}
         </button>
