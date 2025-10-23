@@ -57,8 +57,24 @@ export default function RegisterPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-grey p-8 rounded shadow w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6">Register</h1>
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-grey dark:bg-neutral-900 p-6 shadow"
+      >
+        {/* Toolbar with title + close (identical to Sign In) */}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Register</h1>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            aria-label="Close registration form"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full cursor-pointer
+                       bg-grey dark:bg-neutral-800 text-neutral-700 dark:text-neutral-100
+                       hover:bg-neutral-50 dark:hover:bg-neutral-700"
+          >
+            <span className="text-xl leading-none">x</span>
+          </button>
+        </div>
 
         <input
           type="email"
@@ -67,8 +83,7 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           className="appearance-none bg-black text-white placeholder-gray-400 border border-gray-700 rounded px-4 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-[inset_0_0_0_1000px_#000]"
-          // Safari/Chrome autofill: force white text
-          style={{ WebkitTextFillColor: '#fff' }}
+          style={{ WebkitTextFillColor: "#fff" }}
           required
           autoFocus
         />
@@ -80,7 +95,7 @@ export default function RegisterPage() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           className="appearance-none bg-black text-white placeholder-gray-400 border border-gray-700 rounded px-4 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-[inset_0_0_0_1000px_#000]"
-          style={{ WebkitTextFillColor: '#fff' }}
+          style={{ WebkitTextFillColor: "#fff" }}
           required
         />
 
@@ -90,7 +105,9 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className={`bg-black text-white px-4 py-2 rounded w-full ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          className={`bg-black text-white px-4 py-2 rounded w-full ${
+            loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+          }`}
         >
           {loading ? "Please wait..." : "Register"}
         </button>

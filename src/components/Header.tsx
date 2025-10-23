@@ -1,5 +1,5 @@
 // src/components/Header.tsx
-'use client';
+"use client";
 
 declare global {
   interface Window {
@@ -17,12 +17,34 @@ export default function Header() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // close the mobile menu on route changes (best effort)
+  // Measure header height and expose as CSS var --header-h
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const setVar = () => {
+      const h = el.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--header-h", `${h}px`);
+    };
+    setVar();
+
+    const ro = new ResizeObserver(setVar);
+    ro.observe(el);
+    window.addEventListener("resize", setVar);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", setVar);
+    };
+  }, []);
+
+  // Close the mobile menu on route changes (best effort)
   useEffect(() => {
     setMenuOpen(false);
   }, [router]);
 
-  // close on outside click
+  // Close on outside click
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -52,16 +74,21 @@ export default function Header() {
     localStorage.setItem("theme", isDark ? "light" : "dark");
   };
 
+  const isAdmin = session?.user?.role === "ADMIN";
+
   return (
-    <header className="w-full px-6 md:px-8 py-3 bg-[var(--background)] text-[var(--foreground)] shadow relative">
+    <header
+      ref={headerRef}
+      className="w-full px-6 md:px-8 py-3 bg-[var(--background)] text-[var(--foreground)] shadow relative"
+    >
       <div className="mx-auto max-w-6xl flex items-center justify-between gap-4">
-        {/* Left: Logo (responsive height via clamp) */}
+        {/* Left: Logo */}
         <a href="/" aria-label="Wheat & Stone home" className="flex items-center">
           <img
             id="ws-header-logo"
             src="/tlogo.png"
             alt="Wheat & Stone"
-            style={{ height: 'clamp(72px, 12vw, 168px)', width: 'auto' }}
+            style={{ height: "clamp(72px, 12vw, 168px)", width: "auto" }}
             className="block select-none"
             loading="eager"
             decoding="async"
@@ -69,49 +96,67 @@ export default function Header() {
         </a>
 
         {/* Desktop actions */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           {!session ? (
             <>
-              <button onClick={() => router.push("/register")} className="hover:underline">
+              <button
+                onClick={() => router.push("/register")}
+                className="hover:underline cursor-pointer"
+              >
                 Register
               </button>
-              <button onClick={() => signIn()} className="hover:underline">
+              <button onClick={() => signIn()} className="hover:underline cursor-pointer">
                 Login
               </button>
             </>
           ) : (
             <>
-              <span>
+              {/* Admin-only button */}
+              {isAdmin && (
+                <button
+                  onClick={() => router.push("/admin")}
+                  className="px-3 py-1 rounded bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
+                  aria-label="Open Admin Dashboard"
+                  title="Admin Dashboard"
+                >
+                  Admin
+                </button>
+              )}
+
+              <span className="text-sm">
                 {session.user?.role === "ADMIN" && "👑 Admin "}
                 {session.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
                 {session.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-                {session.user?.role === undefined && "Visitor "}– {session.user?.email}
+                {session.user?.role === undefined && "Visitor "}
+                – {session.user?.email}
               </span>
-              <button onClick={() => signOut()} className="hover:underline">
+
+              <button onClick={() => signOut()} className="hover:underline cursor-pointer">
                 Logout
+              </button>
+
+              {session && (
+                <button
+                  onClick={connectWallet}
+                  className={`px-3 py-1 rounded cursor-pointer ${
+                    walletConnected
+                      ? "bg-green-100 text-green-800"
+                      : "bg-black text-white dark:bg-white dark:text-black"
+                  }`}
+                >
+                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+                </button>
+              )}
+
+              <button
+                onClick={toggleTheme}
+                className="px-3 py-1 rounded border border-black/10 dark:border-white/20"
+                aria-label="Toggle theme"
+              >
+                Theme
               </button>
             </>
           )}
-
-          {session && (
-            <button
-              onClick={connectWallet}
-              className={`px-3 py-1 rounded ${
-                walletConnected
-                  ? "bg-green-100 text-green-800"
-                  : "bg-black text-white dark:bg-white dark:text-black"
-              }`}
-            >
-              {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-            </button>
-          )}
-
-          <button
-            onClick={toggleTheme}
-            className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-800"
-          >
-            Toggle Theme
-          </button>
         </div>
 
         {/* Mobile: hamburger */}
@@ -143,60 +188,93 @@ export default function Header() {
       {/* Mobile slide-down panel */}
       <div
         ref={menuRef}
-        className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 shadow transition-[max-height,opacity] overflow-hidden ${menuOpen ? "opacity-100 max-h-[420px]" : "opacity-0 max-h-0"}`}
+        className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 shadow transition-[max-height,opacity] overflow-hidden ${
+          menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
+        }`}
       >
         <div className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
           {!session ? (
             <>
               <button
-                onClick={() => { setMenuOpen(false); router.push("/register"); }}
-                className="text-left hover:underline"
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/register");
+                }}
+                className="text-left hover:underline cursor-pointer"
               >
                 Register
               </button>
               <button
-                onClick={() => { setMenuOpen(false); signIn(); }}
-                className="text-left hover:underline"
+                onClick={() => {
+                  setMenuOpen(false);
+                  signIn();
+                }}
+                className="text-left hover:underline cursor-pointer"
               >
                 Login
               </button>
             </>
           ) : (
             <>
+              {/* Admin-only button (mobile) */}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push("/admin");
+                  }}
+                  className="px-3 py-2 rounded w-full text-center bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
+                  aria-label="Open Admin Dashboard"
+                  title="Admin Dashboard"
+                >
+                  Admin Dashboard
+                </button>
+              )}
+
               <div className="text-sm opacity-80">
                 {session.user?.role === "ADMIN" && "👑 Admin "}
                 {session.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
                 {session.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-                {session.user?.role === undefined && "Visitor "}– {session.user?.email}
+                {session.user?.role === undefined && "Visitor "}
+                – {session.user?.email}
               </div>
               <button
-                onClick={() => { setMenuOpen(false); signOut(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  signOut();
+                }}
                 className="text-left hover:underline"
               >
                 Logout
               </button>
+
+              {session && (
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    connectWallet();
+                  }}
+                  className={`px-3 py-2 rounded w-full text-center ${
+                    walletConnected
+                      ? "bg-green-100 text-green-800"
+                      : "bg-black text-white dark:bg-white dark:text-black"
+                  }`}
+                >
+                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  toggleTheme();
+                }}
+                className="px-3 py-2 rounded w-full text-center border border-black/10 dark:border-white/20"
+              >
+                Theme
+              </button>
             </>
           )}
-
-          {session && (
-            <button
-              onClick={() => { setMenuOpen(false); connectWallet(); }}
-              className={`px-3 py-2 rounded w-full text-center ${
-                walletConnected
-                  ? "bg-green-100 text-green-800"
-                  : "bg-black text-white dark:bg-white dark:text-black"
-              }`}
-            >
-              {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-            </button>
-          )}
-
-          <button
-            onClick={() => { setMenuOpen(false); toggleTheme(); }}
-            className="px-3 py-2 rounded bg-gray-200 dark:bg-gray-800 w-full text-center"
-          >
-            Toggle Theme
-          </button>
         </div>
       </div>
     </header>
