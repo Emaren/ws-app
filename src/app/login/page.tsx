@@ -29,7 +29,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow w-full max-w-md">
+      <form onSubmit={handleSubmit} className="bg-grey p-8 rounded shadow w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6">Sign In</h1>
 
         <input
@@ -52,13 +52,13 @@ export default function LoginPage() {
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
-        <button type="submit" className="bg-black text-white px-4 py-2 rounded w-full">
+        <button type="submit" className="bg-black text-white px-4 py-2 rounded w-full cursor-pointer">
           Login
         </button>
 
         <p className="text-center mt-4">
           Don’t have an account?{" "}
-          <a href="/register" className="text-blue-500 underline">
+          <a href="/register" className="text-blue-500 underline cursor-pointer">
             Register
           </a>
         </p>

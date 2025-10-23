@@ -1,8 +1,8 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
+import "./globals.css";
 import ClientLayout from "./ClientLayout";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,8 +25,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} bg-white`}>
+    <html lang="en" className="transition-colors">
+      {/* NOTE: Do NOT force bg-white here or dark mode won't show */}
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-[var(--background)] text-[var(--foreground)]`}>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

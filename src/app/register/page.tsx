@@ -1,3 +1,4 @@
+// src/app/register/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -23,10 +24,8 @@ export default function RegisterPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-
     const data = await res.json();
 
-    // Existing user → auto-login
     if (res.status === 409) {
       setSuccess("User already exists, signing you in...");
       const login = await signIn("credentials", { email, password, redirect: false });
@@ -40,7 +39,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // New user → create then login
     if (res.ok) {
       setSuccess("Account created! Logging you in...");
       const login = await signIn("credentials", { email, password, redirect: false });
@@ -59,15 +57,18 @@ export default function RegisterPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Register</h1>
+      <form onSubmit={handleSubmit} className="bg-grey p-8 rounded shadow w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6">Register</h1>
 
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="cursor-pointer border border-gray-300 rounded px-4 py-2 mb-4 w-full placeholder-gray-700 text-black"
+          autoComplete="email"
+          className="appearance-none bg-black text-white placeholder-gray-400 border border-gray-700 rounded px-4 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-[inset_0_0_0_1000px_#000]"
+          // Safari/Chrome autofill: force white text
+          style={{ WebkitTextFillColor: '#fff' }}
           required
           autoFocus
         />
@@ -77,7 +78,9 @@ export default function RegisterPage() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="cursor-pointer border border-gray-300 rounded px-4 py-2 mb-4 w-full placeholder-gray-700 text-black"
+          autoComplete="new-password"
+          className="appearance-none bg-black text-white placeholder-gray-400 border border-gray-700 rounded px-4 py-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-[inset_0_0_0_1000px_#000]"
+          style={{ WebkitTextFillColor: '#fff' }}
           required
         />
 
@@ -86,11 +89,18 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          className={`${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} bg-black text-white px-4 py-2 rounded w-full`}
           disabled={loading}
+          className={`bg-black text-white px-4 py-2 rounded w-full ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         >
           {loading ? "Please wait..." : "Register"}
         </button>
+
+        <p className="text-center mt-4">
+          Already have an account?{" "}
+          <a href="/login" className="text-blue-500 underline">
+            Login
+          </a>
+        </p>
       </form>
     </div>
   );

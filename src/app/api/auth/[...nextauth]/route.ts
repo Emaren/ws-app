@@ -1,10 +1,10 @@
 // src/app/api/auth/[...nextauth]/route.ts
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   providers: [
     CredentialsProvider({
@@ -37,19 +37,19 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = (user as any).id;
+        (token as any).id = (user as any).id;
         token.email = user.email;
         token.name = user.name;
-        token.role = (user as any).role;
+        (token as any).role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string;
+        (session.user as any).id = (token as any).id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
-        (session.user as any).role = token.role as string;
+        (session.user as any).role = (token as any).role as string;
       }
       return session;
     },

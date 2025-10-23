@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3011",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start -p 3011"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
     "next": "15.5.6",
     "next-auth": "^4.24.11",
     "prisma": "^6.18.0",
