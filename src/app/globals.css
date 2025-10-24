@@ -149,16 +149,27 @@ select:-webkit-autofill {
   border-radius: .35rem;
 }
 
-/* Base state so it starts hidden and fades smoothly */
-.floatad__overlay {
-  opacity: 0;
-  transition: opacity .15s ease, background-color .15s ease;
+/* Floated ad overlay — base (hidden) + hover/focus (show) */
+.floatad {
+  position: relative;           /* ensure the overlay’s absolute positioning is scoped */
 }
 
-/* You already have this part (keep it) */
+.floatad__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;                   /* HIDDEN BY DEFAULT ← this was missing */
+  background-color: transparent;
+  transition: opacity .15s ease, background-color .15s ease;
+  pointer-events: none;         /* don't block clicks on the mailto link */
+}
+
+/* you already had these, keep them */
 .floatad:hover .floatad__overlay,
 .floatad:focus-visible .floatad__overlay,
 .floatad:active .floatad__overlay {
   opacity: 1;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, 0.30);
 }

@@ -50,7 +50,7 @@ function FloatAd({
       aria-label={`${label} — email tony@wheatandstone.ca`}
       style={boxStyle}
       className={[
-        "group floatad relative rounded-xl border overflow-hidden cursor-pointer", // ← add floatad
+        "group floatad relative rounded-xl border overflow-hidden cursor-pointer",
         "bg-neutral-50 dark:bg-neutral-900",
         "border-neutral-200 dark:border-neutral-800",
         "ring-0 transition focus:outline-none focus-visible:ring-2",
@@ -90,17 +90,7 @@ function FloatAd({
       )}
 
       {/* Overlay */}
-      <div
-        className={[
-          "floatad__overlay",                                 // ← add this
-          "absolute inset-0 z-50 flex items-center justify-center",
-          "bg-black/0",                                       // start transparent
-        ].join(" ")}
-        aria-hidden="true"
-      >
-        <span className="rounded-md bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
-          Delivery
-        </span>
+      <div className="floatad__overlay" aria-hidden="true">
       </div>
     </a>
   );
