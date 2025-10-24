@@ -1,36 +1,29 @@
 // src/app/articles/[slug]/page.tsx
 import { prisma } from "@/lib/prisma";
 import ArticleView from "@/components/article/ArticleView";
-import AdRail from "@/components/article/AdRail";
 import CommentsSection from "@/components/article/CommentsSection";
-import { notFound } from "next/navigation";
+import AdFullWidth from "@/components/article/AdFullWidth";
 
-export default async function ArticlePage(
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const { slug } = await params;
+type Params = { params: { slug: string } };
 
+export default async function ArticlePage({ params }: Params) {
   const article = await prisma.article.findUnique({
-    where: { slug },
+    where: { slug: params.slug },
   });
 
-  if (!article || article.status !== "PUBLISHED") {
-    notFound(); // render your App Router 404 page
+  if (!article) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="py-16 text-center opacity-70">Article not found.</div>
+      </main>
+    );
   }
 
   return (
-    <main className="mx-auto max-w-screen-xl px-4">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,720px)_300px_1fr] gap-6">
-        <div className="hidden lg:block" />
-        <div className="py-8">
-          <ArticleView article={article} variant="full" />
-          <CommentsSection article={article} />
-        </div>
-        <aside className="py-8">
-          <AdRail />
-        </aside>
-        <div className="hidden lg:block" />
-      </div>
+    <main className="mx-auto max-w-6xl px-6 md:px-8">
+      <ArticleView article={article} variant="full" />
+      <CommentsSection article={article} />
+      <AdFullWidth label="TokenTap.ca" />
     </main>
   );
 }

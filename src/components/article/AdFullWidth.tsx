@@ -1,4 +1,5 @@
-// src/components/article/AdRail.tsx
+// src/components/article/AdFullWidth.tsx
+
 type Tone = "neutral" | "zinc" | "slate" | "stone" | "amber" | "indigo";
 
 function toneClasses(tone: Tone) {
@@ -43,55 +44,32 @@ function toneClasses(tone: Tone) {
   }
 }
 
-function AdSlot({
-  label,
-  classes,
-  tall,
+export default function AdFullWidth({
+  label = "TokenTap.ca",
+  tone = "neutral",
+  height = 256, // px
 }: {
-  label: string;
-  classes: ReturnType<typeof toneClasses>;
-  tall?: boolean;
-}) {
-  return (
-    <div
-      role="complementary"
-      aria-label={label}
-      className={[
-        tall ? "h-64" : "h-40",
-        "rounded-xl flex items-center justify-center text-sm border",
-        classes.bg,
-        classes.border,
-        classes.text,
-      ].join(" ")}
-    >
-      {label}
-    </div>
-  );
-}
-
-type Props = {
+  label?: string;
   tone?: Tone;
-  /** Extra pixels of gap before the second ad (used to drop it ~halfway). */
-  secondExtraTop?: number;
-};
-
-/**
- * Right-rail ads. The parent positions the whole rail under the timestamp.
- * `secondExtraTop` inserts extra vertical space before the second ad.
- */
-export default function AdRail({ tone = "neutral", secondExtraTop = 0 }: Props) {
+  height?: number;
+}) {
   const classes = toneClasses(tone);
 
   return (
-    <div className="w-[320px]">
-      {/* Ad #1 */}
-      <AdSlot label="Homesteader Health Delivery" classes={classes} />
-
-      {/* Spacer before Ad #2 */}
-      <div style={{ marginTop: Math.max(0, Math.round(secondExtraTop)) }} />
-
-      {/* Ad #2 */}
-      <AdSlot label="Beaverlodge Butcher Shop Delivery" classes={classes} />
+    <div className="w-full mt-10">
+      <div
+        className={[
+          "w-full rounded-2xl border flex items-center justify-center text-sm md:text-base",
+          classes.bg,
+          classes.border,
+          classes.text,
+        ].join(" ")}
+        style={{ height }}
+        role="complementary"
+        aria-label={label}
+      >
+        {label}
+      </div>
     </div>
   );
 }

@@ -15,23 +15,28 @@ export default function RichField({ value, onChange, height = 420 }: Props) {
   const ref = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
+  // TinyMCE 8 CDN
   const CDN = "https://cdn.jsdelivr.net/npm/tinymce@8.2.0";
 
   if (!mounted) {
-    return <div className="border rounded h-[420px] bg-black/5 dark:bg-white/5 animate-pulse" />;
+    return (
+      <div className="border rounded h-[420px] bg-black/5 dark:bg-white/5 animate-pulse" />
+    );
   }
 
   return (
     <Editor
       key="tinymce-editor"
       tinymceScriptSrc={`${CDN}/tinymce.min.js`}
+      licenseKey="gpl" // GPL mode
       onInit={(_, editor) => (ref.current = editor)}
       value={value}
       onEditorChange={(content) => onChange(content)}
       init={{
-        licenseKey: "gpl",
         base_url: CDN,
         suffix: ".min",
 
@@ -40,16 +45,19 @@ export default function RichField({ value, onChange, height = 420 }: Props) {
         branding: false,
         statusbar: false,
 
+        // Free plugins only
         plugins: "lists advlist table link code",
         toolbar:
           "undo redo | blocks | bold italic underline | forecolor backcolor removeformat | " +
           "alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | code",
 
-        // <- the exact same CSS the viewer uses
+        // Same CSS as viewer
         content_style: WYSIWYG_CSS,
 
         paste_data_images: false,
         convert_urls: false,
+
+        // Keep HTML tight
         valid_elements:
           "p,br,strong/b,em/i,u,span[style],a[href|target|rel|title]," +
           "h1,h2,h3,h4,ul,ol,li,blockquote,hr," +
@@ -57,9 +65,12 @@ export default function RichField({ value, onChange, height = 420 }: Props) {
         valid_styles: {
           "*":
             "color,background-color,text-align,font-size,font-family," +
-            "font-weight,font-style,text-decoration"
+            "font-weight,font-style,text-decoration",
         },
         block_formats: "Paragraph=p; H1=h1; H2=h2; H3=h3; H4=h4",
+
+        // Ensure no premium plugins are fetched
+        external_plugins: {},
       }}
     />
   );

@@ -18,13 +18,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <SessionProvider>
       <Header />
 
-      {/* 3/4-width divider under the header, centered */}
-      <div className="mx-auto w-3/4 border-t border-neutral-200 dark:border-neutral-800 mt-2 mb-6" />
+      {/* Divider directly under header; width matches page grid (header/article/ad) */}
+      <div className="mx-auto w-full max-w-5xl px-6">
+        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-2 mb-6" />
+      </div>
 
-      {/* Page content area (keeps viewport height minus header if you want) */}
-      <main className="min-h-[calc(100svh-var(--header-h,0px))]">
-        {children}
-      </main>
+      {/* Page content */}
+      <main className="min-h-[calc(100svh-var(--header-h,0px))]">{children}</main>
     </SessionProvider>
   );
 }

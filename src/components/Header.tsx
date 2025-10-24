@@ -11,11 +11,25 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 
+/** Clean icon-only profile glyph */
+function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        fill="currentColor"
+        d="M12 12c2.76 0 5-2.69 5-6s-2.24-5-5-5-5 2.69-5 6 2.24 5 5 5Zm0 2c-3.33 0-10 1.67-10 5v1a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-1c0-3.33-6.67-5-10-5Z"
+      />
+    </svg>
+  );
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
+
   const [walletConnected, setWalletConnected] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false); // mobile menu
+  const [profileOpen, setProfileOpen] = useState(false); // desktop profile dropdown
 
   // Measure header height and expose as CSS var --header-h
   const headerRef = useRef<HTMLElement>(null);
@@ -39,12 +53,13 @@ export default function Header() {
     };
   }, []);
 
-  // Close the mobile menu on route changes (best effort)
+  // Close menus on route change
   useEffect(() => {
     setMenuOpen(false);
+    setProfileOpen(false);
   }, [router]);
 
-  // Close on outside click
+  // Close mobile menu on outside click
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -55,6 +70,18 @@ export default function Header() {
     if (menuOpen) document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
   }, [menuOpen]);
+
+  // Close profile dropdown on outside click
+  const profileRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!profileRef.current) return;
+      if (profileRef.current.contains(e.target as Node)) return;
+      setProfileOpen(false);
+    };
+    if (profileOpen) document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, [profileOpen]);
 
   const connectWallet = async () => {
     if (window.keplr) {
@@ -79,11 +106,12 @@ export default function Header() {
   return (
     <header
       ref={headerRef}
-      className="w-full px-6 md:px-8 py-3 bg-[var(--background)] text-[var(--foreground)] shadow relative"
+      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative"
     >
-      <div className="mx-auto max-w-6xl flex items-center justify-between gap-4">
+      <div className="mx-auto w-full max-w-5xl px-6 md:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Logo */}
         <a href="/" aria-label="Wheat & Stone home" className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             id="ws-header-logo"
             src="/tlogo.png"
@@ -111,7 +139,6 @@ export default function Header() {
             </>
           ) : (
             <>
-              {/* Admin-only button */}
               {isAdmin && (
                 <button
                   onClick={() => router.push("/admin")}
@@ -131,30 +158,52 @@ export default function Header() {
                 – {session.user?.email}
               </span>
 
-              <button onClick={() => signOut()} className="hover:underline cursor-pointer">
-                Logout
-              </button>
-
-              {session && (
-                <button
-                  onClick={connectWallet}
-                  className={`px-3 py-1 rounded cursor-pointer ${
-                    walletConnected
-                      ? "bg-green-100 text-green-800"
-                      : "bg-black text-white dark:bg-white dark:text-black"
-                  }`}
-                >
-                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-                </button>
-              )}
-
               <button
-                onClick={toggleTheme}
-                className="px-3 py-1 rounded border border-black/10 dark:border-white/20"
-                aria-label="Toggle theme"
+                onClick={connectWallet}
+                className={`px-3 py-1 rounded cursor-pointer ${
+                  walletConnected
+                    ? "bg-green-100 text-green-800"
+                    : "bg-black text-white dark:bg-white dark:text-black"
+                }`}
               >
-                Theme
+                {walletConnected ? "Wallet Connected" : "Connect Wallet"}
               </button>
+
+              {/* Profile icon */}
+              <div className="relative" ref={profileRef}>
+                <button
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  aria-label="Profile menu"
+                  onClick={() => setProfileOpen((v) => !v)}
+                  className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                >
+                  <ProfileIcon className="text-[var(--foreground)]" />
+                </button>
+
+                {profileOpen && (
+                  <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-50">
+                    <button
+                      className="w-full px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        toggleTheme();
+                        setProfileOpen(false);
+                      }}
+                    >
+                      Theme
+                    </button>
+                    <button
+                      className="w-full px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        signOut();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -167,7 +216,6 @@ export default function Header() {
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
           >
-            {/* Hamburger / X */}
             <svg
               className={`h-6 w-6 transition-transform ${menuOpen ? "rotate-90" : ""}`}
               viewBox="0 0 24 24"
@@ -185,14 +233,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile slide-down panel */}
+      {/* Mobile slide-down */}
       <div
         ref={menuRef}
         className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 shadow transition-[max-height,opacity] overflow-hidden ${
           menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
         }`}
       >
-        <div className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3">
+        <div className="mx-auto w-full max-w-5xl px-6 py-4 flex flex-col gap-3">
           {!session ? (
             <>
               <button
@@ -216,7 +264,6 @@ export default function Header() {
             </>
           ) : (
             <>
-              {/* Admin-only button (mobile) */}
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -224,8 +271,6 @@ export default function Header() {
                     router.push("/admin");
                   }}
                   className="px-3 py-2 rounded w-full text-center bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
-                  aria-label="Open Admin Dashboard"
-                  title="Admin Dashboard"
                 >
                   Admin Dashboard
                 </button>
@@ -238,6 +283,27 @@ export default function Header() {
                 {session.user?.role === undefined && "Visitor "}
                 – {session.user?.email}
               </div>
+
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  connectWallet();
+                }}
+                className={`px-3 py-2 rounded w-full text-center ${
+                  walletConnected
+                    ? "bg-green-100 text-green-800"
+                    : "bg-black text-white dark:bg-white dark:text-black"
+                }`}
+              >
+                {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+              </button>
+
+              <button
+                onClick={toggleTheme}
+                className="px-3 py-2 rounded w-full text-center border border-black/10 dark:border-white/20"
+              >
+                Theme
+              </button>
               <button
                 onClick={() => {
                   setMenuOpen(false);
@@ -246,32 +312,6 @@ export default function Header() {
                 className="text-left hover:underline"
               >
                 Logout
-              </button>
-
-              {session && (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    connectWallet();
-                  }}
-                  className={`px-3 py-2 rounded w-full text-center ${
-                    walletConnected
-                      ? "bg-green-100 text-green-800"
-                      : "bg-black text-white dark:bg-white dark:text-black"
-                  }`}
-                >
-                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  toggleTheme();
-                }}
-                className="px-3 py-2 rounded w-full text-center border border-black/10 dark:border-white/20"
-              >
-                Theme
               </button>
             </>
           )}

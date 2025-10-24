@@ -1,7 +1,7 @@
 // src/app/admin/edit/[slug]/Editor.tsx
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleStatus } from "@prisma/client";
 import RichField from "@/components/editor/RichField";
@@ -14,10 +14,10 @@ type EditableArticle = {
   coverUrl: string | null;
   content: string;
   status: ArticleStatus;
-  publishedAt: string | null; // ISO string from server
+  publishedAt: string | null; // ISO string
 };
 
-// ---------- utils
+// ----- utils
 
 function normalizeSlug(input: string) {
   return input
@@ -29,7 +29,7 @@ function normalizeSlug(input: string) {
     .replace(/^-|-$/g, "");
 }
 
-// ---------- component
+// ----- component
 
 export default function Editor({ initialArticle }: { initialArticle: EditableArticle }) {
   const router = useRouter();
@@ -42,12 +42,25 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
   const [content, setContent] = useState(initialArticle.content ?? "");
   const [status, setStatus] = useState<ArticleStatus>(initialArticle.status);
 
-  // ref only used by previous textarea version; kept in case you want to focus programmatically
-  const _unusedRef = useRef<HTMLTextAreaElement | null>(null);
+  // Prevent rapid double-submits
+  const submittingRef = useRef(false);
+
+  // Cmd/Ctrl+S to save
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isSave = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s";
+      if (isSave) {
+        e.preventDefault();
+        void save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [title, slug, excerpt, coverUrl, content, status]);
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
-    if (isPending) return;
+    if (isPending || submittingRef.current) return;
 
     const nextSlug = normalizeSlug(slug);
     if (!nextSlug) {
@@ -55,77 +68,97 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       return;
     }
 
-    const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        slug: nextSlug,
-        excerpt: excerpt || null,
-        coverUrl: coverUrl || null,
-        content,               // ← full HTML from TinyMCE
-        status,
-      }),
-    });
+    submittingRef.current = true;
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          slug: nextSlug,
+          excerpt: excerpt || null,
+          coverUrl: coverUrl || null,
+          content, // full HTML from RichField (TinyMCE)
+          status,
+        }),
+      });
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      alert(`Save failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-      return;
-    }
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`Save failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
+        return;
+      }
 
-    if (nextSlug !== initialArticle.slug) {
-      startTransition(() => router.replace(`/admin/edit/${encodeURIComponent(nextSlug)}`));
-    } else {
-      startTransition(() => router.refresh());
+      if (nextSlug !== initialArticle.slug) {
+        startTransition(() => router.replace(`/admin/edit/${encodeURIComponent(nextSlug)}`));
+      } else {
+        startTransition(() => router.refresh());
+      }
+    } finally {
+      submittingRef.current = false;
     }
   }
 
   async function publish() {
-    if (isPending) return;
-    const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "PUBLISHED" as ArticleStatus }),
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      alert(`Publish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-      return;
+    if (isPending || submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PUBLISHED" as ArticleStatus }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`Publish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
+        return;
+      }
+      setStatus("PUBLISHED");
+      startTransition(() => router.refresh());
+    } finally {
+      submittingRef.current = false;
     }
-    setStatus("PUBLISHED");
-    startTransition(() => router.refresh());
   }
 
   async function unpublish() {
-    if (isPending) return;
-    const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "DRAFT" as ArticleStatus }),
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      alert(`Unpublish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-      return;
+    if (isPending || submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DRAFT" as ArticleStatus }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`Unpublish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
+        return;
+      }
+      setStatus("DRAFT");
+      startTransition(() => router.refresh());
+    } finally {
+      submittingRef.current = false;
     }
-    setStatus("DRAFT");
-    startTransition(() => router.refresh());
   }
 
   async function destroy() {
-    if (isPending) return;
+    if (isPending || submittingRef.current) return;
     if (!confirm("Delete this article? This cannot be undone.")) return;
 
-    const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      alert(`Delete failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-      return;
+    submittingRef.current = true;
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        alert(`Delete failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
+        return;
+      }
+      startTransition(() => router.push("/admin"));
+    } finally {
+      submittingRef.current = false;
     }
-    startTransition(() => router.push("/admin"));
   }
 
   return (
@@ -175,16 +208,17 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           value={coverUrl}
           onChange={(e) => setCoverUrl(e.target.value)}
           placeholder="https://…"
+          inputMode="url"
         />
       </label>
 
-      {/* WYSIWYG content, same as /admin/new */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Content</span>
         <span className="text-xs opacity-60">Rich text: headings, lists, tables, links</span>
       </div>
 
       <div className="border rounded-xl overflow-hidden">
+        {/* Ensure RichField’s TinyMCE init uses license_key: 'gpl' (in its own file) */}
         <RichField value={content} onChange={setContent} height={460} />
       </div>
 
@@ -205,6 +239,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           type="submit"
           className="px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-100 dark:bg-black dark:text-white dark:hover:bg-neutral-800 disabled:opacity-60"
           disabled={isPending}
+          aria-label="Save article"
         >
           {isPending ? "Saving…" : "Save"}
         </button>
@@ -213,8 +248,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           <button
             type="button"
             onClick={unpublish}
-            className="rounded-xl px-4 py-2 border"
+            className="rounded-xl px-4 py-2 border disabled:opacity-60"
             disabled={isPending}
+            aria-label="Unpublish article"
           >
             Unpublish
           </button>
@@ -222,8 +258,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           <button
             type="button"
             onClick={publish}
-            className="rounded-xl px-4 py-2 border"
+            className="rounded-xl px-4 py-2 border disabled:opacity-60"
             disabled={isPending}
+            aria-label="Publish article"
           >
             Publish
           </button>
@@ -232,8 +269,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         <button
           type="button"
           onClick={destroy}
-          className="rounded-xl px-4 py-2 border border-red-500 text-red-600"
+          className="rounded-xl px-4 py-2 border border-red-500 text-red-600 disabled:opacity-60"
           disabled={isPending}
+          aria-label="Delete article"
         >
           Delete
         </button>
