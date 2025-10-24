@@ -3,6 +3,7 @@
 
 import type { Article } from "@prisma/client";
 import Link from "next/link";
+import Image from "next/image";
 import WysiwygStyle from "./WysiwygStyle";
 
 type Props = {
@@ -11,24 +12,97 @@ type Props = {
 };
 
 /** Small floated ad card (true CSS float so body text wraps around it). */
-function FloatAd({ label, side }: { label: string; side: "right" | "left" }) {
-  const style: React.CSSProperties = {
+function FloatAd({
+  label,
+  side,
+  imageSrc,
+  imageAlt,
+  tall,
+  intrinsic,         // keep HH natural-height
+  nudgeY = 0,        // <— pixels to vertically nudge the image (negative = up)
+}: {
+  label: string;
+  side: "right" | "left";
+  imageSrc?: string;
+  imageAlt?: string;
+  tall?: boolean;
+  intrinsic?: boolean;
+  nudgeY?: number;
+}) {
+  const boxStyle: React.CSSProperties = {
     width: 320,
-    height: 160,
     float: side,
     marginLeft: side === "right" ? 16 : 0,
     marginRight: side === "left" ? 16 : 0,
     marginBottom: 16,
+    height: intrinsic ? undefined : tall ? 256 : 160, // Beaverlodge fixed; Homesteader natural
+    display: "inline-block",
   };
+
+  const subject = encodeURIComponent(`Ad Inquiry: ${label}`);
+  const body = encodeURIComponent(
+    `Hi Tony,\n\nI'm interested in the "${label}" ad placement I saw on Wheat & Stone.\n\nThanks!\n`
+  );
+
   return (
-    <div
-      role="complementary"
-      aria-label={label}
-      style={style}
-      className="rounded-xl border text-sm bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300"
+    <a
+      href={`mailto:tony@wheatandstone.ca?subject=${subject}&body=${body}`}
+      aria-label={`${label} — email tony@wheatandstone.ca`}
+      style={boxStyle}
+      className={[
+        "group floatad relative rounded-xl border overflow-hidden cursor-pointer", // ← add floatad
+        "bg-neutral-50 dark:bg-neutral-900",
+        "border-neutral-200 dark:border-neutral-800",
+        "ring-0 transition focus:outline-none focus-visible:ring-2",
+        "hover:ring-neutral-300 dark:hover:ring-neutral-700",
+      ].join(" ")}
     >
-      <div className="h-full w-full flex items-center justify-center">{label}</div>
-    </div>
+      {imageSrc ? (
+        intrinsic ? (
+          /* HOMESTEADER: natural height, centered horizontally */
+          <div className="p-3 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageSrc}
+              alt={imageAlt || label}
+              className="block h-auto max-w-full"
+              loading="lazy"
+            />
+          </div>
+        ) : (
+          /* BEAVERLODGE: fixed-height card; center both ways; nudge up */
+          <div className="h-full w-full p-3 flex items-center justify-center">
+            <Image
+              src={imageSrc}
+              alt={imageAlt || label}
+              width={320}
+              height={tall ? 256 : 160}
+              className="max-h-full max-w-full object-contain"
+              style={{ transform: `translateY(${nudgeY}px)` }}  // <— lift/lower without cropping
+              priority={false}
+            />
+          </div>
+        )
+      ) : (
+        <div className="h-full w-full flex items-center justify-center text-sm text-neutral-700 dark:text-neutral-300">
+          {label}
+        </div>
+      )}
+
+      {/* Overlay */}
+      <div
+        className={[
+          "floatad__overlay",                                 // ← add this
+          "absolute inset-0 z-50 flex items-center justify-center",
+          "bg-black/0",                                       // start transparent
+        ].join(" ")}
+        aria-hidden="true"
+      >
+        <span className="rounded-md bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+          Delivery
+        </span>
+      </div>
+    </a>
   );
 }
 
@@ -89,9 +163,7 @@ export default function ArticleView({ article, variant }: Props) {
   const beforeMid = rest.slice(0, mid).join("");
   const afterMid = rest.slice(mid).join("");
 
-  // Always reserve a header-image spot.
-  // For THIS article, prefer /Avalon.jpg; otherwise:
-  // explicit field -> first <img> in content -> coverUrl -> (no image => placeholder)
+  // Header image choice
   const explicitHeader = (article as any).headerImageUrl as string | undefined;
   const isAvalonArticle =
     (article.slug?.toLowerCase().includes("avalon") ||
@@ -124,7 +196,6 @@ export default function ArticleView({ article, variant }: Props) {
           <h1 className="text-3xl font-semibold tracking-tight">{article.title ?? "Untitled"}</h1>
 
           <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_140px] items-center gap-4">
-            {/* left: author + timestamp */}
             <div>
               <div className="text-sm opacity-75">
                 Author: {(article as any).contributor ?? "Wheat & Stone Team"}
@@ -136,7 +207,6 @@ export default function ArticleView({ article, variant }: Props) {
               </div>
             </div>
 
-            {/* right: image OR placeholder box (keeps the space reserved) */}
             {headerImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -155,7 +225,6 @@ export default function ArticleView({ article, variant }: Props) {
 
         {/* Body with ads injected between paragraph chunks */}
         <div style={{ overflow: "visible" }}>
-          {/* First paragraph */}
           {first && (
             <div
               className="wysiwyg max-w-prose md:max-w-3xl"
@@ -164,10 +233,15 @@ export default function ArticleView({ article, variant }: Props) {
             />
           )}
 
-          {/* Ad #1 floats right, text wraps around it */}
-          <FloatAd label="Homesteader Health Delivery" side="right" />
+          {/* Ad #1 — Homesteader: intrinsic height, centered */}
+          <FloatAd
+            label="Homesteader Health Delivery"
+            side="right"
+            imageSrc="/hh.png"
+            imageAlt="Homesteader Health home delivery"
+            intrinsic
+          />
 
-          {/* Paragraphs up to midpoint */}
           {beforeMid && (
             <div
               className="wysiwyg max-w-prose md:max-w-3xl"
@@ -176,10 +250,15 @@ export default function ArticleView({ article, variant }: Props) {
             />
           )}
 
-          {/* Ad #2 floats left, roughly halfway through the article */}
-          <FloatAd label="Beaverlodge Butcher Shop Delivery" side="left" />
+          {/* Ad #2 — Beaverlodge: fixed-height gray card, centered */}
+          <FloatAd
+            label="Beaverlodge Butcher Shop Delivery"
+            side="left"
+            imageSrc="/bbs.trim.v6.png"
+            imageAlt="Beaverlodge Butcher Shop delivery"
+            tall
+          />
 
-          {/* Remaining paragraphs */}
           {afterMid && (
             <div
               className="wysiwyg max-w-prose md:max-w-3xl"
@@ -188,7 +267,6 @@ export default function ArticleView({ article, variant }: Props) {
             />
           )}
 
-          {/* Clear floats so comments and anything after start below */}
           <div style={{ clear: "both" }} />
         </div>
       </article>

@@ -4,14 +4,22 @@ import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 
-type Params = { params: { slug: string } };
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
 
-export default async function ArticlePage({ params }: Params) {
+// keep dynamic so DB status changes reflect immediately
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function ArticlePage({ params }: PageProps) {
+  const { slug } = await params;
+
   const article = await prisma.article.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
   });
 
-  if (!article) {
+  if (!article || article.status !== "PUBLISHED") {
     return (
       <main className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="py-16 text-center opacity-70">Article not found.</div>

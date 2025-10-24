@@ -148,3 +148,17 @@ select:-webkit-autofill {
   padding: .15em .35em;
   border-radius: .35rem;
 }
+
+/* Base state so it starts hidden and fades smoothly */
+.floatad__overlay {
+  opacity: 0;
+  transition: opacity .15s ease, background-color .15s ease;
+}
+
+/* You already have this part (keep it) */
+.floatad:hover .floatad__overlay,
+.floatad:focus-visible .floatad__overlay,
+.floatad:active .floatad__overlay {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.3);
+}

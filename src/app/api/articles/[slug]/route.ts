@@ -4,35 +4,59 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
+// --- helpers ---
 function forbidden() {
   return new NextResponse("Forbidden", { status: 403 });
 }
 function notFound() {
   return new NextResponse("Not found", { status: 404 });
 }
+function badRequest(msg = "Bad Request") {
+  return new NextResponse(msg, { status: 400 });
+}
 
+// Normalize a slug the same way the client does.
+function normalizeSlug(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 200); // keep it reasonable
+}
+
+// --- GET: fetch an article by slug ---
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+
   const article = await prisma.article.findUnique({ where: { slug } });
   if (!article) return notFound();
+
+  // No caching in APIs by default; callers can decide.
   return NextResponse.json(article);
 }
 
+// --- PATCH: reactions (public) OR editorial updates (auth) ---
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const body = await req.json().catch(() => ({}));
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
 
   // ---- Public reaction endpoint (no auth) ----
   if (body?.op === "react") {
-    const type = body?.type as "LIKE" | "WOW" | "HMM";
+    const type = String(body?.type || "").toUpperCase();
     if (!["LIKE", "WOW", "HMM"].includes(type)) {
-      return new NextResponse("Invalid reaction type", { status: 400 });
+      return badRequest("Invalid reaction type");
     }
 
     const data =
@@ -56,13 +80,14 @@ export async function PATCH(
 
   // ---- Auth-required editorial updates ----
   const session = await getServerSession(authOptions);
-  // @ts-ignore
+  // @ts-ignore next-auth augmentation provides role
   const role = session?.user?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
   if (!session?.user || !role) return forbidden();
 
+  // Accept partials; all fields optional
   const {
     title,
-    slug: nextSlug,
+    slug: nextSlugRaw,
     excerpt,
     coverUrl,
     content,
@@ -76,39 +101,57 @@ export async function PATCH(
     status?: "DRAFT" | "PUBLISHED";
   } = body || {};
 
-  const publishPatch =
-    status === "PUBLISHED"
-      ? { status: "PUBLISHED" as const, publishedAt: new Date() }
-      : status === "DRAFT"
-      ? { status: "DRAFT" as const, publishedAt: null }
-      : {};
+  // Normalize slug if provided
+  const nextSlug =
+    typeof nextSlugRaw === "string" && nextSlugRaw.length
+      ? normalizeSlug(nextSlugRaw)
+      : undefined;
 
+  // If changing slug, ensure uniqueness
   if (nextSlug && nextSlug !== slug) {
     const exists = await prisma.article.findUnique({ where: { slug: nextSlug } });
     if (exists) return new NextResponse("Slug already in use", { status: 409 });
   }
 
-  const updated = await prisma.article.update({
-    where: { slug },
-    data: {
-      ...(title !== undefined ? { title } : {}),
-      ...(excerpt !== undefined ? { excerpt } : {}),
-      ...(coverUrl !== undefined ? { coverUrl } : {}),
-      ...(content !== undefined ? { content } : {}),
-      ...(nextSlug ? { slug: nextSlug } : {}),
-      ...publishPatch,
-    },
-  });
+  // Build patch object
+  const patch: Record<string, any> = {};
+  if (title !== undefined) patch.title = title;
+  if (excerpt !== undefined) patch.excerpt = excerpt;
+  if (coverUrl !== undefined) patch.coverUrl = coverUrl;
+  if (content !== undefined) patch.content = content;
+  if (nextSlug) patch.slug = nextSlug;
 
-  return NextResponse.json(updated);
+  // Publish/unpublish controls publishedAt
+  if (status === "PUBLISHED") {
+    patch.status = "PUBLISHED";
+    patch.publishedAt = new Date();
+  } else if (status === "DRAFT") {
+    patch.status = "DRAFT";
+    patch.publishedAt = null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return badRequest("No changes supplied");
+  }
+
+  try {
+    const updated = await prisma.article.update({
+      where: { slug },
+      data: patch,
+    });
+    return NextResponse.json(updated);
+  } catch {
+    return notFound();
+  }
 }
 
+// --- DELETE: remove an article (auth) ---
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  // @ts-ignore
+  // @ts-ignore next-auth augmentation provides role
   const role = session?.user?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
   if (!session?.user || !role) return forbidden();
 
@@ -116,9 +159,8 @@ export async function DELETE(
 
   try {
     await prisma.article.delete({ where: { slug } });
+    return new NextResponse(null, { status: 204 });
   } catch {
     return notFound();
   }
-
-  return new NextResponse(null, { status: 204 });
 }

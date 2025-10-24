@@ -1,10 +1,18 @@
 // src/app/page.tsx
+// Make the home page dynamic so new/published articles appear without a rebuild.
+// (Alternatively, use `export const revalidate = 60;` for ISR.)
+export const dynamic = 'force-dynamic';
+
+import { unstable_noStore as noStore } from 'next/cache';
 import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 
 export default async function HomePage() {
+  // Extra guard to disable all caching for this render.
+  noStore();
+
   const article = await getLatestArticle();
 
   if (!article) {

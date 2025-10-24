@@ -178,7 +178,7 @@ export default function Header() {
                   onClick={() => setProfileOpen((v) => !v)}
                   className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900"
                 >
-                  <ProfileIcon className="text-[var(--foreground)]" />
+                  <ProfileIcon className="text-[var(--foreground)] cursor-pointer" />
                 </button>
 
                 {profileOpen && (

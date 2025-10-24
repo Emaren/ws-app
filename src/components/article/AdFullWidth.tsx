@@ -37,9 +37,9 @@ function toneClasses(tone: Tone) {
     case "neutral":
     default:
       return {
-        bg: "bg-neutral-50 dark:bg-neutral-900",
-        border: "border-neutral-200 dark:border-neutral-800",
-        text: "text-neutral-600 dark:text-neutral-300",
+        bg: "bg-neutral-900", // force black background
+        border: "border-neutral-800",
+        text: "text-neutral-300",
       };
   }
 }
@@ -47,7 +47,7 @@ function toneClasses(tone: Tone) {
 export default function AdFullWidth({
   label = "TokenTap.ca",
   tone = "neutral",
-  height = 256, // px
+  height = 256,
 }: {
   label?: string;
   tone?: Tone;
@@ -56,20 +56,32 @@ export default function AdFullWidth({
   const classes = toneClasses(tone);
 
   return (
-    <div className="w-full mt-10">
-      <div
+    // Add top margin here to separate from comments
+    <div className="w-full">
+      <a
+        href="https://tokentap.ca"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Visit ${label}`}
         className={[
-          "w-full rounded-2xl border flex items-center justify-center text-sm md:text-base",
-          classes.bg,
-          classes.border,
-          classes.text,
+          "w-full rounded-2xl border block overflow-hidden",
+          "bg-black border-neutral-800",
+          "focus:outline-none focus:ring-0 active:outline-none active:ring-0",
+          "flex items-center justify-center",
         ].join(" ")}
-        style={{ height }}
-        role="complementary"
-        aria-label={label}
+        style={{ height: `${height}px` }}
       >
-        {label}
-      </div>
+        <img
+          src="/tt.png"
+          alt={label}
+          loading="lazy"
+          className="object-contain outline-none"
+          style={{
+            height: `${Math.round(height * 0.75)}px`, // 75% of container height
+            width: "auto",
+          }}
+        />
+      </a>
     </div>
   );
 }

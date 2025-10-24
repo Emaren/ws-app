@@ -23,7 +23,7 @@ export default function CommentsSection({ article }: { article: Article }) {
   return (
     <section className="pt-12 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Join the discussion</h2>
+        
         <ReactionsBar
           slug={article.slug}
           likeCount={article.likeCount}

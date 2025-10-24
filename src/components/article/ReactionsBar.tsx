@@ -44,7 +44,7 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
   }
 
   const btnCls =
-    "rounded-full px-3 py-1 border text-sm disabled:opacity-50 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition";
+    "rounded-full px-3 py-1 border text-sm disabled:opacity-50 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition cursor-pointer";
 
   return (
     <div className="flex items-center gap-3">
