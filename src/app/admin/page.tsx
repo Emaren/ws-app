@@ -2,72 +2,184 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type Article = {
   id: string;
   title: string;
   slug: string;
-  published: boolean;
-  createdAt: string;
+  published: boolean;     // kept to match your existing API shape
+  createdAt: string;      // ISO string
+  // Optional fields if your API already returns them; ignored otherwise
+  updatedAt?: string;
+  publishedAt?: string | null;
 };
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
+  // Redirect if unauthenticated
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  useEffect(() => {
-    const fetchDrafts = async () => {
-      const res = await fetch("/api/articles");
-      const data = await res.json();
-      setArticles(data);
-    };
-    if (session?.user?.role === "ADMIN") {
-      fetchDrafts();
+  // Fetch list when we have an admin
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/articles", { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const data: Article[] = await res.json();
+      setArticles(data ?? []);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to load articles.");
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN") load();
   }, [session]);
 
+  // Derived, filtered list
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return articles;
+    return articles.filter((a) => a.title.toLowerCase().includes(q) || a.slug.toLowerCase().includes(q));
+  }, [articles, query]);
+
+  async function handleDelete(slug: string) {
+    if (!confirm("Delete this article? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(slug)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
+      // Soft refresh
+      startTransition(() => {
+        setArticles((prev) => prev.filter((a) => a.slug !== slug));
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Delete failed.");
+    }
+  }
+
   if (session?.user?.role !== "ADMIN") {
+    // While session is loading, avoid flashing the "no permission" message
+    if (status === "loading") {
+      return <p className="p-8 opacity-70">Checking permissions…</p>;
+    }
     return <p className="p-8">You do not have permission to view this page.</p>;
   }
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-      <button
-        onClick={() => router.push("/admin/new")}
-        className="mb-6 bg-black text-white px-4 py-2 rounded cursor-pointer"
-      >
-        + New Article
-      </button>
-
-      <ul className="space-y-4">
-        {articles.map((article) => (
-          <li
-            key={article.id}
-            className="p-4 border rounded shadow flex justify-between items-center"
+    <main className="max-w-5xl mx-auto p-8 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            className="border px-3 py-2 rounded cursor-pointer disabled:opacity-60"
+            disabled={loading || isPending}
+            title="Reload list"
           >
-            <div>
-              <h2 className="font-semibold">{article.title}</h2>
-              <p className="text-sm opacity-60">
-                {article.published ? "Published" : "Draft"} ·{" "}
-                {new Date(article.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-            <button
-              onClick={() => router.push(`/admin/edit/${article.slug}`)}
-              className="text-blue-500 underline"
+            {loading ? "Loading…" : "Reload"}
+          </button>
+          <button
+            onClick={() => router.push("/admin/new")}
+            className="bg-black text-white px-4 py-2 rounded cursor-pointer"
+          >
+            + New Article
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="search"
+          placeholder="Filter by title or slug…"
+          className="w-full px-3 py-2 border rounded"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <span className="text-sm opacity-60 whitespace-nowrap">
+          {filtered.length} / {articles.length}
+        </span>
+      </div>
+
+      {loading && (
+        <div className="border rounded p-4 text-sm opacity-70">Loading articles…</div>
+      )}
+
+      {!loading && filtered.length === 0 && (
+        <div className="border rounded p-6 text-sm opacity-70">
+          No articles found{query ? " for your filter." : "."}
+        </div>
+      )}
+
+      <ul className="space-y-3">
+        {filtered.map((article) => {
+          const created = new Date(article.createdAt);
+          const when = isNaN(created.getTime())
+            ? ""
+            : created.toLocaleDateString();
+
+          return (
+            <li
+              key={article.id}
+              className="p-4 border rounded flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
             >
-              Edit
-            </button>
-          </li>
-        ))}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold truncate">{article.title}</h2>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      article.published
+                        ? "bg-green-600/15 text-green-500 border border-green-600/30"
+                        : "bg-yellow-600/15 text-yellow-400 border border-yellow-600/30"
+                    }`}
+                  >
+                    {article.published ? "Published" : "Draft"}
+                  </span>
+                </div>
+                <p className="text-xs opacity-60 truncate">
+                  /articles/{article.slug} · {when || "—"}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => router.push(`/articles/${article.slug}`)}
+                  className="px-3 py-1.5 border rounded hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                  title="View"
+                >
+                  View
+                </button>
+                <button
+                  onClick={() => router.push(`/admin/edit/${article.slug}`)}
+                  className="px-3 py-1.5 border rounded hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                  title="Edit"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(article.slug)}
+                  className="px-3 py-1.5 border rounded border-red-500 text-red-600 hover:bg-red-500/10"
+                  title="Delete"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </main>
   );

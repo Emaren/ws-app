@@ -30,7 +30,6 @@ export default async function EditArticlePage(
       content: true,
       status: true,
       publishedAt: true, // Date | null
-      // NOTE: intentionally NOT selecting createdAt/updatedAt to avoid TS mismatches
     },
   });
 

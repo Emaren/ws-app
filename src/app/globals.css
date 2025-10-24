@@ -25,8 +25,126 @@ input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
   -webkit-text-fill-color: #ffffff !important;
-  -webkit-box-shadow: 0 0 0px 1000px #000 inset !important; /* black bg */
+  -webkit-box-shadow: 0 0 0px 1000px #000 inset !important;
   box-shadow: 0 0 0px 1000px #000 inset !important;
   caret-color: #ffffff !important;
-  transition: background-color 9999s ease-in-out 0s; /* prevent flash */
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reader typography (.wysiwyg)                                        */
+/* ------------------------------------------------------------------ */
+
+.wysiwyg {
+  /* Slightly larger than 16px for easier reading; more generous line-height */
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.8;
+}
+
+/* Tighter control on very long lines (feels closer to Pages layout) */
+.wysiwyg.wysiwyg-reader {
+  max-width: 72ch;
+}
+
+/* Headings */
+.wysiwyg h1,
+.wysiwyg h2,
+.wysiwyg h3,
+.wysiwyg h4 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.75em 0 0.7em;
+}
+.wysiwyg h1 { font-size: 2rem; }
+.wysiwyg h2 {
+  font-size: 1.5rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent);
+}
+.wysiwyg h3 { font-size: 1.25rem; }
+.wysiwyg h4 { font-size: 1.1rem; }
+
+/* Paragraphs & spacing */
+.wysiwyg p { margin: 1em 0; }
+
+/* A little lighter than default bold to match Pages feel */
+.wysiwyg b,
+.wysiwyg strong {
+  font-weight: 600;
+}
+
+.wysiwyg hr {
+  border: 0;
+  height: 0;
+  border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
+  margin: 1.75em 0;
+}
+
+/* Links */
+.wysiwyg a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-color-scheme: dark) {
+  .wysiwyg a { color: #60a5fa; }
+}
+
+/* Lists */
+.wysiwyg ul,
+.wysiwyg ol {
+  margin: 0.85em 0 0.85em 1.25em;
+  padding-left: 1.25em;
+}
+.wysiwyg ul { list-style: disc outside; }
+.wysiwyg ol { list-style: decimal outside; }
+.wysiwyg li { margin: 0.35em 0; }
+.wysiwyg li > ul,
+.wysiwyg li > ol { margin-top: .35em; }
+
+/* Blockquote */
+.wysiwyg blockquote {
+  margin: 1.2em 0;
+  padding: .9em 1.1em;
+  border-left: 3px solid color-mix(in oklab, currentColor 35%, transparent);
+  background: color-mix(in oklab, currentColor 8%, transparent);
+  border-radius: .6rem;
+}
+
+/* Images */
+.wysiwyg img {
+  max-width: 100%;
+  height: auto;
+  border-radius: .6rem;
+  margin: 1.1em 0;
+}
+
+/* Tables */
+.wysiwyg table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.1em 0 1.4em;
+  font-size: 0.96rem;
+  overflow: hidden;
+  border-radius: .6rem;
+}
+.wysiwyg thead th {
+  text-align: left;
+  font-weight: 700;
+  background: color-mix(in oklab, currentColor 12%, transparent);
+}
+.wysiwyg th,
+.wysiwyg td {
+  padding: .65em .8em;
+  border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
+  vertical-align: top;
+}
+.wysiwyg tbody tr:nth-child(odd) {
+  background: color-mix(in oklab, currentColor 6%, transparent);
+}
+
+/* Code (inline) */
+.wysiwyg code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.95em;
+  background: color-mix(in oklab, currentColor 16%, transparent);
+  padding: .15em .35em;
+  border-radius: .35rem;
 }

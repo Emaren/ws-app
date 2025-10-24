@@ -1,9 +1,10 @@
 // src/app/admin/edit/[slug]/Editor.tsx
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleStatus } from "@prisma/client";
+import RichField from "@/components/editor/RichField";
 
 type EditableArticle = {
   id: string;
@@ -12,19 +13,23 @@ type EditableArticle = {
   excerpt: string | null;
   coverUrl: string | null;
   content: string;
-  status: ArticleStatus;      // "DRAFT" | "PUBLISHED"
-  publishedAt: string | null; // ISO string from the server component
+  status: ArticleStatus;
+  publishedAt: string | null; // ISO string from server
 };
+
+// ---------- utils
 
 function normalizeSlug(input: string) {
   return input
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\- ]/g, "") // strip disallowed chars
-    .replace(/\s+/g, "-")         // spaces -> hyphens
-    .replace(/-+/g, "-")          // collapse hyphens
-    .replace(/^-|-$/g, "");       // trim leading/trailing hyphens
+    .replace(/[^a-z0-9\- ]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
+
+// ---------- component
 
 export default function Editor({ initialArticle }: { initialArticle: EditableArticle }) {
   const router = useRouter();
@@ -36,6 +41,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
   const [coverUrl, setCoverUrl] = useState(initialArticle.coverUrl ?? "");
   const [content, setContent] = useState(initialArticle.content ?? "");
   const [status, setStatus] = useState<ArticleStatus>(initialArticle.status);
+
+  // ref only used by previous textarea version; kept in case you want to focus programmatically
+  const _unusedRef = useRef<HTMLTextAreaElement | null>(null);
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
@@ -55,7 +63,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         slug: nextSlug,
         excerpt: excerpt || null,
         coverUrl: coverUrl || null,
-        content,
+        content,               // ← full HTML from TinyMCE
         status,
       }),
     });
@@ -122,6 +130,8 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
 
   return (
     <form onSubmit={save} className="space-y-6">
+      <h1 className="text-xl font-semibold">Edit Article</h1>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="flex flex-col gap-2">
           <span className="text-sm font-medium">Title</span>
@@ -168,16 +178,15 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         />
       </label>
 
-      <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Content (HTML)</span>
-        <textarea
-          className="border rounded-xl px-3 py-2 min-h-[300px] font-mono"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="<p>Your article HTML…</p>"
-          required
-        />
-      </label>
+      {/* WYSIWYG content, same as /admin/new */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">Content</span>
+        <span className="text-xs opacity-60">Rich text: headings, lists, tables, links</span>
+      </div>
+
+      <div className="border rounded-xl overflow-hidden">
+        <RichField value={content} onChange={setContent} height={460} />
+      </div>
 
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Status:</span>
@@ -194,7 +203,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="submit"
-          className="rounded-xl px-4 py-2 bg-black text-white dark:bg-white dark:text-black disabled:opacity-60"
+          className="px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-100 dark:bg-black dark:text-white dark:hover:bg-neutral-800 disabled:opacity-60"
           disabled={isPending}
         >
           {isPending ? "Saving…" : "Save"}

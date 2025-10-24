@@ -25,15 +25,41 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params;
+  const body = await req.json().catch(() => ({}));
+
+  // ---- Public reaction endpoint (no auth) ----
+  if (body?.op === "react") {
+    const type = body?.type as "LIKE" | "WOW" | "HMM";
+    if (!["LIKE", "WOW", "HMM"].includes(type)) {
+      return new NextResponse("Invalid reaction type", { status: 400 });
+    }
+
+    const data =
+      type === "LIKE"
+        ? { likeCount: { increment: 1 } }
+        : type === "WOW"
+        ? { wowCount: { increment: 1 } }
+        : { hmmCount: { increment: 1 } };
+
+    try {
+      const updated = await prisma.article.update({
+        where: { slug },
+        data,
+        select: { likeCount: true, wowCount: true, hmmCount: true },
+      });
+      return NextResponse.json(updated);
+    } catch {
+      return notFound();
+    }
+  }
+
+  // ---- Auth-required editorial updates ----
   const session = await getServerSession(authOptions);
   // @ts-ignore
   const role = session?.user?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
   if (!session?.user || !role) return forbidden();
 
-  const { slug } = await params;
-  const body = await req.json();
-
-  // Pull fields we allow updating
   const {
     title,
     slug: nextSlug,
@@ -50,7 +76,6 @@ export async function PATCH(
     status?: "DRAFT" | "PUBLISHED";
   } = body || {};
 
-  // If setting PUBLISHED, set publishedAt now; if DRAFT, clear it.
   const publishPatch =
     status === "PUBLISHED"
       ? { status: "PUBLISHED" as const, publishedAt: new Date() }
@@ -58,7 +83,6 @@ export async function PATCH(
       ? { status: "DRAFT" as const, publishedAt: null }
       : {};
 
-  // If slug changes, ensure it’s unique
   if (nextSlug && nextSlug !== slug) {
     const exists = await prisma.article.findUnique({ where: { slug: nextSlug } });
     if (exists) return new NextResponse("Slug already in use", { status: 409 });
