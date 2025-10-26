@@ -39,6 +39,9 @@ select:-webkit-autofill {
   /* Slightly larger than 16px for easier reading; more generous line-height */
   font-size: 1.0625rem; /* 17px */
   line-height: 1.8;
+
+  /* IMPORTANT: allow floats (ads) to intrude so text wraps around them */
+  display: block; /* was flow-root (blocked wrapping) */
 }
 
 /* Tighter control on very long lines (feels closer to Pages layout) */
@@ -61,7 +64,7 @@ select:-webkit-autofill {
   padding-bottom: .5rem;
   border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent);
   display: flow-root;   /* keeps the divider from being clipped by floats */
-  clear: both;          /* guarantees it starts below any prior .floatad */
+  /* clear: both; */     /* removed so content can wrap beside floats */
 }
 .wysiwyg h3 { font-size: 1.25rem; }
 .wysiwyg h4 { font-size: 1.1rem; }
@@ -82,8 +85,6 @@ select:-webkit-autofill {
   margin: 1.75em 0;
   clear: both; 
 }
-
-.wysiwyg { display: flow-root; } 
 
 /* Links */
 .wysiwyg a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
@@ -156,7 +157,7 @@ select:-webkit-autofill {
 
 /* Floated ad overlay — base (hidden) + hover/focus (show) */
 .floatad {
-  position: relative;           /* ensure the overlay’s absolute positioning is scoped */
+  position: relative;
 }
 
 .floatad__overlay {
@@ -165,13 +166,12 @@ select:-webkit-autofill {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;                   /* HIDDEN BY DEFAULT ← this was missing */
+  opacity: 0;
   background-color: transparent;
   transition: opacity .15s ease, background-color .15s ease;
-  pointer-events: none;         /* don't block clicks on the mailto link */
+  pointer-events: none;
 }
 
-/* you already had these, keep them */
 .floatad:hover .floatad__overlay,
 .floatad:focus-visible .floatad__overlay,
 .floatad:active .floatad__overlay {
@@ -184,14 +184,10 @@ select:-webkit-autofill {
   .floatad { float: none !important; width: 100% !important; margin: 12px 0 !important; }
 }
 
-/* Keep the hr/rule aligned with a preceding floated ad */
+/* Allow wrap after a floated ad; just add a small gap (no clear) */
 .floatad + .wysiwyg { 
-  clear: both; 
-  margin-top: 40px;
- }
-
-/* If you want the rule to stay flush and push content instead: */
-/* .floatad + .wysiwyg { padding-top: 40px; } */
+  margin-top: 8px;
+}
 
 /* --- Article body image shrink (wins over other .wysiwyg rules) --- */
 .wysiwyg :is(img, a > img, figure > img) {
@@ -225,7 +221,7 @@ select:-webkit-autofill {
   height: 0;
   border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
   margin: 1.75em 0;
-  display: block;     /* full-width block */
+  display: block;
 }
 
 /* Facebook comments polish (round + full width) */
