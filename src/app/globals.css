@@ -83,7 +83,15 @@ select:-webkit-autofill {
   clear: both; 
 }
 
-.wysiwyg { display: flow-root; } 
+.wysiwyg {
+  display: block;
+}
+
+.wysiwyg::after {
+  content: "";
+  display: table;
+  clear: both;
+}
 
 /* Links */
 .wysiwyg a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
