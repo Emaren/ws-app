@@ -6,105 +6,133 @@ import type { Article } from "@prisma/client";
 import FloatAd from "./FloatAd";
 import WysiwygStyle from "./WysiwygStyle";
 
-/** ---------- helpers ---------- */
-function splitIntoParagraphs(html: string): string[] {
-  const matches = html.match(/[\s\S]*?<\/p>/gi);
-  if (matches && matches.length) return matches;
-  return [html];
+/* ----------------------- helpers ----------------------- */
+
+async function sanitizeHtml(html: string): Promise<string> {
+  const mod = await import("isomorphic-dompurify");
+  const DOMPurify = (mod as any).default ?? mod;
+  return DOMPurify.sanitize(html);
 }
-function splitForAdPlacement(html: string) {
-  const h2Re = /<h2[\s\S]*?<\/h2>/i;
-  const h2m = h2Re.exec(html);
-  if (!h2m) {
-    const firstP = /[\s\S]*?<\/p>/i.exec(html);
-    if (!firstP) return { intro: html, sectionAndAfterIntro: "", rest: "" };
-    const idx = firstP.index + firstP[0].length;
-    return { intro: html.slice(0, idx), sectionAndAfterIntro: "", rest: html.slice(idx) };
+
+/** If content is one big <div>…</div>, unwrap it so we don't inherit clamps. */
+function stripSingleOuterDiv(html: string): string {
+  const t = html.trim();
+  if (!/^<div\b[^>]*>[\s\S]*<\/div>\s*$/i.test(t)) return html;
+  const opens = (t.match(/<div\b[^>]*>/gi) || []).length;
+  const closes = (t.match(/<\/div>/gi) || []).length;
+  if (opens !== closes || opens < 1) return html;
+  const firstOpenEnd = t.indexOf(">");
+  return t.slice(firstOpenEnd + 1, t.lastIndexOf("</div>"));
+}
+
+/** Split into (before first <h2>), (that <h2>), and (everything after it). */
+function splitAtFirstH2(html: string): { before: string; h2Html: string; afterH2: string } {
+  const m = /<h2[\s\S]*?<\/h2>/i.exec(html);
+  if (!m) return { before: "", h2Html: "", afterH2: html };
+  const start = m.index!;
+  const end = start + m[0].length;
+  return { before: html.slice(0, start), h2Html: m[0], afterH2: html.slice(end) };
+}
+
+/**
+ * Find a “midpoint” in HTML based on common block closers so we can
+ * drop a floated ad there. Returns { head, tail } split strings.
+ */
+function splitHtmlAtMidBlock(html: string): { head: string; tail: string } {
+  // Find the end indices of common block elements
+  const re = /<\/(p|ul|ol|table|tbody|thead|tfoot|tr|blockquote|pre|figure)>/gi;
+  const ends: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) {
+    ends.push(m.index + m[0].length);
   }
-  const h2Start = h2m.index;
-  const h2End = h2Start + h2m[0].length;
-
-  const tail = html.slice(h2End);
-  const pMatch = /[\s\S]*?<\/p>/i.exec(tail);
-  if (!pMatch) return { intro: html.slice(0, h2End), sectionAndAfterIntro: "", rest: tail };
-
-  const pEnd = pMatch.index + pMatch[0].length;
-  return {
-    intro: html.slice(0, h2Start),
-    sectionAndAfterIntro: html.slice(h2Start, h2End + pEnd),
-    rest: tail.slice(pEnd),
-  };
-}
-function useSanitized(html: string) {
-  const [clean, setClean] = React.useState<string | null>(null);
-  React.useEffect(() => {
-    let m = true;
-    (async () => {
-      const mod = await import("isomorphic-dompurify");
-      const DOMPurify = (mod as any).default ?? mod;
-      const out = DOMPurify.sanitize(html);
-      if (m) setClean(out);
-    })();
-    return () => { m = false; };
-  }, [html]);
-  return clean;
+  if (ends.length === 0) {
+    return { head: html, tail: "" };
+  }
+  const midIdx = Math.floor(ends.length / 2);
+  const cut = ends[midIdx];
+  return { head: html.slice(0, cut), tail: html.slice(cut) };
 }
 
-/** ---------- main body component ---------- */
+/* ----------------------- main ----------------------- */
+
 export default function ArticleBody({ article }: { article: Article }) {
-  const { intro, sectionAndAfterIntro, rest } = splitForAdPlacement(article.content ?? "");
-  const cleanIntro = useSanitized(intro);
-  const cleanTarget = useSanitized(sectionAndAfterIntro);
-  const cleanRest = useSanitized(rest);
+  const [parts, setParts] = React.useState<{
+    introHtml: string;   // before first <h2>
+    h2Html: string;      // the first <h2>…</h2>
+    afterH2Head: string; // content after <h2> up to “midpoint”
+    afterH2Tail: string; // remainder after midpoint
+  } | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      const raw = article.content ?? "";
+      const clean = await sanitizeHtml(raw);
+      const unwrapped = stripSingleOuterDiv(clean);
+
+      // 1) Split on the first H2
+      const { before, h2Html, afterH2 } = splitAtFirstH2(unwrapped);
+
+      // 2) Split the remainder at a reasonable midpoint (based on blocks)
+      const { head, tail } = splitHtmlAtMidBlock(afterH2);
+
+      if (alive) {
+        setParts({
+          introHtml: before,
+          h2Html,
+          afterH2Head: head,
+          afterH2Tail: tail,
+        });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [article.content]);
 
   return (
     <>
       <WysiwygStyle />
 
-      {/* Full-width body within the parent container */}
+      {/* One BFC for the whole article body so floats wrap properly */}
       <article className="min-w-0" style={{ overflow: "visible" }}>
-        {/* 1) Intro (before the target H2) */}
-        {cleanIntro !== null && (
-          <div className="wysiwyg" dangerouslySetInnerHTML={{ __html: cleanIntro }} />
-        )}
+        <div className="wysiwyg">
+          {/* 1) Everything before the first H2 */}
+          {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
 
-        {/* keep floats from jumping above the rule */}
-        <div aria-hidden style={{ clear: "both", height: 0 }} />
-        <hr className="adbay-rule" />
+          {/* keep floats from jumping above the rule */}
+          <div aria-hidden style={{ clear: "both", height: 0 }} />
+          <hr className="adbay-rule" />
 
-        {/* ---------- Float Ad #1 (RIGHT, beside the first H2 + next P) ---------- */}
-        <FloatAd
-          label="Homesteader Health Delivery"
-          side="right"
-          imageSrc="/hh.png"
-          imageAlt="Homesteader Health home delivery"
-          w={289} mdW={300} lgW={320}
-          h={170} mdH={180} lgH={190}
-          intrinsic
-          imgMaxH={120} mdImgMaxH={130} lgImgMaxH={140}
-          imgClassName="max-w-[75%]"
-          imgFit="contain"
-          pad={2}
-          mt={8}
-        />
+          {/* 2) The first H2 */}
+          {parts?.h2Html && <div dangerouslySetInnerHTML={{ __html: parts.h2Html }} />}
 
-        {/* 2) The target section (H2 + first paragraph after it) */}
-        {cleanTarget !== null && (
-          <div className="wysiwyg" dangerouslySetInnerHTML={{ __html: cleanTarget }} />
-        )}
-
-        {/* 3) Remainder of article, inject left ad halfway */}
-        {cleanRest !== null && (() => {
-          const parts = splitIntoParagraphs(cleanRest);
-          const mid = parts.length > 0 ? Math.floor(parts.length / 2) : 0;
-          const beforeMid = parts.slice(0, mid).join("");
-          const afterMid = parts.slice(mid).join("");
-
-          return (
+          {/* 3) RIGHT ad (hh.png) appears immediately after H2,
+                 then we render the *entire* next chunk so everything wraps:
+                 paragraphs, lists, quotes, tables, etc. */}
+          {parts && (
             <>
-              <div className="wysiwyg" dangerouslySetInnerHTML={{ __html: beforeMid }} />
+              <FloatAd
+                label="Homesteader Health Delivery"
+                side="right"
+                imageSrc="/hh.png"
+                imageAlt="Homesteader Health home delivery"
+                w={289} mdW={300} lgW={320}
+                h={170} mdH={180} lgH={190}
+                intrinsic
+                imgMaxH={120} mdImgMaxH={130} lgImgMaxH={140}
+                imgClassName="max-w-[75%]"
+                imgFit="contain"
+                pad={2}
+              />
+              <div dangerouslySetInnerHTML={{ __html: parts.afterH2Head }} />
+            </>
+          )}
 
-              {/* ---------- Float Ad #2 (LEFT) ---------- */}
+          {/* 4) LEFT ad at midpoint, then the tail content */}
+          {parts && (
+            <>
               <FloatAd
                 label="Beaverlodge Butcher Shop Delivery"
                 side="left"
@@ -118,13 +146,12 @@ export default function ArticleBody({ article }: { article: Article }) {
                 imgFit="contain"
                 pad={0}
               />
-
-              <div className="wysiwyg" style={{ overflow: "visible" }} dangerouslySetInnerHTML={{ __html: afterMid }} />
+              <div dangerouslySetInnerHTML={{ __html: parts.afterH2Tail }} />
             </>
-          );
-        })()}
+          )}
 
-        <div style={{ clear: "both" }} />
+          <div style={{ clear: "both" }} />
+        </div>
       </article>
     </>
   );

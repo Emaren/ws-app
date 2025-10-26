@@ -15,7 +15,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-
 }
 
 /* Make autofilled inputs match our dark style */
@@ -40,14 +39,12 @@ select:-webkit-autofill {
   font-size: 1.0625rem; /* 17px */
   line-height: 1.8;
 
-  /* IMPORTANT: allow floats (ads) to intrude so text wraps around them */
+  /* Allow floats (ads) to intrude so text wraps around them */
   display: block; /* was flow-root (blocked wrapping) */
 }
 
-/* Tighter control on very long lines (feels closer to Pages layout) */
-.wysiwyg.wysiwyg-reader {
-  max-width: 72ch;
-}
+/* Optional narrow “reader” mode if you ever add that class */
+.wysiwyg.wysiwyg-reader { max-width: 72ch; }
 
 /* Headings */
 .wysiwyg h1,
@@ -63,8 +60,9 @@ select:-webkit-autofill {
   font-size: 1.5rem;
   padding-bottom: .5rem;
   border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent);
-  display: flow-root;   /* keeps the divider from being clipped by floats */
-  /* clear: both; */     /* removed so content can wrap beside floats */
+  display: block;       /* allow floats to intrude and text to wrap */
+  overflow: visible;    /* underline won’t get clipped */
+  break-inside: avoid;
 }
 .wysiwyg h3 { font-size: 1.25rem; }
 .wysiwyg h4 { font-size: 1.1rem; }
@@ -74,16 +72,14 @@ select:-webkit-autofill {
 
 /* A little lighter than default bold to match Pages feel */
 .wysiwyg b,
-.wysiwyg strong {
-  font-weight: 600;
-}
+.wysiwyg strong { font-weight: 600; }
 
 .wysiwyg hr {
   border: 0;
   height: 0;
   border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
   margin: 1.75em 0;
-  clear: both; 
+  clear: both;
 }
 
 /* Links */
@@ -156,10 +152,7 @@ select:-webkit-autofill {
 }
 
 /* Floated ad overlay — base (hidden) + hover/focus (show) */
-.floatad {
-  position: relative;
-}
-
+.floatad { position: relative; }
 .floatad__overlay {
   position: absolute;
   inset: 0;
@@ -171,7 +164,6 @@ select:-webkit-autofill {
   transition: opacity .15s ease, background-color .15s ease;
   pointer-events: none;
 }
-
 .floatad:hover .floatad__overlay,
 .floatad:focus-visible .floatad__overlay,
 .floatad:active .floatad__overlay {
@@ -185,9 +177,7 @@ select:-webkit-autofill {
 }
 
 /* Allow wrap after a floated ad; just add a small gap (no clear) */
-.floatad + .wysiwyg { 
-  margin-top: 8px;
-}
+.floatad + .wysiwyg { margin-top: 8px; }
 
 /* --- Article body image shrink (wins over other .wysiwyg rules) --- */
 .wysiwyg :is(img, a > img, figure > img) {
@@ -206,6 +196,34 @@ select:-webkit-autofill {
   max-width: 50% !important;
   height: auto !important;
 }
+
+/* -------- Remove inner width clamps so text can wrap around floats -------- */
+.wysiwyg :where(.prose, .container, .ql-editor, .ql-container, .editor-content, .content, .post-body, .article) {
+  max-width: none !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Kill inline max-width/width & center clamps like margin:0 auto */
+.wysiwyg :where([style*="max-width"], [style*="width"], [style*="margin:0 auto"], [style*="margin: 0 auto"]) {
+  max-width: 100% !important;
+  width: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Neutralize utility-based clamps that might sneak in */
+.wysiwyg :where([class*="max-w-"], [class~="container"], .mx-auto) {
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Make sure immediate children don't clamp themselves */
+.wysiwyg > * { max-width: none !important; }
 
 /* Mobile: go back to full width for readability */
 @media (max-width: 768px) {
