@@ -113,4 +113,22 @@ module.exports = {
   plugins: [
     require('@tailwindcss/typography'),
   ],
+
+  // ---- Purge-proof classes used by ArticleView / FloatAd header & ads ----
+  safelist: [
+    // Header bottle / header row utilities
+    'max-w-[560px]',
+    'translate-x-[10px]',
+    'md:max-h-[180px]',
+    'w-[180px]',
+
+    // FloatAd image width caps
+    'max-w-[75%]',
+    'max-w-[80%]',
+
+    // FloatAd container sizes (right: Homesteader)
+    'w-[289px]','h-[170px]','md:w-[300px]','md:h-[180px]','lg:w-[320px]','lg:h-[190px]',
+    // FloatAd container sizes (left: Beaverlodge)
+    'w-[320px]','h-[158px]','md:w-[328px]','md:h-[170px]','lg:w-[340px]','lg:h-[180px]',
+  ],
 };

@@ -17,10 +17,11 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
 
   async function react(type: "LIKE" | "WOW" | "HMM") {
     if (isPending) return;
-    if (voted === type) return; // simple client-side guard
+    if (voted === type) return;
+
     const prev = { ...counts };
 
-    // optimistic bump
+    // optimistic update
     setCounts((c) => ({
       like: c.like + (type === "LIKE" ? 1 : 0),
       wow:  c.wow  + (type === "WOW"  ? 1 : 0),
@@ -35,46 +36,58 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
     });
 
     if (!res.ok) {
-      // rollback on failure
-      setCounts(prev);
+      setCounts(prev); // rollback
       setVoted(null);
       const txt = await res.text().catch(() => "");
       alert(`Could not register reaction: ${res.status}${txt ? ` — ${txt}` : ""}`);
     }
   }
 
+  // Large, clean, clickable emoji + count (no outlines)
   const btnCls =
-    "rounded-full px-3 py-1 border text-sm disabled:opacity-50 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition cursor-pointer";
+    "inline-flex items-center gap-3 bg-transparent border-0 px-3 py-2 " +
+    "text-2xl md:text-3xl cursor-pointer select-none " +
+    "transition-transform hover:scale-110 active:scale-95 " +
+    "focus:outline-none focus-visible:ring-0 disabled:opacity-50";
+  const countCls = "tabular-nums text-lg md:text-xl font-medium";
 
   return (
-    <div className="flex items-center gap-3">
-      <button
-        className={btnCls}
-        onClick={() => react("LIKE")}
-        disabled={isPending}
-        aria-pressed={voted === "LIKE"}
-        title="Like"
-      >
-        👍 <span className="ml-1 tabular-nums">{counts.like}</span>
-      </button>
-      <button
-        className={btnCls}
-        onClick={() => react("WOW")}
-        disabled={isPending}
-        aria-pressed={voted === "WOW"}
-        title="Wow"
-      >
-        😮 <span className="ml-1 tabular-nums">{counts.wow}</span>
-      </button>
-      <button
-        className={btnCls}
-        onClick={() => react("HMM")}
-        disabled={isPending}
-        aria-pressed={voted === "HMM"}
-        title="Hmm"
-      >
-        🤔 <span className="ml-1 tabular-nums">{counts.hmm}</span>
-      </button>
+    <div className="w-full my-8 flex justify-center">
+      {/* EVEN wider spacing between items */}
+      <div className="inline-flex items-center gap-16 sm:gap-20 md:gap-28">
+        <button
+          className={btnCls}
+          onClick={() => react("LIKE")}
+          disabled={isPending}
+          aria-pressed={voted === "LIKE"}
+          title="Like"
+        >
+          <span role="img" aria-label="Like">👍</span>
+          <span className={countCls}>{counts.like}</span>
+        </button>
+
+        <button
+          className={btnCls}
+          onClick={() => react("WOW")}
+          disabled={isPending}
+          aria-pressed={voted === "WOW"}
+          title="Wow"
+        >
+          <span role="img" aria-label="Wow">😮</span>
+          <span className={countCls}>{counts.wow}</span>
+        </button>
+
+        <button
+          className={btnCls}
+          onClick={() => react("HMM")}
+          disabled={isPending}
+          aria-pressed={voted === "HMM"}
+          title="Hmm"
+        >
+          <span role="img" aria-label="Hmm">🤔</span>
+          <span className={countCls}>{counts.hmm}</span>
+        </button>
+      </div>
     </div>
   );
 }

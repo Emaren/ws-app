@@ -57,7 +57,7 @@ export default function AdFullWidth({
 
   return (
     // Add top margin here to separate from comments
-    <div className="w-full">
+    <div className="w-full mt-12 md:mt-16 lg:mt-20">
       <a
         href="https://tokentap.ca"
         target="_blank"
@@ -77,7 +77,7 @@ export default function AdFullWidth({
           loading="lazy"
           className="object-contain outline-none"
           style={{
-            height: `${Math.round(height * 0.75)}px`, // 75% of container height
+            height: `${Math.round(height * 0.46)}px`, // 75% of container height
             width: "auto",
           }}
         />

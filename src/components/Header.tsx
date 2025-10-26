@@ -28,28 +28,59 @@ export default function Header() {
   const router = useRouter();
 
   const [walletConnected, setWalletConnected] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false); // mobile menu
-  const [profileOpen, setProfileOpen] = useState(false); // desktop profile dropdown
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-  // Measure header height and expose as CSS var --header-h
+  // Refs
   const headerRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+
+  // How far to drop the actions, as a fraction of the logo height.
+  // 0.33 ≈ one third of the logo height. Try 0.40 if you want a bit lower.
+  const ACTION_DROP_RATIO = 0.18;
+
+  // Keep --header-h updated
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-
-    const setVar = () => {
+    const setHeaderVar = () => {
       const h = el.getBoundingClientRect().height;
       document.documentElement.style.setProperty("--header-h", `${h}px`);
     };
-    setVar();
-
-    const ro = new ResizeObserver(setVar);
+    setHeaderVar();
+    const ro = new ResizeObserver(setHeaderVar);
     ro.observe(el);
-    window.addEventListener("resize", setVar);
+    window.addEventListener("resize", setHeaderVar);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", setHeaderVar);
+    };
+  }, []);
+
+  // Track logo height in --logo-h so we can position the actions relative to it
+  useEffect(() => {
+    const img = logoRef.current;
+    if (!img) return;
+
+    const setLogoVar = () => {
+      document.documentElement.style.setProperty(
+        "--logo-h",
+        `${img.getBoundingClientRect().height}px`,
+      );
+    };
+
+    if (img.complete) setLogoVar();
+    else img.addEventListener("load", setLogoVar, { once: true });
+
+    const ro = new ResizeObserver(setLogoVar);
+    ro.observe(img);
+    window.addEventListener("resize", setLogoVar);
 
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", setVar);
+      window.removeEventListener("resize", setLogoVar);
     };
   }, []);
 
@@ -59,29 +90,16 @@ export default function Header() {
     setProfileOpen(false);
   }, [router]);
 
-  // Close mobile menu on outside click
-  const menuRef = useRef<HTMLDivElement>(null);
+  // Close mobile menu/profile on outside click
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (menuRef.current.contains(e.target as Node)) return;
-      setMenuOpen(false);
+      const t = e.target as Node;
+      if (menuRef.current && !menuRef.current.contains(t)) setMenuOpen(false);
+      if (profileRef.current && !profileRef.current.contains(t)) setProfileOpen(false);
     };
-    if (menuOpen) document.addEventListener("click", onClick);
+    document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [menuOpen]);
-
-  // Close profile dropdown on outside click
-  const profileRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (!profileRef.current) return;
-      if (profileRef.current.contains(e.target as Node)) return;
-      setProfileOpen(false);
-    };
-    if (profileOpen) document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
-  }, [profileOpen]);
+  }, []);
 
   const connectWallet = async () => {
     if (window.keplr) {
@@ -103,16 +121,24 @@ export default function Header() {
 
   const isAdmin = session?.user?.role === "ADMIN";
 
+  // right rail nudges actions left slightly
+  const rightRailPx = 30;
+
   return (
     <header
       ref={headerRef}
-      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative"
+      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"  // ← add z-50
     >
-      <div className="mx-auto w-full max-w-5xl px-6 md:px-6 py-3 flex items-center justify-between gap-4">
-        {/* Left: Logo */}
-        <a href="/" aria-label="Wheat & Stone home" className="flex items-center">
+      {/* ONE ROW: logo | flexible space | actions | right rail */}
+      <div
+        className="mx-auto w-full max-w-[1200px] px-6 md:px-8 py-3 grid items-start gap-4 min-w-0"
+        style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
+      >
+        {/* Left: Logo (col 1) */}
+        <a href="/" aria-label="Wheat & Stone home" className="flex items-start shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            ref={logoRef}
             id="ws-header-logo"
             src="/tlogo.png"
             alt="Wheat & Stone"
@@ -123,17 +149,23 @@ export default function Header() {
           />
         </a>
 
-        {/* Desktop actions */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Right: actions (col 3) — dropped down relative to the logo height */}
+        <div
+          className="hidden md:flex items-center gap-3 whitespace-nowrap min-w-0 justify-end"
+          style={{
+            gridColumn: 3,
+            transform: `translateY(calc(var(--logo-h, 96px) * ${ACTION_DROP_RATIO}))`,
+          }}
+        >
           {!session ? (
             <>
               <button
                 onClick={() => router.push("/register")}
-                className="hover:underline cursor-pointer"
+                className="hover:underline cursor-pointer shrink-0"
               >
                 Register
               </button>
-              <button onClick={() => signIn()} className="hover:underline cursor-pointer">
+              <button onClick={() => signIn()} className="hover:underline cursor-pointer shrink-0">
                 Login
               </button>
             </>
@@ -142,7 +174,7 @@ export default function Header() {
               {isAdmin && (
                 <button
                   onClick={() => router.push("/admin")}
-                  className="px-3 py-1 rounded bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
+                  className="shrink-0 px-3 py-1 rounded bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
                   aria-label="Open Admin Dashboard"
                   title="Admin Dashboard"
                 >
@@ -150,7 +182,8 @@ export default function Header() {
                 </button>
               )}
 
-              <span className="text-sm">
+              {/* Truncate so the row never wraps */}
+              <span className="text-sm max-w-[38ch] truncate">
                 {session.user?.role === "ADMIN" && "👑 Admin "}
                 {session.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
                 {session.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
@@ -160,17 +193,21 @@ export default function Header() {
 
               <button
                 onClick={connectWallet}
-                className={`px-3 py-1 rounded cursor-pointer ${
-                  walletConnected
-                    ? "bg-green-100 text-green-800"
-                    : "bg-black text-white dark:bg-white dark:text-black"
-                }`}
+                className={`shrink-0 px-3 py-1 rounded-md cursor-pointer transition
+                  ${
+                    walletConnected
+                      // softer “connected” pill
+                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/25 dark:bg-emerald-400/20 dark:text-emerald-200"
+                      // toned-down default (no bright white in dark mode)
+                      : "bg-neutral-200 text-neutral-900 border border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                  }
+                `}
               >
                 {walletConnected ? "Wallet Connected" : "Connect Wallet"}
               </button>
 
               {/* Profile icon */}
-              <div className="relative" ref={profileRef}>
+              <div className="relative shrink-0" ref={profileRef}>
                 <button
                   aria-haspopup="menu"
                   aria-expanded={profileOpen}
@@ -182,9 +219,9 @@ export default function Header() {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-50">
+                  <div className="absolute right-0 mt-2 w-44 rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-[9999] flex flex-col p-1">
                     <button
-                      className="w-full px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       onClick={() => {
                         toggleTheme();
                         setProfileOpen(false);
@@ -193,7 +230,7 @@ export default function Header() {
                       Theme
                     </button>
                     <button
-                      className="w-full px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       onClick={() => {
                         setProfileOpen(false);
                         signOut();
@@ -208,8 +245,8 @@ export default function Header() {
           )}
         </div>
 
-        {/* Mobile: hamburger */}
-        <div className="md:hidden">
+        {/* Mobile: hamburger (also col 3) */}
+        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuRef}>
           <button
             aria-label="Open menu"
             aria-expanded={menuOpen}
