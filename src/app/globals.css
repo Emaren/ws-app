@@ -18,10 +18,11 @@
 
   /* Read column + hero caps */
   --article-max: clamp(680px, 68ch, 840px);  /* centered body width */
+  --reader-cap: 840px;                       /* used only for gutter math */
   --header-media-max: 680px;                 /* WSNI + bottle max */
 
-  /* New: responsive side gutters for the reader strip */
-  --rim: clamp(0px, 8vw, 200px);
+  /* Flexible side gutters (≈200px each side on very wide screens) */
+  --rim: clamp(0px, calc((100vw - var(--reader-cap)) / 2), 200px);
 
   --radius: 0.75rem;
 }
@@ -68,20 +69,15 @@ body {
 
 /* Center reading strip with flexible side gutters (≈200px on wide screens) */
 .ws-article{
-  /* width shrinks so we always leave ~rim on both sides */
-  width: min(var(--article-max), calc(100% - 2 * var(--rim)));
+  display: block;
+  box-sizing: border-box;
+
+  /* Cap the strip and center it */
+  max-width: var(--article-max);
+  width: calc(100vw - 2 * var(--rim));
   margin-inline: auto;
-
-  /* keep the same inner padding feel as the page container */
-  padding-inline: var(--page-gutter);
 }
-
-@supports(padding:max(0px)){
-  .ws-article{
-    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
-    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
-  }
-}
+/* NOTE: keep .ws-article free of padding — gutters live on .ws-container */
 
 /* Let a section “bleed” to the container edges (good for header media) */
 .bleed{
@@ -237,7 +233,6 @@ select:-webkit-autofill {
 .wysiwyg thead th {
   text-align: left;
   font-weight: 700;
-  background: color-mix(in oklab, currentColor 12%, transparent);
 }
 .wysiwyg th,
 .wysiwyg td {
