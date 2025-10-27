@@ -1,22 +1,37 @@
 #!/bin/sh
 set -eu
+
+# Fast-exit if nothing staged
 if [ -z "$(git diff --cached --name-only)" ]; then
-  echo "✅ pre-commit: nothing staged."; exit 0; fi
-if git diff --cached --name-only | grep -qE '^(\.next|\.next-|out|dist)/'; then
-  echo "❌ Refusing to commit build output (.next, .next-*, out, dist)."; exit 1; fi
+  echo "✅ pre-commit: nothing staged."
+  exit 0
+fi
+
+# Block build artifacts
+bad=$(git diff --cached --name-only | grep -E '^(\.next|\.next-|out|dist)/' || true)
+if [ -n "$bad" ]; then
+  echo "❌ Build output staged:"
+  echo "$bad"
+  exit 1
+fi
+
+# Block .env files
 if git diff --cached --name-only | grep -qE '(^|/)\.env'; then
-  echo "❌ Refusing to commit .env files."; exit 1; fi
+  echo "❌ Refusing to commit .env files."
+  exit 1
+fi
+
+# Block oversized files (>90MB)
 tmp=".git/.precommit-big"; : > "$tmp"
 git diff --cached --name-only | while IFS= read -r f; do
   [ -f "$f" ] || continue
   size=$(wc -c < "$f" | tr -d '[:space:]')
   if [ "$size" -gt 90000000 ]; then
-    mb=$(awk "BEGIN { printf \"%.1f\", $size/1048576 }" 2>/dev/null || echo "$size")
+    mb=$(awk "BEGIN { printf \"%.1f\", $size/1048576 }" || echo "$size")
     printf '%s\t(%s MB)\n' "$f" "$mb" >> "$tmp"
   fi
 done
 if [ -s "$tmp" ]; then echo "❌ Large file(s) staged (>90MB):"; cat "$tmp"; rm -f "$tmp"; exit 1; fi
 rm -f "$tmp"
-# pnpm -s typecheck
-# pnpm -s lint
+
 echo "✅ pre-commit checks passed."
