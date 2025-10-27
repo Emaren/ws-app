@@ -74,13 +74,13 @@ export default function AdminDashboard() {
   if (session?.user?.role !== "ADMIN") {
     // While session is loading, avoid flashing the "no permission" message
     if (status === "loading") {
-      return <p className="p-8 opacity-70">Checking permissions…</p>;
+      return <p className="site-shell py-8 opacity-70">Checking permissions…</p>;
     }
-    return <p className="p-8">You do not have permission to view this page.</p>;
+    return <p className="site-shell py-8">You do not have permission to view this page.</p>;
   }
 
   return (
-    <main className="max-w-5xl mx-auto p-8 space-y-6">
+    <section className="site-shell py-8 space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="flex items-center gap-2">
@@ -181,6 +181,6 @@ export default function AdminDashboard() {
           );
         })}
       </ul>
-    </main>
+    </section>
   );
 }

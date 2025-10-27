@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const railGrid =
-  "mx-auto w-full max-w-7xl px-6 md:px-8 md:grid md:grid-cols-[1fr_minmax(0,800px)_1fr]";
+  "site-shell--wide md:grid md:grid-cols-[1fr_minmax(0,800px)_1fr]";
 
 export default async function ArticlePage({
   params,

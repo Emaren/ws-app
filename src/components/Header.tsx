@@ -131,7 +131,7 @@ export default function Header() {
     >
       {/* ONE ROW: logo | flexible space | actions | right rail */}
       <div
-        className="mx-auto w-full max-w-[1200px] px-6 md:px-8 py-3 grid items-start gap-4 min-w-0"
+        className="site-shell--wide py-3 grid items-start gap-4 min-w-0"
         style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
       >
         {/* Left: Logo (col 1) */}

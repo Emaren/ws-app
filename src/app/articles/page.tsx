@@ -24,8 +24,8 @@ export default async function ArticlesPage(
   ]);
 
   return (
-    <main className="mx-auto max-w-screen-xl px-4">
-      <div className="mx-auto max-w-3xl py-8 space-y-6">
+    <section className="site-shell py-8">
+      <div className="mx-auto max-w-3xl space-y-6">
         <h1 className="text-2xl font-semibold">Articles</h1>
 
         {items.map((a) => (
@@ -58,6 +58,6 @@ export default async function ArticlesPage(
           </Link>
         </div>
       </div>
-    </main>
+    </section>
   );
 }

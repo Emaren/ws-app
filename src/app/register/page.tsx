@@ -56,11 +56,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-grey dark:bg-neutral-900 p-6 shadow"
-      >
+    <section className="site-shell flex min-h-[70vh] items-center justify-center py-12">
+      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-grey dark:bg-neutral-900 p-6 shadow">
         {/* Toolbar with title + close (identical to Sign In) */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Register</h1>
@@ -119,6 +116,6 @@ export default function RegisterPage() {
           </a>
         </p>
       </form>
-    </div>
+    </section>
   );
 }

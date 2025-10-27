@@ -304,15 +304,15 @@ export default function ArticleView({ article, variant }: Props) {
     };
   }, [intro, sectionAndAfterIntro, rest]);
 
-  // WIDER, SYMMETRICAL COLUMN: 800–900px, centered
-  const column = "mx-auto w-full max-w-[800px] lg:max-w-[900px]";
+  // Allow the article body to breathe: stretch to the outer rail width
+  const column = "w-full max-w-none";
 
   return (
     <>
       <WysiwygStyle />
 
-      {/* Page container (rails are just natural margins left/right) */}
-      <div className="mx-auto w-full max-w-[1200px] px-6 md:px-8">
+      {/* Page container (rails come from responsive padding only) */}
+      <div className="site-shell--wide">
         {/* Title + meta + header image row */}
         <header className={`${column} mb-8`}>
           <h1 className="text-3xl font-semibold tracking-tight">

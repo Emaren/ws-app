@@ -7,7 +7,7 @@ export default async function DraftsPage() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    return <div className="text-center mt-20 text-xl">Access Denied</div>;
+    return <div className="site-shell mt-20 text-center text-xl">Access Denied</div>;
   }
 
   const drafts = await prisma.article.findMany({
@@ -21,7 +21,7 @@ export default async function DraftsPage() {
   });
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-12">
+    <section className="site-shell py-12">
       <h1 className="text-3xl font-semibold mb-6">Your Drafts</h1>
 
       {drafts.length === 0 ? (
@@ -44,6 +44,6 @@ export default async function DraftsPage() {
           ))}
         </ul>
       )}
-    </main>
+    </section>
   );
 }

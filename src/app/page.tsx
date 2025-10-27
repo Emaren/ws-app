@@ -17,24 +17,26 @@ export default async function HomePage() {
 
   if (!article) {
     return (
-      <main className="mx-auto max-w-6xl px-6 md:px-8">
-        <div className="py-16 text-center opacity-70">No articles published yet.</div>
-      </main>
+      <section className="site-shell py-16 text-center opacity-70">
+        No articles published yet.
+      </section>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 md:px-8">
+    <>
       {/* Article (renders the right-rail with the first two ads) */}
       <ArticleView article={article} variant="full" />
 
       {/* Comments */}
-      <CommentsSection article={article} />
+      <div className="site-shell">
+        <CommentsSection article={article} />
+      </div>
 
       {/* Full-width ad under the comments (no z-index wrapper) */}
-      <div className="mt-12 md:mt-16 lg:mt-20">
+      <div className="site-shell--wide mt-12 md:mt-16 lg:mt-20">
         <AdFullWidth label="TokenTap.ca" />
       </div>
-    </main>
+    </>
   );
 }
