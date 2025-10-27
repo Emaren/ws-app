@@ -132,91 +132,88 @@ export default function ArticleBody({ article }: { article: Article }) {
     <>
       <WysiwygStyle />
 
-      {/* ---- Move BigThumbs *outside* of the .wysiwyg block ---- */}
-      <div className="ws-container">
-        <BigThumbs slug={article.slug} />
-      </div>
+      {/* Big thumbs belong inside the reading strip (outer .ws-article handles width) */}
+      <BigThumbs slug={article.slug} />
 
-      <div className="ws-container">
-        <article className="min-w-0" style={{ overflow: "visible" }}>
-          <div className="wysiwyg">
-            {/* 1) Everything before the first H2 (Excerpt stays full width) */}
-            {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
+      {/* The article body itself — no inner .ws-container to preserve .ws-article width */}
+      <article className="min-w-0" style={{ overflow: "visible" }}>
+        <div className="wysiwyg">
+          {/* 1) Everything before the first H2 (Excerpt stays full width) */}
+          {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
 
-            {/* keep floats from jumping above the rule */}
-            <div aria-hidden style={{ clear: "both", height: 0 }} />
-            <hr className="adbay-rule my-6 md:my-8" />
+          {/* keep floats from jumping above the rule */}
+          <div aria-hidden style={{ clear: "both", height: 0 }} />
+          <hr className="adbay-rule my-6 md:my-8" />
 
-            {/* 2) The first H2 */}
-            {parts?.h2Html && <div dangerouslySetInnerHTML={{ __html: parts.h2Html }} />}
+          {/* 2) The first H2 */}
+          {parts?.h2Html && <div dangerouslySetInnerHTML={{ __html: parts.h2Html }} />}
 
-            {/* 3) The FIRST N blocks after H2 (full width) */}
-            {parts?.firstBlocksAfterH2 && (
-              <div dangerouslySetInnerHTML={{ __html: parts.firstBlocksAfterH2 }} />
-            )}
+          {/* 3) The FIRST N blocks after H2 (full width) */}
+          {parts?.firstBlocksAfterH2 && (
+            <div dangerouslySetInnerHTML={{ __html: parts.firstBlocksAfterH2 }} />
+          )}
 
-            {/* Ensure the float cannot climb above this point */}
-            <div aria-hidden style={{ clear: "both" }} />
+          {/* Ensure the float cannot climb above this point */}
+          <div aria-hidden style={{ clear: "both" }} />
 
-            {/* 4) RIGHT ad now starts here */}
-            {(parts?.afterBlocksHead || parts?.afterBlocksTail) && (
-              <>
-                <FloatAd
-                  label="Homesteader Health Delivery"
-                  side="right"
-                  imageSrc="/hh.png"
-                  imageAlt="Homesteader Health home delivery"
-                  w={289}
-                  mdW={300}
-                  lgW={320}
-                  h={170}
-                  mdH={180}
-                  lgH={190}
-                  intrinsic
-                  imgMaxH={120}
-                  mdImgMaxH={130}
-                  lgImgMaxH={140}
-                  imgClassName="max-w-[75%]"
-                  imgFit="contain"
-                  pad={2}
-                  mt={8}
-                />
-                {parts?.afterBlocksHead && (
-                  <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
-                )}
-              </>
-            )}
+          {/* 4) RIGHT ad now starts here */}
+          {(parts?.afterBlocksHead || parts?.afterBlocksTail) && (
+            <>
+              <FloatAd
+                label="Homesteader Health Delivery"
+                side="right"
+                imageSrc="/hh.png"
+                imageAlt="Homesteader Health home delivery"
+                w={289}
+                mdW={300}
+                lgW={320}
+                h={170}
+                mdH={180}
+                lgH={190}
+                intrinsic
+                imgMaxH={120}
+                mdImgMaxH={130}
+                lgImgMaxH={140}
+                imgClassName="max-w-[75%]"
+                imgFit="contain"
+                pad={2}
+                mt={8}
+              />
+              {parts?.afterBlocksHead && (
+                <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
+              )}
+            </>
+          )}
 
-            {/* 5) LEFT ad at midpoint of the remaining content, then the tail */}
-            {parts?.afterBlocksTail && (
-              <>
-                <FloatAd
-                  label="Beaverlodge Butcher Shop Delivery"
-                  side="left"
-                  imageSrc="/bbs.adcard.center.v4.png"
-                  imageAlt="Beaverlodge Butcher Shop delivery"
-                  w={320}
-                  mdW={328}
-                  lgW={340}
-                  h={158}
-                  mdH={170}
-                  lgH={180}
-                  intrinsic
-                  imgMaxH={150}
-                  mdImgMaxH={160}
-                  lgImgMaxH={170}
-                  imgClassName="max-w-[80%]"
-                  imgFit="contain"
-                  pad={0}
-                />
-                <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
-              </>
-            )}
+          {/* 5) LEFT ad at midpoint of the remaining content, then the tail */}
+          {parts?.afterBlocksTail && (
+            <>
+              <FloatAd
+                label="Beaverlodge Butcher Shop Delivery"
+                side="left"
+                imageSrc="/bbs.adcard.center.v4.png"
+                imageAlt="Beaverlodge Butcher Shop delivery"
+                w={320}
+                mdW={328}
+                lgW={340}
+                h={158}
+                mdH={170}
+                lgH={180}
+                intrinsic
+                imgMaxH={150}
+                mdImgMaxH={160}
+                lgImgMaxH={170}
+                imgClassName="max-w-[80%]"
+                imgFit="contain"
+                pad={0}
+              />
+              <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
+            </>
+          )}
 
-            <div style={{ clear: "both" }} />
-          </div>
-        </article>
-      </div>
+          <div style={{ clear: "both" }} />
+        </div>
+      </article>
     </>
   );
 }

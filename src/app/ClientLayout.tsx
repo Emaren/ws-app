@@ -1,13 +1,14 @@
 // src/app/ClientLayout.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
 import Header from "../components/Header";
 
 const container = "ws-container";
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function ClientLayout({ children }: { children: ReactNode }) {
+  // Keep saved theme without altering visual scale/spacing
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     const html = document.documentElement;
@@ -17,17 +18,17 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <SessionProvider>
-      {/* Header */}
-      <header className={container}>
+      {/* Header: use a neutral wrapper to avoid nested <header> landmarks */}
+      <div className={container}>
         <Header />
-      </header>
+      </div>
 
-      {/* Divider under header */}
+      {/* Divider under header — preserve existing rhythm tokens */}
       <div className={container}>
         <div className="border-t border-neutral-200 dark:border-neutral-800 mt-[calc(var(--section-gap-sm)/2)] mb-[var(--section-gap-sm)]" />
       </div>
 
-      {/* Main content */}
+      {/* Main content — no visual changes */}
       <main className="min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/3)] mb-[var(--section-gap-lg)]">
         {children}
       </main>

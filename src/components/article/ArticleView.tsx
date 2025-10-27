@@ -9,6 +9,19 @@ import ArticleHeaderArt from "./ArticleHeaderArt";
 
 type Props = { article?: Article | null; variant: "summary" | "full" };
 
+// Locale/zone-safe date so SSR/client match (prevents hydration mismatch)
+function formatStable(dt?: Date | string | null) {
+  if (!dt) return "";
+  const d = typeof dt === "string" ? new Date(dt) : dt;
+  // UTC + fixed format = identical on server & client
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}, ${hh}:${mm} UTC`;
+}
+
 export default function ArticleView({ article, variant }: Props) {
   if (!article) {
     return (
@@ -37,62 +50,65 @@ export default function ArticleView({ article, variant }: Props) {
           />
         )}
         <div className="p-5 space-y-3">
-          <Link
-            href={`/articles/${article.slug}`}
-            className="text-xl font-semibold hover:underline underline-offset-4"
-          >
+          <Link href={`/articles/${article.slug}`} className="text-xl font-semibold hover:underline underline-offset-4">
             {article.title ?? "Untitled"}
           </Link>
           {article.excerpt && <p className="opacity-80 leading-relaxed">{article.excerpt}</p>}
           <div className="text-sm opacity-60">
-            {article.publishedAt
-              ? new Date(article.publishedAt).toLocaleDateString()
-              : "Unpublished"}
+            {article.publishedAt ? formatStable(article.publishedAt) : "Unpublished"}
           </div>
         </div>
       </article>
     );
   }
 
-  // ----- Full article (center strip for reading; header art stays full-bleed) -----
+  // ----- Full article -----
   return (
     <>
-      {/* Title + byline inside the centered reading strip */}
-      <div className="ws-article">
-        <header className="mb-6 md:mb-8">
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-balance">
-            {article.title ?? "Untitled"}
-          </h1>
-          <div className="mt-2 text-sm">
-            <div className="opacity-75">
-              Author: {(article as any).contributor ?? "Wheat & Stone Team"}
+      {/* 1) Title/byline inside page frame + reader strip */}
+      <div className="ws-container">
+        <div className="ws-article">
+          <header className="mb-6 md:mb-8">
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-balance">
+              {article.title ?? "Untitled"}
+            </h1>
+            <div className="mt-2 text-sm">
+              <div className="opacity-75">
+                Author: {(article as any).contributor ?? "Wheat & Stone Team"}
+              </div>
+              <div className="opacity-60">
+                {article.publishedAt ? formatStable(article.publishedAt) : "Unpublished"}
+              </div>
             </div>
-            <div className="opacity-60">
-              {article.publishedAt
-                ? new Date(article.publishedAt).toLocaleString()
-                : "Unpublished"}
-            </div>
-          </div>
-        </header>
+          </header>
+        </div>
       </div>
 
-      {/* Full-bleed header art (not clamped by ws-article/ws-container) */}
-      <ArticleHeaderArt
-        title={article.title}
-        slug={article.slug}
-        coverUrl={article.coverUrl}
-        headerImageUrl={(article as any).headerImageUrl}
-        contentHtml={article.content}
-      />
-
-      {/* Body in the centered reading strip */}
-      <div className="ws-article">
-        <ArticleBody article={article} />
+      {/* 2) Hero that bleeds only to the container edges */}
+      <div className="ws-container">
+        <div className="bleed">
+          <ArticleHeaderArt
+            title={article.title}
+            slug={article.slug}
+            coverUrl={article.coverUrl}
+            headerImageUrl={(article as any).headerImageUrl}
+            contentHtml={article.content}
+          />
+        </div>
       </div>
 
-      {/* Divider also aligned to the reading strip */}
-      <div className="ws-article">
-        <hr className="adbay-rule" />
+      {/* 3) Body aligned to the centered reader strip */}
+      <div className="ws-container">
+        <div className="ws-article">
+          <ArticleBody article={article} />
+        </div>
+      </div>
+
+      {/* 4) Rule aligned to the reading strip */}
+      <div className="ws-container">
+        <div className="ws-article">
+          <hr className="adbay-rule" />
+        </div>
       </div>
     </>
   );
