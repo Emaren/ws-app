@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wheat & Stone App
 
-## Getting Started
+A content publishing platform built with Next.js 15 and React 19. It supports editorial workflows with TinyMCE-powered writing tools, authenticated contributor/admin dashboards, and public-facing article pages with comments and reaction tracking.
 
-First, run the development server:
+The project is configured to run on SQLite via Prisma ORM and uses NextAuth credential-based authentication.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech Stack
+- **Framework:** Next.js 15 (App Router)
+- **UI:** React 19, Tailwind CSS 4, custom WYSIWYG styles, TinyMCE editor
+- **Auth:** NextAuth.js with credentials provider
+- **Database:** SQLite managed by Prisma ORM
+- **Runtime tooling:** pnpm, TypeScript, PM2 (production)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Repository Guide
+- `src/app/` – Route handlers, pages, and layouts
+- `src/components/` – Reusable UI components (article rendering, ads, header, etc.)
+- `src/lib/` – Prisma client, auth configuration, helper utilities
+- `prisma/` – Prisma schema and migrations
+- `docs/repo-analysis.md` – Architectural overview, API summary, and known risks
+- `scripts/` – Deployment and asset helper scripts
+- `ecosystem.config.js` – PM2 process definition used in production
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Prerequisites
+- Node.js 20+
+- pnpm 9+
+- SQLite (bundled with the OS; Prisma manages the database file)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Setup
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+2. Create an environment file `.env.local` (Next.js will also pick up `.env`) and define the variables:
+   ```env
+   DATABASE_URL="file:./prisma/dev.db"
+   NEXTAUTH_SECRET="changeme"
+   NEXTAUTH_URL="http://localhost:3111"
+   ```
+   > The production PM2 config in `ecosystem.config.js` includes hard-coded secrets—replace them with environment variables before deploying.
+3. Run Prisma migrations (generates the SQLite database file):
+   ```bash
+   pnpm exec prisma migrate deploy
+   ```
+   For local iteration you can instead use:
+   ```bash
+   pnpm exec prisma migrate dev
+   ```
+4. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+   The app listens on [http://localhost:3111](http://localhost:3111).
 
-## Learn More
+### Useful Development Commands
+- Launch Prisma Studio for browsing the database:
+  ```bash
+  pnpm studio:dev
+  ```
+- Build for production:
+  ```bash
+  pnpm build
+  pnpm start
+  ```
 
-To learn more about Next.js, take a look at the following resources:
+## Authentication
+- Registration happens via `/api/register`, which stores bcrypt-hashed passwords.
+- Sessions use JWT strategy. The `NEXTAUTH_SECRET` must be set for both development and production.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Notes
+- The schema defines `User`, `Article`, `Comment`, and `Reaction` models. Articles can be published or draft, and reaction counts are aggregated per article.
+- Default setup stores data in `prisma/dev.db`. Back up or reset by deleting the file and re-running migrations.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
+- Production deployment is scripted through `scripts/deploy-prod.sh`, which installs dependencies, runs migrations, builds, and restarts the PM2 process.
+- Update `ecosystem.config.js` (or better, environment variables) with real secrets before running `pnpm start` under PM2.
 
-## Deploy on Vercel
+## Additional Documentation
+- See [`docs/repo-analysis.md`](docs/repo-analysis.md) for an in-depth walkthrough of the architecture, API routes, and outstanding risks (such as unauthenticated article creation). Use it as a companion guide for onboarding or further hardening the platform.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
+1. Fork and clone the repository.
+2. Create a feature branch: `git checkout -b feature/your-change`.
+3. Follow the setup instructions above.
+4. Submit a PR with a summary of changes and testing steps.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Please open an issue if you discover security concerns (e.g., the unauthenticated article submission route) so they can be prioritized.

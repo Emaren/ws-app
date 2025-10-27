@@ -180,6 +180,10 @@ select:-webkit-autofill {
   clear: both;
 }
 
+.wysiwyg {
+  display: block;
+}
+
 .wysiwyg::after {
   content: "";
   display: table;
