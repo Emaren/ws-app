@@ -3,10 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3111",
+    "//": "---- DEV (hot reload) ----",
+    "dev": "next dev --hostname 0.0.0.0 --port ${PORT:-3211}",
+
+    "//2": "---- PROD (PM2 uses this; default 3011) ----",
+    "start": "next start -p ${PORT:-3011}",
+
+    "//3": "---- PROD-PARITY / PREVIEW on localhost (build + start on 3111) ----",
+    "preview": "NEXT_PUBLIC_SITE_ORIGIN=http://localhost:${PORT:-3111} NEXTAUTH_URL=http://localhost:${PORT:-3111} next build && next start -p ${PORT:-3111}",
+    "preview:build": "NEXT_PUBLIC_SITE_ORIGIN=http://localhost:${PORT:-3111} NEXTAUTH_URL=http://localhost:${PORT:-3111} next build",
+    "preview:start": "next start -p ${PORT:-3111}",
+
+    "//4": "---- plain build (uses .env.production) ----",
     "build": "next build",
-    "start": "next start",
-    "studio:dev": "DATABASE_URL='file:./dev.db' prisma studio",
+
+    "//5": "---- Prisma helpers ----",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "studio:dev": "DATABASE_URL='file:./prisma/dev.db' prisma studio",
     "studio:prod": "DATABASE_URL='file:/var/www/ws-app/prisma/prod.db' prisma studio --hostname 127.0.0.1 --port 5556 --browser none"
   },
   "dependencies": {

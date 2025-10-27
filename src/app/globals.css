@@ -19,7 +19,7 @@
   /* Read column + hero caps */
   --article-max: clamp(680px, 68ch, 840px);  /* centered body width */
   --reader-cap: 840px;                       /* used only for gutter math */
-  --header-media-max: 680px;                 /* WSNI + bottle max */
+  --header-media-max: 600px;                 /* WSNI + bottle max */
 
   /* Flexible side gutters (≈200px each side on very wide screens) */
   --rim: clamp(0px, calc((100vw - var(--reader-cap)) / 2), 200px);
@@ -137,6 +137,12 @@ select:-webkit-autofill {
   display: block; /* allow floats to intrude so text wraps around them */
 }
 
+.wysiwyg::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 /* Optional narrow “reader” mode if you ever add that class */
 .wysiwyg.wysiwyg-reader { max-width: 72ch; }
 
@@ -176,16 +182,6 @@ select:-webkit-autofill {
   clear: both;
 }
 
-.wysiwyg {
-  display: block;
-}
-
-.wysiwyg::after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
 /* Links */
 .wysiwyg a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-color-scheme: dark) {
@@ -213,12 +209,15 @@ select:-webkit-autofill {
   border-radius: .6rem;
 }
 
-/* Images */
+/* Images (non-size safety; sizing rules are below) */
 .wysiwyg img {
   max-width: 100%;
   height: auto;
   border-radius: .6rem;
   margin: 1.1em 0;
+  /* Perf hint: render large bodies progressively */
+  content-visibility: auto;
+  contain-intrinsic-size: 800px 600px;
 }
 
 /* Tables */
@@ -254,7 +253,11 @@ select:-webkit-autofill {
   border-radius: .35rem;
 }
 
-/* Floated ad overlay — base (hidden) + hover/focus (show) */
+/* ------------------------------------------------------------------ */
+/* FloatAd polish                                                     */
+/* ------------------------------------------------------------------ */
+
+/* Back-compat: if the element has .floatad */
 .floatad { position: relative; }
 .floatad__overlay {
   position: absolute;
@@ -274,15 +277,45 @@ select:-webkit-autofill {
   background-color: rgba(0, 0, 0, 0.30);
 }
 
+/* New path: FloatAd anchor carries data-floatkey */
+a[data-floatkey] { position: relative; }
+a[data-floatkey] .floatad__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  background-color: transparent;
+  transition: opacity .15s ease, background-color .15s ease;
+  pointer-events: none;
+}
+a[data-floatkey]:hover .floatad__overlay,
+a[data-floatkey]:focus-visible .floatad__overlay,
+a[data-floatkey]:active .floatad__overlay {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.30);
+}
+
 /* Collapse floated ads on small screens */
 @media (max-width: 768px) {
-  .floatad { float: none !important; width: 100% !important; margin: 12px 0 !important; }
+  .floatad,
+  a[data-floatkey] {
+    float: none !important;
+    width: 100% !important;
+    margin: 12px 0 !important;
+    shape-outside: none !important;
+  }
 }
 
 /* Allow wrap after a floated ad; just add a small gap (no clear) */
-.floatad + .wysiwyg { margin-top: 8px; }
+.floatad + .wysiwyg,
+a[data-floatkey] + .wysiwyg { margin-top: 8px; }
 
-/* --- Article body image shrink (wins over other .wysiwyg rules) --- */
+/* ------------------------------------------------------------------ */
+/* Article body image shrink (wins over other .wysiwyg rules)         */
+/* ------------------------------------------------------------------ */
+
 .wysiwyg :is(img, a > img, figure > img) {
   display: block !important;
   margin-left: auto !important;
@@ -336,6 +369,10 @@ select:-webkit-autofill {
     max-width: 100% !important;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Misc                                                               */
+/* ------------------------------------------------------------------ */
 
 .adbay-rule {
   border: 0;

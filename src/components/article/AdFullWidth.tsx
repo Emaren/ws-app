@@ -1,4 +1,7 @@
 // src/components/article/AdFullWidth.tsx
+"use client";
+
+import { useState } from "react";
 
 type Tone = "neutral" | "zinc" | "slate" | "stone" | "amber" | "indigo";
 
@@ -103,5 +106,3 @@ export default function AdFullWidth({
     </div>
   );
 }
-
-import { useState } from "react";
