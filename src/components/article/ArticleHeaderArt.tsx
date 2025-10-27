@@ -27,96 +27,113 @@ export default function ArticleHeaderArt({
     !!(title && title.toLowerCase().includes("avalon"));
 
   const contentImg = extractFirstImageSrc(contentHtml);
-
-  // Choose bottle art if any; we *never* early-return so the badge always shows.
-  const bottleSrc =
+  const headerImageUrl =
     explicitHeader ||
     (isAvalon ? "/ECAvalon.jpg" : undefined) ||
     contentImg ||
     coverUrl ||
     null;
 
-  // Reader strip cap (fallback keeps it stable even if CSS var isn't present)
-  const READER_CAP = "var(--reader-cap, 720px)";
-
-  // Dialed-in, smaller art sizes
-  const BADGE_MAX = 170; // down from 220
-  const BOTTLE_MAX = 500; // down from 560
-  const GUTTER = 18; // down from 24
+  if (!headerImageUrl) return null;
 
   return (
-    <div className="mt-6">
-      <div className="mx-auto px-4 md:px-0" style={{ maxWidth: `min(100%, ${READER_CAP})` }}>
-        {/* One markup: stacks on mobile (flex-col), becomes a 5-col grid at md+ */}
-        <div
-          className="flex flex-col items-center gap-4 md:grid md:items-stretch md:gap-0"
-          // When this element turns into a grid at md+, these columns take effect.
-          style={{
-            gridTemplateColumns: `1fr ${BADGE_MAX}px ${GUTTER}px minmax(0, ${BOTTLE_MAX}px) 1fr`,
-          }}
-        >
-          {/* Badge + legend */}
-          <div
-            // On mobile this “order-1” keeps badge above bottle; at md+ the grid placement applies.
-            className="order-1 flex items-end justify-center md:order-none"
-            style={{ gridColumn: 2, transform: "translateX(-8px)" }}
-          >
-            <div className="flex flex-col items-center justify-end">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/WSNI.png"
-                alt="Product score indicator"
-                width={BADGE_MAX}
-                height={BADGE_MAX}
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  maxWidth: BADGE_MAX,
-                  filter: "drop-shadow(0 2px 8px rgba(0,0,0,.35))",
-                }}
-                loading="lazy"
-                decoding="async"
-              />
-              <div
-                className="mt-1.5 text-[11px] leading-[1.05] tracking-tight text-center select-none space-y-0.5"
-                style={{ listStyle: "none" }}
-              >
-                <div className="opacity-80">🏅 Trusted Classic</div>
-                <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
-                  🍫 Honest&nbsp;Indulgence
-                </div>
-                <div className="opacity-75">🌿 Modern Nourishment</div>
-                <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
-              </div>
-            </div>
-          </div>
+    <>
+      {/* md+ layout: badge (fixed 220) + bottle (fills strip, capped by --header-media-max) */}
+      <div
+        className="mt-6 hidden md:grid w-full items-start"
+        style={{
+          gridTemplateColumns: "220px minmax(0, 1fr)",
+          columnGap: 24,
+        }}
+      >
+        {/* Badge + legend */}
+        <div className="flex items-start justify-center">
+          <div className="flex flex-col items-center justify-start" style={{ marginTop: -15 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/WSNI.png"
+              alt="Product score indicator"
+              width={220}
+              height={220}
+              style={{
+                width: "90%",
+                height: "auto",
+                maxWidth: 220,
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,.35))",
+              }}
+              loading="lazy"
+              decoding="async"
+            />
 
-          {/* Bottle (or spacer to keep rhythm if missing) */}
-          <div
-            className="order-2 w-full md:order-none min-w-0 flex justify-center"
-            style={{ gridColumn: 4 }}
-          >
-            <div className="w-full max-w-[500px] translate-x-[6px] flex justify-center">
-              {bottleSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={bottleSrc}
-                  alt=""
-                  width={BOTTLE_MAX}
-                  height={180}
-                  className="block rounded-2xl object-contain w-auto h-[150px] md:h-[170px]"
-                  style={{ maxWidth: BOTTLE_MAX }}
-                  sizes="(min-width: 768px) 500px, 92vw"
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <div style={{ height: 150 }} aria-hidden />
-              )}
+            <div
+              className="mt-5 text-[12px] leading-[1.05] tracking-tight text-center select-none space-y-0.5"
+              style={{ listStyle: "none" }}
+            >
+              <div className="opacity-80">🏅 Trusted Classic</div>
+              <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
+                🍫 Honest&nbsp;Indulgence
+              </div>
+              <div className="opacity-75">🌿 Modern Nourishment</div>
+              <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
             </div>
           </div>
         </div>
+
+        {/* Bottle — fills remaining width up to --header-media-max */}
+        <div className="min-w-0 justify-self-end">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={headerImageUrl}
+            alt=""
+            className="block rounded-2xl"
+            style={{
+              width: "100%",
+              maxWidth: "var(--header-media-max, 600px)",
+              height: "auto",
+            }}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Mobile: stack badge + bottle */}
+      <div className="mt-6 md:hidden flex flex-col items-center gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/WSNI.png"
+          alt="Product score indicator"
+          width={180}
+          height={180}
+          className="w-[180px] h-auto"
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="text-[13px] leading-snug font-medium text-amber-700 dark:text-amber-300/90 tracking-tight text-center select-none -mt-2">
+          🏅 Trusted Classic
+        </div>
+        <div className="opacity-80">🍫 Honest&nbsp;Indulgence</div>
+        <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
+          🌿 Modern Nourishment
+        </div>
+        <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={headerImageUrl}
+          alt=""
+          width={560}
+          height={200}
+          className="block rounded-2xl object-contain"
+          style={{
+            width: "100%",
+            height: "auto",
+            maxWidth: "min(560px, var(--header-media-max, 600px))",
+          }}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    </>
   );
 }

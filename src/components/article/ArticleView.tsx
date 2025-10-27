@@ -84,9 +84,9 @@ export default function ArticleView({ article, variant }: Props) {
         </div>
       </div>
 
-      {/* 2) Hero that bleeds only to the container edges */}
+      {/* 2) Hero aligned to the same reader strip as the title/body */}
       <div className="ws-container">
-        <div className="bleed">
+        <div className="ws-article">
           <ArticleHeaderArt
             title={article.title}
             slug={article.slug}

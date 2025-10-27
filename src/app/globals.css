@@ -333,6 +333,16 @@ a[data-floatkey] + .wysiwyg { margin-top: 8px; }
   height: auto !important;
 }
 
+/* EXCEPTION: don't shrink images inside FloatAd cards */
+.wysiwyg a[data-floatkey] img,
+.wysiwyg .floatad img {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important; /* card provides rounding */
+}
+
 /* -------- Remove inner width clamps so text can wrap around floats -------- */
 .wysiwyg :where(.prose, .container, .ql-editor, .ql-container, .editor-content, .content, .post-body, .article) {
   max-width: none !important;

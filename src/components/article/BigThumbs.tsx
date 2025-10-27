@@ -32,10 +32,10 @@ export default function BigThumbs({ slug }: Props) {
 
   // Keep only the colored focus ring — no background fills
   const likeBtn = btnBase + " focus-visible:ring-2 focus-visible:ring-emerald-500/40";
-  const booBtn  = btnBase + " focus-visible:ring-2 focus-visible:ring-rose-500/40";
+  const booBtn = btnBase + " focus-visible:ring-2 focus-visible:ring-rose-500/40";
 
   return (
-    <section className="ws-container mx-auto w-full mt-12 md:mt-16 mb-6 md:mb-8">
+    <section className="ws-container mx-auto w-full mt-5 md:mt-14 mb-1 md:mb-1">
       <div className="flex items-center justify-center gap-16 md:gap-24 xl:gap-32">
         {/* Thumbs Up */}
         <button
@@ -59,7 +59,7 @@ export default function BigThumbs({ slug }: Props) {
                  M22 10a2 2 0 0 0-2-2h-5.28a1 1 0 0 1-.95-.68l-.57-1.71A3 3 0 0 0 10.35 3L9 8v11h8.35a2 2 0 0 0 1.94-1.52l1.13-5.09c.04-.17.06-.35.06-.53V10Z"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.1"
+              strokeWidth="1.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />

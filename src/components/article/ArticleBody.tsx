@@ -159,26 +159,21 @@ export default function ArticleBody({ article }: { article: Article }) {
           {/* 4) RIGHT ad now starts here */}
           {(parts?.afterBlocksHead || parts?.afterBlocksTail) && (
             <>
-              <FloatAd
-                label="Homesteader Health Delivery"
-                side="right"
-                imageSrc="/hh.png"
-                imageAlt="Homesteader Health home delivery"
-                w={289}
-                mdW={300}
-                lgW={320}
-                h={170}
-                mdH={180}
-                lgH={190}
-                intrinsic
-                imgMaxH={120}
-                mdImgMaxH={130}
-                lgImgMaxH={140}
-                imgClassName="max-w-[75%]"
-                imgFit="contain"
-                pad={2}
-                mt={8}
-              />
+<FloatAd
+  frameless
+  label="Homesteader Health Delivery"
+  side="right"
+  imageSrc="/hh.tight.h156.v3.png"
+  w={161} mdW={161} lgW={161}
+  h={156} mdH={156} lgH={156}
+  pad={0}
+  // imgFit="contain"
+  nudgeY={-6} lgNudgeY={-18}
+  scale={1.1} lgScale={1.99}
+/>
+
+
+
               {parts?.afterBlocksHead && (
                 <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
               )}
@@ -193,12 +188,8 @@ export default function ArticleBody({ article }: { article: Article }) {
                 side="left"
                 imageSrc="/bbs.adcard.center.v4.png"
                 imageAlt="Beaverlodge Butcher Shop delivery"
-                w={320}
-                mdW={328}
-                lgW={340}
-                h={158}
-                mdH={170}
-                lgH={180}
+                w={320} mdW={161} lgW={340}
+                h={156} mdH={156} lgH={130}
                 intrinsic
                 imgMaxH={150}
                 mdImgMaxH={160}
@@ -206,6 +197,8 @@ export default function ArticleBody({ article }: { article: Article }) {
                 imgClassName="max-w-[80%]"
                 imgFit="contain"
                 pad={0}
+                nudgeY={-6} lgNudgeY={-8}
+                scale={1.1} lgScale={1.5}
               />
               <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
             </>
