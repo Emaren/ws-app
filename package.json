@@ -5,24 +5,21 @@
   "scripts": {
     "//": "---- DEV (hot reload; isolated build dir) ----",
     "dev": "NEXT_DIST_DIR=.next-dev next dev --hostname 0.0.0.0 --port ${PORT:-3211}",
-
     "//2": "---- PROD (PM2 uses this; default 3011; default .next dir) ----",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3011}",
-
     "//3": "---- PROD-PARITY / PREVIEW on localhost (isolated build dir) ----",
     "preview": "NEXT_DIST_DIR=.next-preview scripts/preview-prod.sh",
     "preview:fast": "NEXT_DIST_DIR=.next-preview NEXT_PUBLIC_SITE_ORIGIN=http://localhost:${PORT:-3111} NEXTAUTH_URL=http://localhost:${PORT:-3111} next build && next start -H 0.0.0.0 -p ${PORT:-3111}",
     "preview:build": "NEXT_DIST_DIR=.next-preview NEXT_PUBLIC_SITE_ORIGIN=http://localhost:${PORT:-3111} NEXTAUTH_URL=http://localhost:${PORT:-3111} next build",
     "preview:start": "NEXT_DIST_DIR=.next-preview next start -H 0.0.0.0 -p ${PORT:-3111}",
-
     "//4": "---- plain build (uses .env.production; default .next dir) ----",
     "build": "next build",
-
     "//5": "---- Prisma helpers ----",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "studio:dev": "DATABASE_URL='file:./prisma/dev.db' prisma studio",
-    "studio:prod": "DATABASE_URL='file:/var/www/ws-app/prisma/prod.db' prisma studio --hostname 127.0.0.1 --port 5556 --browser none"
+    "studio:prod": "DATABASE_URL='file:/var/www/ws-app/prisma/prod.db' prisma studio --hostname 127.0.0.1 --port 5556 --browser none",
+    "prepare": "husky"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
@@ -61,6 +58,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "husky": "^9.1.7",
     "postcss": "^8.5.6",
     "sharp": "^0.34.4",
     "tailwindcss": "^4.1.15",
