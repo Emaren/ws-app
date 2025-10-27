@@ -1,46 +1,39 @@
 // src/components/article/CommentsSection.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { Article } from "@prisma/client";
 import ReactionsBar from "./ReactionsBar";
 
-export default function CommentsSection({ article }: { article: Article }) {
-  const fbWrapRef = useRef<HTMLDivElement>(null);
+type Props = { article: Article };
 
-  useEffect(() => {
-    const parseFB = () => {
-      try {
-        (window as any)?.FB?.XFBML?.parse(fbWrapRef.current || undefined);
-      } catch {}
-    };
+// Build the FB comments plugin URL (iframe version; no SDK)
+function buildCommentsSrc(href: string, numPosts = 10, width: number | string = "100%") {
+  const w = typeof width === "number" ? String(width) : width;
+  const params = new URLSearchParams({
+    href,
+    numposts: String(numPosts),
+    width: w,
+  });
+  // If you prefer dark mode for the plugin, uncomment:
+  // params.set("colorscheme", "dark");
+  return `https://www.facebook.com/plugins/comments.php?${params.toString()}`;
+}
 
-    // If SDK already present, just (re)parse this subtree
-    if (document.getElementById("facebook-jssdk")) {
-      parseFB();
-      return;
-    }
+// Prefer a public origin (so FB can fetch it), never localhost.
+function getPublicOrigin() {
+  // Allow override via env; otherwise default to production site.
+  const envOrigin = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim();
+  if (envOrigin) return envOrigin.replace(/\/+$/, ""); // drop trailing slash
+  return "https://wheatandstone.ca";
+}
 
-    // Ensure fb-root exists
-    if (!document.getElementById("fb-root")) {
-      const fbRoot = document.createElement("div");
-      fbRoot.id = "fb-root";
-      document.body.appendChild(fbRoot);
-    }
-
-    // Inject SDK and parse on load
-    const script = document.createElement("script");
-    script.id = "facebook-jssdk";
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0";
-    script.onload = parseFB;
-    document.body.appendChild(script);
-  }, [article.slug]);
+export default function CommentsSection({ article }: Props) {
+  const origin = getPublicOrigin();
+  const articleUrl = `${origin}/articles/${encodeURIComponent(article.slug)}`;
+  const commentsSrc = buildCommentsSrc(articleUrl, 10, "100%");
 
   return (
-    // Padding-bottom (no mb-*) avoids sibling margin-collapsing.
-    // isolation-isolate creates a stacking context so this paints above later siblings iframes overlap.
+    // Keep existing spacing; isolation prevents z-index bleed from floats/ads
     <section className="pt-12 space-y-6 pb-16 md:pb-20 lg:pb-24 relative z-10 isolation-isolate">
       <div className="flex items-center justify-between">
         <ReactionsBar
@@ -51,20 +44,37 @@ export default function CommentsSection({ article }: { article: Article }) {
         />
       </div>
 
-      {/* The FB plugin lives inside a rounded dark container */}
+      {/* Rounded container that matches your previous style */}
       <div className="bg-black/70 dark:bg-black border border-neutral-800 p-4 md:p-6 rounded-2xl shadow-sm overflow-hidden">
-        <div ref={fbWrapRef}>
-          <div
-            className="fb-comments"
-            data-href={`https://wheatandstone.ca/articles/${article.slug}`}
-            data-width="100%"
-            data-numposts="5"
-            data-colorscheme="dark"
-          />
-        </div>
+        <iframe
+          key={commentsSrc} // ensure proper reload if slug changes
+          title="Facebook Comments"
+          src={commentsSrc}
+          // FB iframes set their own height internally; this is just a sensible starting height.
+          style={{ width: "100%", height: 420, border: "none", overflow: "hidden" }}
+          scrolling="no"
+          loading="lazy"
+          // Minimal allow list commonly requested by FB embeds
+          allow="unload *; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+        <noscript>
+          <div className="mt-3 text-sm text-neutral-300">
+            Comments require JavaScript.{" "}
+            <a
+              href={articleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              View this post on Facebook
+            </a>
+            .
+          </div>
+        </noscript>
       </div>
 
-      {/* Internal spacer ensures clear visual separation from whatever follows */}
+      {/* Spacer to keep distance from whatever follows (unchanged) */}
       <div aria-hidden className="h-56 md:h-8 lg:h-10" />
     </section>
   );

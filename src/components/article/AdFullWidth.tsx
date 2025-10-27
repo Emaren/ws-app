@@ -37,7 +37,7 @@ function toneClasses(tone: Tone) {
     case "neutral":
     default:
       return {
-        bg: "bg-neutral-900", // force black background
+        bg: "bg-neutral-900",
         border: "border-neutral-800",
         text: "text-neutral-300",
       };
@@ -47,41 +47,61 @@ function toneClasses(tone: Tone) {
 export default function AdFullWidth({
   label = "TokenTap.ca",
   tone = "neutral",
-  height = 256,
+  height = 256, // visual cap (we keep your sizing)
 }: {
   label?: string;
   tone?: Tone;
   height?: number;
 }) {
-  const classes = toneClasses(tone);
+  const toneCls = toneClasses(tone);
+  const [imgError, setImgError] = useState(false);
 
   return (
-    // Add top margin here to separate from comments
-    <div className="w-full mt-12 md:mt-16 lg:mt-20">
+    // Full-width rail with safe-area gutters; keep your existing top margins
+    <div className="w-full mt-12 md:mt-16 lg:mt-20 px-[max(env(safe-area-inset-left),0px)] pr-[max(env(safe-area-inset-right),0px)]">
       <a
         href="https://tokentap.ca"
         target="_blank"
-        rel="noopener noreferrer"
+        rel="noopener noreferrer external"
         aria-label={`Visit ${label}`}
         className={[
           "w-full rounded-2xl border block overflow-hidden",
-          "bg-black border-neutral-800",
+          toneCls.bg,
+          toneCls.border,
           "focus:outline-none focus:ring-0 active:outline-none active:ring-0",
           "flex items-center justify-center",
         ].join(" ")}
-        style={{ height: `${height}px` }}
+        // Fixed height as before (don’t change layout), but allow the box to shrink
+        // slightly on very small screens so it never overwhelms the viewport.
+        style={{ height: `max(180px, ${height}px)` }}
       >
-        <img
-          src="/tt.png"
-          alt={label}
-          loading="lazy"
-          className="object-contain outline-none"
-          style={{
-            height: `${Math.round(height * 0.46)}px`, // 75% of container height
-            width: "auto",
-          }}
-        />
+        {!imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/tttr.png"
+            alt={label}
+            loading="lazy"
+            decoding="async"
+            sizes="100vw"
+            className="object-contain outline-none pointer-events-none select-none"
+            style={{
+              // Keep your original visual ratio (about 46% of container height)
+              height: `${Math.round(height * 0.46)}px`,
+              width: "auto",
+              maxWidth: "95%",
+            }}
+            onError={() => setImgError(true)}
+            draggable={false}
+          />
+        ) : (
+          // Graceful fallback if the image 404s
+          <span className={["text-lg font-semibold", toneCls.text].join(" ")}>
+            {label}
+          </span>
+        )}
       </a>
     </div>
   );
 }
+
+import { useState } from "react";

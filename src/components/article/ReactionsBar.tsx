@@ -1,7 +1,7 @@
 // src/components/article/ReactionsBar.tsx
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 type Props = {
   slug: string;
@@ -11,39 +11,50 @@ type Props = {
 };
 
 export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Props) {
-  const [isPending] = useTransition();
   const [counts, setCounts] = useState({ like: likeCount, wow: wowCount, hmm: hmmCount });
   const [voted, setVoted] = useState<null | "LIKE" | "WOW" | "HMM">(null);
+  const [sending, setSending] = useState(false);
 
   async function react(type: "LIKE" | "WOW" | "HMM") {
-    if (isPending) return;
-    if (voted === type) return;
+    if (sending) return;          // guard double-clicks
+    if (voted === type) return;   // no repeat vote for same type
 
-    const prev = { ...counts };
-
+    const prev = counts;
     // optimistic update
-    setCounts((c) => ({
-      like: c.like + (type === "LIKE" ? 1 : 0),
-      wow:  c.wow  + (type === "WOW"  ? 1 : 0),
-      hmm:  c.hmm  + (type === "HMM"  ? 1 : 0),
-    }));
-    setVoted(type);
-
-    const res = await fetch(`/api/articles/${encodeURIComponent(slug)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ op: "react", type }),
+    setCounts({
+      like: prev.like + (type === "LIKE" ? 1 : 0),
+      wow:  prev.wow  + (type === "WOW"  ? 1 : 0),
+      hmm:  prev.hmm  + (type === "HMM"  ? 1 : 0),
     });
+    setVoted(type);
+    setSending(true);
 
-    if (!res.ok) {
-      setCounts(prev); // rollback
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(slug)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "react", type }),
+        cache: "no-store",
+        keepalive: true,
+      });
+
+      if (!res.ok) {
+        // rollback on failure
+        setCounts(prev);
+        setVoted(null);
+        const txt = await res.text().catch(() => "");
+        alert(`Could not register reaction: ${res.status}${txt ? ` — ${txt}` : ""}`);
+      }
+    } catch (err) {
+      setCounts(prev);
       setVoted(null);
-      const txt = await res.text().catch(() => "");
-      alert(`Could not register reaction: ${res.status}${txt ? ` — ${txt}` : ""}`);
+      alert("Network error — could not register reaction.");
+    } finally {
+      setSending(false);
     }
   }
 
-  // Large, clean, clickable emoji + count (no outlines)
+  // (unchanged) Large, clean, clickable emoji + count (no outlines)
   const btnCls =
     "inline-flex items-center gap-3 bg-transparent border-0 px-3 py-2 " +
     "text-2xl md:text-3xl cursor-pointer select-none " +
@@ -53,12 +64,13 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
 
   return (
     <div className="w-full my-8 flex justify-center">
-      {/* EVEN wider spacing between items */}
+      {/* (unchanged) wide spacing between items */}
       <div className="inline-flex items-center gap-16 sm:gap-20 md:gap-28">
         <button
+          type="button"
           className={btnCls}
           onClick={() => react("LIKE")}
-          disabled={isPending}
+          disabled={sending}
           aria-pressed={voted === "LIKE"}
           title="Like"
         >
@@ -67,9 +79,10 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
         </button>
 
         <button
+          type="button"
           className={btnCls}
           onClick={() => react("WOW")}
-          disabled={isPending}
+          disabled={sending}
           aria-pressed={voted === "WOW"}
           title="Wow"
         >
@@ -78,9 +91,10 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
         </button>
 
         <button
+          type="button"
           className={btnCls}
           onClick={() => react("HMM")}
-          disabled={isPending}
+          disabled={sending}
           aria-pressed={voted === "HMM"}
           title="Hmm"
         >
