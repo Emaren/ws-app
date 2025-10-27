@@ -1,33 +1,42 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
 import { Geist, Geist_Mono } from "next/font/google";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "Wheat & Stone",
-  description: "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
+  description:
+    "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="transition-colors">
-      {/* NOTE: Do NOT force bg-white here or dark mode won't show */}
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-[var(--background)] text-[var(--foreground)]`}>
+    <html lang="en" className="h-full scroll-smooth transition-colors">
+      <body
+        className={[
+          geistSans.variable,
+          geistMono.variable,
+          "font-sans",
+          "min-h-svh antialiased bg-[var(--background)] text-[var(--foreground)]",
+          // horizontal safe-area padding is handled inside .ws-container;
+          // keep body padding neutral so pages stay consistent
+        ].join(" ")}
+      >
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

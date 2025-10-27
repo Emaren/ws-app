@@ -23,8 +23,8 @@ export default function ArticleHeaderArt({
   contentHtml?: string | null;
 }) {
   const isAvalon =
-    (slug?.toLowerCase().includes("avalon") ||
-      title?.toLowerCase().includes("avalon")) ?? false;
+    !!(slug && slug.toLowerCase().includes("avalon")) ||
+    !!(title && title.toLowerCase().includes("avalon"));
 
   const contentImg = extractFirstImageSrc(contentHtml);
   const headerImageUrl =
@@ -36,9 +36,10 @@ export default function ArticleHeaderArt({
 
   if (!headerImageUrl) return null;
 
+  // Same visual recipe; full-bleed grid so the art doesn’t get clamped by .ws-container
   return (
     <>
-      {/* md+ layout: WSNI badge left, bottle right, spanning full parent width */}
+      {/* md+ layout: badge left, bottle right, spanning full width */}
       <div
         className="mt-6 hidden md:grid items-stretch"
         style={{ gridTemplateColumns: "1fr 220px 24px minmax(0,560px) 1fr" }}
@@ -53,6 +54,8 @@ export default function ArticleHeaderArt({
             <img
               src="/WSNI.png"
               alt="Product score indicator"
+              width={220}
+              height={220}
               style={{
                 width: "100%",
                 height: "auto",
@@ -60,6 +63,7 @@ export default function ArticleHeaderArt({
                 filter: "drop-shadow(0 2px 8px rgba(0,0,0,.35))",
               }}
               loading="lazy"
+              decoding="async"
             />
             <div
               className="mt-2 text-[12px] leading-[1.05] tracking-tight text-center select-none space-y-0.5"
@@ -82,8 +86,11 @@ export default function ArticleHeaderArt({
             <img
               src={headerImageUrl}
               alt=""
+              width={560}
+              height={200}
               className="block rounded-2xl object-contain w-auto h-[160px] md:h-[180px] lg:h-[200px]"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -92,17 +99,33 @@ export default function ArticleHeaderArt({
       {/* Mobile: stack badge + bottle */}
       <div className="mt-6 md:hidden flex flex-col items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/WSNI.png" alt="Product score indicator" className="w-[180px] h-auto" loading="lazy" />
+        <img
+          src="/WSNI.png"
+          alt="Product score indicator"
+          width={180}
+          height={180}
+          className="w-[180px] h-auto"
+          loading="lazy"
+          decoding="async"
+        />
         <div className="text-[13px] leading-snug font-medium text-amber-700 dark:text-amber-300/90 tracking-tight text-center select-none -mt-2">
-          ⚠️ Engineered&nbsp;Edible
+          🏅 Trusted Classic
         </div>
+        <div className="opacity-80">🍫 Honest&nbsp;Indulgence</div>
+        <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
+          🌿 Modern Nourishment
+        </div>
+        <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={headerImageUrl}
           alt=""
+          width={560}
+          height={200}
           className="block rounded-2xl object-contain"
           style={{ width: "100%", height: "auto", maxWidth: 560, transform: "translateX(10px)" }}
           loading="lazy"
+          decoding="async"
         />
       </div>
     </>

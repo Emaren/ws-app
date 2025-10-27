@@ -1,8 +1,29 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------- */
+/* Global theme tokens & responsive polish                 */
+/* ------------------------------------------------------- */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Fluid layout tokens (tweak once; site-wide effect) */
+  --page-max: 1200px;
+  --page-gutter: clamp(16px, 4vw, 28px);
+
+  /* Vertical rhythm */
+  --section-gap-sm: clamp(16px, 4vw, 24px);
+  --section-gap: clamp(24px, 5vw, 48px);
+  --section-gap-lg: clamp(32px, 6vw, 64px);
+
+  /* Read column + hero caps */
+  --article-max: clamp(680px, 68ch, 840px);  /* centered body width */
+  --header-media-max: 680px;                 /* WSNI + bottle max */
+
+  /* New: responsive side gutters for the reader strip */
+  --rim: clamp(0px, 8vw, 200px);
+
+  --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -12,9 +33,89 @@
   }
 }
 
+/* Let UAs pick best system form styles & scrollbars per theme */
+:root { color-scheme: light dark; }
+
+html { text-size-adjust: 100%; }
+
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100svh; /* handle mobile browser chrome gracefully */
+}
+
+/* ------------------------------------------------------- */
+/* Containers & vertical rhythm                            */
+/* ------------------------------------------------------- */
+
+/* Shared page container (use className="ws-container") */
+.ws-container{
+  margin-inline: auto;
+  width: 100%;
+  max-width: min(var(--page-max, 1200px), 100%);
+  padding-inline: var(--page-gutter);
+}
+
+/* Respect iOS safe areas while keeping our gutter */
+@supports(padding:max(0px)) {
+  .ws-container{
+    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
+  }
+}
+
+/* Center reading strip with flexible side gutters (≈200px on wide screens) */
+.ws-article{
+  /* width shrinks so we always leave ~rim on both sides */
+  width: min(var(--article-max), calc(100% - 2 * var(--rim)));
+  margin-inline: auto;
+
+  /* keep the same inner padding feel as the page container */
+  padding-inline: var(--page-gutter);
+}
+
+@supports(padding:max(0px)){
+  .ws-article{
+    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
+  }
+}
+
+/* Let a section “bleed” to the container edges (good for header media) */
+.bleed{
+  margin-left: calc(-1 * var(--page-gutter));
+  margin-right: calc(-1 * var(--page-gutter));
+  width: calc(100% + 2 * var(--page-gutter));
+}
+@supports(padding:max(0px)){
+  .bleed{
+    margin-left: calc(-1 * max(var(--page-gutter), env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(var(--page-gutter), env(safe-area-inset-right)));
+    width: calc(
+      100% + max(var(--page-gutter), env(safe-area-inset-left)) + max(var(--page-gutter), env(safe-area-inset-right))
+    );
+  }
+}
+
+/* Simple vertical stack utility: adds space between direct children */
+.stack > * + *{ margin-block-start: var(--section-gap); }
+.stack--sm{ --section-gap: var(--section-gap-sm); }
+.stack--lg{ --section-gap: var(--section-gap-lg); }
+
+/* Better wrapping for long headings & prose on small screens */
+h1, h2 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+
+/* Respect reduced motion for users who request it */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Make autofilled inputs match our dark style */
@@ -35,12 +136,9 @@ select:-webkit-autofill {
 /* ------------------------------------------------------------------ */
 
 .wysiwyg {
-  /* Slightly larger than 16px for easier reading; more generous line-height */
   font-size: 1.0625rem; /* 17px */
   line-height: 1.8;
-
-  /* Allow floats (ads) to intrude so text wraps around them */
-  display: block; /* was flow-root (blocked wrapping) */
+  display: block; /* allow floats to intrude so text wraps around them */
 }
 
 /* Optional narrow “reader” mode if you ever add that class */
@@ -60,8 +158,8 @@ select:-webkit-autofill {
   font-size: 1.5rem;
   padding-bottom: .5rem;
   border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent);
-  display: block;       /* allow floats to intrude and text to wrap */
-  overflow: visible;    /* underline won’t get clipped */
+  display: block;
+  overflow: visible;
   break-inside: avoid;
 }
 .wysiwyg h3 { font-size: 1.25rem; }
@@ -80,10 +178,6 @@ select:-webkit-autofill {
   border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
   margin: 1.75em 0;
   clear: both;
-}
-
-.wysiwyg {
-  display: block;
 }
 
 .wysiwyg::after {

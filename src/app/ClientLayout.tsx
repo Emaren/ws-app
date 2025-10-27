@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import Header from "../components/Header";
 
+const container = "ws-container";
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -15,17 +17,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <SessionProvider>
-      {/* Header inside the same page-width container used by articles */}
-      <header className="mx-auto w-full max-w-7xl px-6">
+      {/* Header */}
+      <header className={container}>
         <Header />
       </header>
 
-      {/* Divider directly under header; same width */}
-      <div className="mx-auto w-full max-w-7xl px-6">
-        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-2 mb-6" />
+      {/* Divider under header */}
+      <div className={container}>
+        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-[calc(var(--section-gap-sm)/2)] mb-[var(--section-gap-sm)]" />
       </div>
 
-      <main className="min-h-[calc(100svh-var(--header-h,0px))]">{children}</main>
+      {/* Main content */}
+      <main className="min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/3)] mb-[var(--section-gap-lg)]">
+        {children}
+      </main>
     </SessionProvider>
   );
 }
