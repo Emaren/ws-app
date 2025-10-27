@@ -5,8 +5,9 @@ import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import Header from "../components/Header";
 
+const container = "ws-container";
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  // Restore theme on first paint
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     const html = document.documentElement;
@@ -16,15 +17,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <SessionProvider>
-      <Header />
+      {/* Header */}
+      <header className={container}>
+        <Header />
+      </header>
 
-      {/* Divider directly under header; width matches page grid (header/article/ad) */}
-      <div className="mx-auto w-full max-w-5xl px-6">
-        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-2 mb-6" />
+      {/* Divider under header */}
+      <div className={container}>
+        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-[calc(var(--section-gap-sm)/2)] mb-[var(--section-gap-sm)]" />
       </div>
 
-      {/* Page content */}
-      <main className="min-h-[calc(100svh-var(--header-h,0px))]">{children}</main>
+      {/* Main content */}
+      <main className="min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/3)] mb-[var(--section-gap-lg)]">
+        {children}
+      </main>
     </SessionProvider>
   );
 }

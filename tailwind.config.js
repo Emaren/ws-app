@@ -1,11 +1,15 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
-  content: [
-    './src/**/*.{js,ts,jsx,tsx}',
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      // Make Tailwind's font utilities use next/font variables
+      fontFamily: {
+        sans: ['var(--font-geist-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
       typography: ({ theme }) => ({
         DEFAULT: {
           css: {
@@ -18,27 +22,12 @@ module.exports = {
               marginTop: '1.25em',
               marginBottom: '.6em',
             },
-            hr: {
-              borderColor: theme('colors.neutral.300'),
-            },
-            a: {
-              textDecoration: 'underline',
-              textUnderlineOffset: '3px',
-            },
-            'ul,ol': {
-              marginTop: '0.75em',
-              marginBottom: '0.75em',
-            },
-            ul: {
-              listStyleType: 'disc',
-            },
-            ol: {
-              listStyleType: 'decimal',
-            },
-            'ul > li, ol > li': {
-              marginTop: '.25em',
-              marginBottom: '.25em',
-            },
+            hr: { borderColor: theme('colors.neutral.300') },
+            a: { textDecoration: 'underline', textUnderlineOffset: '3px' },
+            'ul,ol': { marginTop: '0.75em', marginBottom: '0.75em' },
+            ul: { listStyleType: 'disc' },
+            ol: { listStyleType: 'decimal' },
+            'ul > li, ol > li': { marginTop: '.25em', marginBottom: '.25em' },
             blockquote: {
               borderLeftColor: theme('colors.neutral.300'),
               backgroundColor: theme('colors.neutral.100'),
@@ -63,14 +52,8 @@ module.exports = {
               border: `1px solid ${theme('colors.neutral.300')}`,
               padding: '.6em .75em',
             },
-            'tbody tr:nth-child(odd)': {
-              backgroundColor: theme('colors.neutral.50'),
-            },
-            img: {
-              borderRadius: '.5rem',
-              marginTop: '1em',
-              marginBottom: '1em',
-            },
+            'tbody tr:nth-child(odd)': { backgroundColor: theme('colors.neutral.50') },
+            img: { borderRadius: '.5rem', marginTop: '1em', marginBottom: '1em' },
             code: {
               backgroundColor: theme('colors.neutral.100'),
               padding: '.15em .35em',
@@ -80,41 +63,25 @@ module.exports = {
         },
         invert: {
           css: {
-            h2: {
-              borderBottomColor: theme('colors.neutral.700'),
-            },
-            hr: {
-              borderColor: theme('colors.neutral.700'),
-            },
-            a: {
-              color: theme('colors.sky.300'),
-            },
+            h2: { borderBottomColor: theme('colors.neutral.700') },
+            hr: { borderColor: theme('colors.neutral.700') },
+            a: { color: theme('colors.sky.300') },
             blockquote: {
               borderLeftColor: theme('colors.neutral.700'),
               backgroundColor: 'rgba(127,127,127,0.08)',
             },
-            'thead th': {
-              backgroundColor: 'rgba(127,127,127,0.12)',
-            },
-            'th, td': {
-              borderColor: theme('colors.neutral.700'),
-            },
-            'tbody tr:nth-child(odd)': {
-              backgroundColor: 'rgba(127,127,127,0.06)',
-            },
-            code: {
-              backgroundColor: 'rgba(127,127,127,0.16)',
-            },
+            'thead th': { backgroundColor: 'rgba(127,127,127,0.12)' },
+            'th, td': { borderColor: theme('colors.neutral.700') },
+            'tbody tr:nth-child(odd)': { backgroundColor: 'rgba(127,127,127,0.06)' },
+            code: { backgroundColor: 'rgba(127,127,127,0.16)' },
           },
         },
       }),
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [require('@tailwindcss/typography')],
 
-  // ---- Purge-proof classes used by ArticleView / FloatAd header & ads ----
+  // ---- Purge-proof classes used by ArticleView / FloatAd / BigThumbs ----
   safelist: [
     // Header bottle / header row utilities
     'max-w-[560px]',
@@ -130,5 +97,10 @@ module.exports = {
     'w-[289px]','h-[170px]','md:w-[300px]','md:h-[180px]','lg:w-[320px]','lg:h-[190px]',
     // FloatAd container sizes (left: Beaverlodge)
     'w-[320px]','h-[158px]','md:w-[328px]','md:h-[170px]','lg:w-[340px]','lg:h-[180px]',
+
+    // BigThumbs color/ring/bg utilities (ensure not purged in odd code paths)
+    'text-emerald-500','text-rose-500',
+    'bg-emerald-500/5','hover:bg-emerald-500/10','active:bg-emerald-500/15','focus-visible:ring-emerald-500/40',
+    'bg-rose-500/5','hover:bg-rose-500/10','active:bg-rose-500/15','focus-visible:ring-rose-500/40',
   ],
 };

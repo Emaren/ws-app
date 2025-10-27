@@ -33,12 +33,12 @@ export default function Header() {
 
   // Refs
   const headerRef = useRef<HTMLElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLDivElement>(null);
+  const menuPanelRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
 
-  // How far to drop the actions, as a fraction of the logo height.
-  // 0.33 ≈ one third of the logo height. Try 0.40 if you want a bit lower.
+  // Drop actions relative to the logo height
   const ACTION_DROP_RATIO = 0.18;
 
   // Keep --header-h updated
@@ -94,11 +94,30 @@ export default function Header() {
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (menuRef.current && !menuRef.current.contains(t)) setMenuOpen(false);
+      if (
+        menuPanelRef.current &&
+        !menuPanelRef.current.contains(t) &&
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(t)
+      ) {
+        setMenuOpen(false);
+      }
       if (profileRef.current && !profileRef.current.contains(t)) setProfileOpen(false);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  // Close any open popovers with Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
   const connectWallet = async () => {
@@ -127,11 +146,12 @@ export default function Header() {
   return (
     <header
       ref={headerRef}
-      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"  // ← add z-50
+      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"
+      role="banner"
     >
       {/* ONE ROW: logo | flexible space | actions | right rail */}
       <div
-        className="mx-auto w-full max-w-[1200px] px-6 md:px-8 py-3 grid items-start gap-4 min-w-0"
+        className="ws-container py-3 grid items-start gap-4 min-w-0"
         style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
       >
         {/* Left: Logo (col 1) */}
@@ -142,6 +162,8 @@ export default function Header() {
             id="ws-header-logo"
             src="/tlogo.png"
             alt="Wheat & Stone"
+            width={560}             /* intrinsic width (set to your asset) */
+            height={168}            /* intrinsic height (aligns with clamp max) */
             style={{ height: "clamp(72px, 12vw, 168px)", width: "auto" }}
             className="block select-none"
             loading="eager"
@@ -196,9 +218,7 @@ export default function Header() {
                 className={`shrink-0 px-3 py-1 rounded-md cursor-pointer transition
                   ${
                     walletConnected
-                      // softer “connected” pill
                       ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/25 dark:bg-emerald-400/20 dark:text-emerald-200"
-                      // toned-down default (no bright white in dark mode)
                       : "bg-neutral-200 text-neutral-900 border border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
                   }
                 `}
@@ -219,8 +239,13 @@ export default function Header() {
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-44 rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-[9999] flex flex-col p-1">
+                  <div
+                    className="absolute right-0 mt-2 w-44 rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-[9999] flex flex-col p-1"
+                    role="menu"
+                    aria-label="Profile"
+                  >
                     <button
+                      role="menuitem"
                       className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       onClick={() => {
                         toggleTheme();
@@ -230,6 +255,7 @@ export default function Header() {
                       Theme
                     </button>
                     <button
+                      role="menuitem"
                       className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       onClick={() => {
                         setProfileOpen(false);
@@ -246,10 +272,11 @@ export default function Header() {
         </div>
 
         {/* Mobile: hamburger (also col 3) */}
-        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuRef}>
+        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuButtonRef}>
           <button
             aria-label="Open menu"
             aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
           >
@@ -272,7 +299,8 @@ export default function Header() {
 
       {/* Mobile slide-down */}
       <div
-        ref={menuRef}
+        id="mobile-menu"
+        ref={menuPanelRef}
         className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 shadow transition-[max-height,opacity] overflow-hidden ${
           menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
         }`}
