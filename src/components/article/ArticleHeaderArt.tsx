@@ -48,7 +48,7 @@ export default function ArticleHeaderArt({
       >
         {/* Badge + legend */}
         <div className="flex items-start justify-center">
-          <div className="flex flex-col items-center justify-start" style={{ marginTop: -15 }}>
+          <div className="flex flex-col items-center justify-end" style={{ marginTop: -15, height: "100%" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/WSNI.png"

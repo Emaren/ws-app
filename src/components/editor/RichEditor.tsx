@@ -47,16 +47,7 @@ const ALLOWED_TAGS = [
   "td",
 ];
 
-const ALLOWED_ATTR = [
-  "href",
-  "title",
-  "rel",
-  "target",
-  "src",
-  "alt",
-  "colspan",
-  "rowspan",
-];
+const ALLOWED_ATTR = ["href", "title", "rel", "target", "src", "alt", "colspan", "rowspan"];
 
 function sanitize(html: string) {
   return DOMPurify.sanitize(html, {
@@ -69,6 +60,8 @@ function sanitize(html: string) {
 
 /* ---------------- component ---------------- */
 
+type Theme = "auto" | "light" | "dark";
+
 type Props = {
   /** Current HTML value */
   value: string;
@@ -77,12 +70,22 @@ type Props = {
   className?: string;
   /** If true, don't emit onChange when we programmatically set content */
   quietSet?: boolean;
+  /** Editor theme: "auto" follows site theme; or force "light"/"dark" */
+  theme?: Theme;
 };
 
-export default function RichEditor({ value, onChange, className, quietSet }: Props) {
+export default function RichEditor({
+  value,
+  onChange,
+  className,
+  quietSet,
+  theme = "auto",
+}: Props) {
+  const forceLight = theme === "light";
+  const forceDark = theme === "dark";
+
   const editor = useEditor({
     extensions: [
-      // StarterKit includes: paragraphs, bold/italic, lists, blockquote, hr, headings, history, etc.
       StarterKit,
       Underline,
       Link.configure({
@@ -103,8 +106,15 @@ export default function RichEditor({ value, onChange, className, quietSet }: Pro
     },
     editorProps: {
       attributes: {
-        class:
-          "prose dark:prose-invert max-w-none focus:outline-none min-h-[260px] px-3 py-2",
+        // Typographic baseline + theme handling.
+        // auto  -> follows html.dark via dark:prose-invert
+        // dark  -> always inverted
+        // light -> never inverted
+        class: cx(
+          "prose max-w-none focus:outline-none min-h-[260px] px-3 py-2 bg-transparent selection:bg-amber-200/30",
+          forceDark ? "prose-invert" : forceLight ? "" : "dark:prose-invert",
+          "sm:prose-base prose-sm"
+        ),
       },
       handlePaste: (_view, event) => {
         const html = event.clipboardData?.getData("text/html");
@@ -125,16 +135,22 @@ export default function RichEditor({ value, onChange, className, quietSet }: Pro
     const current = sanitize(editor.getHTML());
     const incoming = sanitize(value || "");
     if (current !== incoming) {
-      // TipTap v3 expects an options object
       editor.commands.setContent(incoming, { emitUpdate: !(quietSet ?? true) });
     }
   }, [value, editor, quietSet]);
 
   if (!editor) return null;
 
+  // Wrapper colors (toolbar + content shell)
+  const wrapperTone = forceDark
+    ? "bg-neutral-950 text-neutral-100"
+    : forceLight
+    ? "bg-white text-neutral-900"
+    : "bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100";
+
   return (
-    <div className={cx("border rounded-xl", className)}>
-      <Toolbar editor={editor} />
+    <div className={cx("border rounded-xl overflow-hidden", wrapperTone, className)}>
+      <Toolbar editor={editor} theme={theme} />
       <div className="border-t">
         <EditorContent editor={editor} />
       </div>
@@ -172,9 +188,18 @@ function Btn({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, theme }: { editor: Editor; theme: Theme }) {
+  const forceLight = theme === "light";
+  const forceDark = theme === "dark";
+
+  const barTone = forceDark
+    ? "bg-neutral-900 text-neutral-100"
+    : forceLight
+    ? "bg-neutral-50 text-neutral-900"
+    : "bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100";
+
   return (
-    <div className="flex flex-wrap gap-2 p-2">
+    <div className={cx("flex flex-wrap gap-2 p-2", barTone)}>
       <Btn
         active={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -233,10 +258,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         ❝ ❞
       </Btn>
-      <Btn
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal rule"
-      >
+      <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule">
         ———
       </Btn>
 
@@ -257,10 +279,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         Link
       </Btn>
-      <Btn
-        onClick={() => editor.chain().focus().unsetLink().run()}
-        title="Remove link"
-      >
+      <Btn onClick={() => editor.chain().focus().unsetLink().run()} title="Remove link">
         Unlink
       </Btn>
 

@@ -16,15 +16,14 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
   const [sending, setSending] = useState(false);
 
   async function react(type: "LIKE" | "WOW" | "HMM") {
-    if (sending) return;          // guard double-clicks
-    if (voted === type) return;   // no repeat vote for same type
+    if (sending) return;
+    if (voted === type) return;
 
     const prev = counts;
-    // optimistic update
     setCounts({
       like: prev.like + (type === "LIKE" ? 1 : 0),
-      wow:  prev.wow  + (type === "WOW"  ? 1 : 0),
-      hmm:  prev.hmm  + (type === "HMM"  ? 1 : 0),
+      wow: prev.wow + (type === "WOW" ? 1 : 0),
+      hmm: prev.hmm + (type === "HMM" ? 1 : 0),
     });
     setVoted(type);
     setSending(true);
@@ -37,15 +36,13 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
         cache: "no-store",
         keepalive: true,
       });
-
       if (!res.ok) {
-        // rollback on failure
         setCounts(prev);
         setVoted(null);
         const txt = await res.text().catch(() => "");
         alert(`Could not register reaction: ${res.status}${txt ? ` — ${txt}` : ""}`);
       }
-    } catch (err) {
+    } catch {
       setCounts(prev);
       setVoted(null);
       alert("Network error — could not register reaction.");
@@ -54,17 +51,16 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
     }
   }
 
-  // (unchanged) Large, clean, clickable emoji + count (no outlines)
   const btnCls =
-    "inline-flex items-center gap-3 bg-transparent border-0 px-3 py-2 " +
+    "inline-flex items-center gap-3 bg-transparent border-0 px-2 py-2 " +
     "text-2xl md:text-3xl cursor-pointer select-none " +
     "transition-transform hover:scale-110 active:scale-95 " +
     "focus:outline-none focus-visible:ring-0 disabled:opacity-50";
+
   const countCls = "tabular-nums text-lg md:text-xl font-medium";
 
   return (
-    <div className="w-full my-8 flex justify-center">
-      {/* (unchanged) wide spacing between items */}
+    <div className="w-full flex justify-center">
       <div className="inline-flex items-center gap-16 sm:gap-20 md:gap-28">
         <button
           type="button"

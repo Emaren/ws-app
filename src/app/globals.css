@@ -313,24 +313,64 @@ a[data-floatkey]:active .floatad__overlay {
 a[data-floatkey] + .wysiwyg { margin-top: 8px; }
 
 /* ------------------------------------------------------------------ */
-/* Article body image shrink (wins over other .wysiwyg rules)         */
+/* Article body images & floats                                       */
 /* ------------------------------------------------------------------ */
 
-.wysiwyg :is(img, a > img, figure > img) {
+/* Center NON-floated images at 50% */
+.wysiwyg :is(img, a>img, figure>img):not(
+  .alignleft,
+  .alignright,
+  .ws-float-left,
+  .ws-float-right,
+  [style*="float:left"],
+  [style*="float: left"],
+  [style*="float:right"],
+  [style*="float: right"]
+){
   display: block !important;
   margin-left: auto !important;
   margin-right: auto !important;
-  width: 50% !important;       /* 50% of the text column */
+  width: 50% !important;
   max-width: 50% !important;
   height: auto !important;
   border-radius: 0.75rem !important;
 }
 
-/* Beat width/height attributes and inline width styles, too */
-.wysiwyg :is(img[width], img[height], img[style*="width"]) {
+/* Beat width/height & inline width, but only for non-floated images */
+.wysiwyg :is(img[width], img[height], img[style*="width"]):not(
+  .alignleft,
+  .alignright,
+  .ws-float-left,
+  .ws-float-right,
+  [style*="float:left"],
+  [style*="float: left"],
+  [style*="float:right"],
+  [style*="float: right"]
+){
   width: 50% !important;
   max-width: 50% !important;
   height: auto !important;
+}
+
+/* Respect floats from classes or inline styles */
+.wysiwyg img.alignleft,
+.wysiwyg .alignleft > img,
+.wysiwyg img.ws-float-left,
+.wysiwyg img[style*="float:left"],
+.wysiwyg img[style*="float: left"]{
+  float: left;
+  margin: 6px 16px 6px 0;
+  shape-outside: inset(0 round 12px);
+}
+
+.wysiwyg img.alignright,
+.wysiwyg .alignright > img,
+.wysiwyg img.ws-float-right,
+.wysiwyg img[style*="float:right"],
+.wysiwyg img[style*="float: right"]{
+  float: right;
+  margin: 6px 0 6px 16px;
+  shape-outside: inset(0 round 12px);
 }
 
 /* EXCEPTION: don't shrink images inside FloatAd cards */
@@ -371,10 +411,25 @@ a[data-floatkey] + .wysiwyg { margin-top: 8px; }
 /* Make sure immediate children don't clamp themselves */
 .wysiwyg > * { max-width: none !important; }
 
-/* Mobile: go back to full width for readability */
+/* Mobile: drop floats & restore full width for readability */
 @media (max-width: 768px) {
-  .wysiwyg :is(img, a > img, figure > img),
+  .wysiwyg :is(img, a>img, figure>img),
   .wysiwyg :is(img[width], img[height], img[style*="width"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .wysiwyg img.alignleft,
+  .wysiwyg .alignleft > img,
+  .wysiwyg img.alignright,
+  .wysiwyg .alignright > img,
+  .wysiwyg img.ws-float-left,
+  .wysiwyg img.ws-float-right,
+  .wysiwyg img[style*="float:left"],
+  .wysiwyg img[style*="float: left"],
+  .wysiwyg img[style*="float:right"],
+  .wysiwyg img[style*="float: right"]{
+    float: none !important;
+    margin: 1.1em 0 !important;
     width: 100% !important;
     max-width: 100% !important;
   }

@@ -7,21 +7,11 @@ declare global {
   }
 }
 
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
-
-/** Clean icon-only profile glyph */
-function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <path
-        fill="currentColor"
-        d="M12 12c2.76 0 5-2.69 5-6s-2.24-5-5-5-5 2.69-5 6 2.24 5 5 5Zm0 2c-3.33 0-10 1.67-10 5v1a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-1c0-3.33-6.67-5-10-5Z"
-      />
-    </svg>
-  );
-}
+import { useEffect, useRef, useState } from "react";
+import DesktopActions from "./header/DesktopActions";
+import MobileMenu from "./header/MobileMenu";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -31,75 +21,52 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  // Refs
   const headerRef = useRef<HTMLElement>(null);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const menuBtnRef = useRef<HTMLDivElement>(null);
   const menuPanelRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLImageElement>(null);
 
-  // Drop actions relative to the logo height
-  const ACTION_DROP_RATIO = 0.18;
-
-  // Keep --header-h updated
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    const setHeaderVar = () => {
-      const h = el.getBoundingClientRect().height;
-      document.documentElement.style.setProperty("--header-h", `${h}px`);
-    };
+    const setHeaderVar = () =>
+      document.documentElement.style.setProperty("--header-h", `${el.getBoundingClientRect().height}px`);
     setHeaderVar();
     const ro = new ResizeObserver(setHeaderVar);
     ro.observe(el);
-    window.addEventListener("resize", setHeaderVar);
+    addEventListener("resize", setHeaderVar);
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", setHeaderVar);
+      removeEventListener("resize", setHeaderVar);
     };
   }, []);
 
-  // Track logo height in --logo-h so we can position the actions relative to it
   useEffect(() => {
     const img = logoRef.current;
     if (!img) return;
-
-    const setLogoVar = () => {
-      document.documentElement.style.setProperty(
-        "--logo-h",
-        `${img.getBoundingClientRect().height}px`,
-      );
-    };
-
+    const setLogoVar = () =>
+      document.documentElement.style.setProperty("--logo-h", `${img.getBoundingClientRect().height}px`);
     if (img.complete) setLogoVar();
     else img.addEventListener("load", setLogoVar, { once: true });
-
     const ro = new ResizeObserver(setLogoVar);
     ro.observe(img);
-    window.addEventListener("resize", setLogoVar);
-
+    addEventListener("resize", setLogoVar);
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", setLogoVar);
+      removeEventListener("resize", setLogoVar);
     };
   }, []);
 
-  // Close menus on route change
   useEffect(() => {
     setMenuOpen(false);
     setProfileOpen(false);
   }, [router]);
 
-  // Close mobile menu/profile on outside click
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (
-        menuPanelRef.current &&
-        !menuPanelRef.current.contains(t) &&
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(t)
-      ) {
+      if (menuPanelRef.current && !menuPanelRef.current.contains(t) && menuBtnRef.current && !menuBtnRef.current.contains(t)) {
         setMenuOpen(false);
       }
       if (profileRef.current && !profileRef.current.contains(t)) setProfileOpen(false);
@@ -108,7 +75,6 @@ export default function Header() {
     return () => document.removeEventListener("click", onClick);
   }, []);
 
-  // Close any open popovers with Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -121,13 +87,11 @@ export default function Header() {
   }, []);
 
   const connectWallet = async () => {
-    if (window.keplr) {
-      try {
-        await window.keplr.enable("wheatandstone");
-        setWalletConnected(true);
-      } catch {
-        console.warn("Wallet not connected.");
-      }
+    try {
+      await window.keplr?.enable("wheatandstone");
+      setWalletConnected(true);
+    } catch {
+      console.warn("Wallet not connected.");
     }
   };
 
@@ -139,9 +103,8 @@ export default function Header() {
   };
 
   const isAdmin = session?.user?.role === "ADMIN";
-
-  // right rail nudges actions left slightly
   const rightRailPx = 30;
+  const dropRatio = session ? 0.4 : 0.15;
 
   return (
     <header
@@ -149,136 +112,48 @@ export default function Header() {
       className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"
       role="banner"
     >
-      {/* ONE ROW: logo | flexible space | actions | right rail */}
       <div
         className="ws-container py-3 grid items-start gap-4 min-w-0"
         style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
       >
-        {/* Left: Logo (col 1) */}
-        <a href="/" aria-label="Wheat & Stone home" className="flex items-start shrink-0">
+        {/* Logo */}
+        <a href="/" aria-label="Wheat & Stone home" className="flex items-start shrink-0 cursor-pointer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={logoRef}
-            id="ws-header-logo"
             src="/tlogo.png"
             alt="Wheat & Stone"
-            width={560}             /* intrinsic width (set to your asset) */
-            height={168}            /* intrinsic height (aligns with clamp max) */
+            width={560}
+            height={168}
             style={{ height: "clamp(72px, 12vw, 168px)", width: "auto" }}
-            className="block select-none"
+            className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
           />
         </a>
 
-        {/* Right: actions (col 3) — dropped down relative to the logo height */}
-        <div
-          className="hidden md:flex items-center gap-3 whitespace-nowrap min-w-0 justify-end"
-          style={{
-            gridColumn: 3,
-            transform: `translateY(calc(var(--logo-h, 96px) * ${ACTION_DROP_RATIO}))`,
-          }}
-        >
-          {!session ? (
-            <>
-              <button
-                onClick={() => router.push("/register")}
-                className="hover:underline cursor-pointer shrink-0"
-              >
-                Register
-              </button>
-              <button onClick={() => signIn()} className="hover:underline cursor-pointer shrink-0">
-                Login
-              </button>
-            </>
-          ) : (
-            <>
-              {isAdmin && (
-                <button
-                  onClick={() => router.push("/admin")}
-                  className="shrink-0 px-3 py-1 rounded bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
-                  aria-label="Open Admin Dashboard"
-                  title="Admin Dashboard"
-                >
-                  Admin
-                </button>
-              )}
+        {/* Desktop actions */}
+        <DesktopActions
+          gridColumn={3}
+          dropRatio={dropRatio}
+          session={session}
+          isAdmin={!!isAdmin}
+          walletConnected={walletConnected}
+          connectWallet={connectWallet}
+          toggleTheme={toggleTheme}
+          profileOpen={profileOpen}
+          setProfileOpen={setProfileOpen}
+          profileRef={profileRef}
+        />
 
-              {/* Truncate so the row never wraps */}
-              <span className="text-sm max-w-[38ch] truncate">
-                {session.user?.role === "ADMIN" && "👑 Admin "}
-                {session.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
-                {session.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-                {session.user?.role === undefined && "Visitor "}
-                – {session.user?.email}
-              </span>
-
-              <button
-                onClick={connectWallet}
-                className={`shrink-0 px-3 py-1 rounded-md cursor-pointer transition
-                  ${
-                    walletConnected
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/25 dark:bg-emerald-400/20 dark:text-emerald-200"
-                      : "bg-neutral-200 text-neutral-900 border border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
-                  }
-                `}
-              >
-                {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-              </button>
-
-              {/* Profile icon */}
-              <div className="relative shrink-0" ref={profileRef}>
-                <button
-                  aria-haspopup="menu"
-                  aria-expanded={profileOpen}
-                  aria-label="Profile menu"
-                  onClick={() => setProfileOpen((v) => !v)}
-                  className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900"
-                >
-                  <ProfileIcon className="text-[var(--foreground)] cursor-pointer" />
-                </button>
-
-                {profileOpen && (
-                  <div
-                    className="absolute right-0 mt-2 w-44 rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-[9999] flex flex-col p-1"
-                    role="menu"
-                    aria-label="Profile"
-                  >
-                    <button
-                      role="menuitem"
-                      className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                      onClick={() => {
-                        toggleTheme();
-                        setProfileOpen(false);
-                      }}
-                    >
-                      Theme
-                    </button>
-                    <button
-                      role="menuitem"
-                      className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                      onClick={() => {
-                        setProfileOpen(false);
-                        signOut();
-                      }}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Mobile: hamburger (also col 3) */}
-        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuButtonRef}>
+        {/* Mobile hamburger */}
+        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuBtnRef}>
           <button
             aria-label="Open menu"
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
+            className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
           >
             <svg
               className={`h-6 w-6 transition-transform ${menuOpen ? "rotate-90" : ""}`}
@@ -305,82 +180,14 @@ export default function Header() {
           menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
         }`}
       >
-        <div className="mx-auto w-full max-w-5xl px-6 py-4 flex flex-col gap-3">
-          {!session ? (
-            <>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  router.push("/register");
-                }}
-                className="text-left hover:underline cursor-pointer"
-              >
-                Register
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  signIn();
-                }}
-                className="text-left hover:underline cursor-pointer"
-              >
-                Login
-              </button>
-            </>
-          ) : (
-            <>
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    router.push("/admin");
-                  }}
-                  className="px-3 py-2 rounded w-full text-center bg-black text-white dark:bg-white dark:text-black hover:opacity-90 cursor-pointer"
-                >
-                  Admin Dashboard
-                </button>
-              )}
-
-              <div className="text-sm opacity-80">
-                {session.user?.role === "ADMIN" && "👑 Admin "}
-                {session.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
-                {session.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-                {session.user?.role === undefined && "Visitor "}
-                – {session.user?.email}
-              </div>
-
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  connectWallet();
-                }}
-                className={`px-3 py-2 rounded w-full text-center ${
-                  walletConnected
-                    ? "bg-green-100 text-green-800"
-                    : "bg-black text-white dark:bg-white dark:text-black"
-                }`}
-              >
-                {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-              </button>
-
-              <button
-                onClick={toggleTheme}
-                className="px-3 py-2 rounded w-full text-center border border-black/10 dark:border-white/20"
-              >
-                Theme
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  signOut();
-                }}
-                className="text-left hover:underline"
-              >
-                Logout
-              </button>
-            </>
-          )}
-        </div>
+        <MobileMenu
+          session={session}
+          isAdmin={!!isAdmin}
+          walletConnected={walletConnected}
+          connectWallet={connectWallet}
+          toggleTheme={toggleTheme}
+          close={() => setMenuOpen(false)}
+        />
       </div>
     </header>
   );

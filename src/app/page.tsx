@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 import { unstable_noStore as noStore } from "next/cache";
 import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleView from "@/components/article/ArticleView";
-import { CommentsSectionCSR, AdFullWidthCSR } from "./ClientOnly";
 
 const container = "ws-container";
 
@@ -20,16 +19,12 @@ export default async function HomePage() {
     );
   }
 
+  // ArticleView owns everything below the article (comments, links, ad, socials).
   return (
-    // Vertical rhythm between sections
     <main className={`${container} stack stack--lg`}>
-      {/* gentle breathing room under the header divider */}
       <div className="pt-[var(--section-gap-sm)]">
         <ArticleView article={article} variant="full" />
       </div>
-
-      <CommentsSectionCSR article={article} />
-      <AdFullWidthCSR label="TokenTap.ca" />
     </main>
   );
 }
