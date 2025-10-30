@@ -35,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           "min-h-svh antialiased bg-[var(--background)] text-[var(--foreground)]",
           // horizontal safe-area padding is handled inside .ws-container;
           // keep body padding neutral so pages stay consistent
+          "overflow-x-clip", 
         ].join(" ")}
       >
         <ClientLayout>{children}</ClientLayout>

@@ -35,7 +35,7 @@ type FloatAdProps = {
   hoverTint?: boolean;                 // grey rounded hover bg
   caption?: string | null;             // chip label; null = hide
   captionClassName?: string;
-  captionInside?: boolean;             // NEW: true = on-image (default), false = below
+  captionInside?: boolean;             // true = on-image (default), false = below
 
   // Flow shape controls
   shape?: ShapeMode;                   // how text wraps around the float
@@ -72,7 +72,7 @@ export default function FloatAd({
   hoverTint = true,
   caption = "Click for Delivery",
   captionClassName,
-  captionInside = true,                // default: put chip ON the image
+  captionInside = true,
 
   shape = "rect",
   shapeMargin = 8,
@@ -83,7 +83,6 @@ export default function FloatAd({
 }: FloatAdProps) {
   const key = React.useId().replace(/:/g, "_");
   const isLeft = side === "left";
-  const overlayInset = isLeft ? "-4px" : "-10px";
 
   // Decide the wrapping shape for the float
   const computedShapeOutside =
@@ -95,6 +94,7 @@ export default function FloatAd({
       ? `url("${imageSrc}")`
       : "inset(0)";
 
+  // Float card itself (no left:50% / translateX anywhere)
   const floatStyle: React.CSSProperties = {
     float: side,
     marginTop: mt,
@@ -123,6 +123,7 @@ export default function FloatAd({
     background: frameless
       ? "transparent"
       : "color-mix(in oklab, currentColor 8%, transparent)",
+    maxWidth: "100%", // defensive: never exceed container
   };
 
   const mailto = `mailto:tony@wheatandstone.ca?subject=${encodeURIComponent(
@@ -175,23 +176,53 @@ export default function FloatAd({
             loading="lazy"
             decoding="async"
             draggable={false}
-            style={{ zIndex: 0, position: "relative" }}
+            style={{
+              zIndex: 0,
+              position: "relative",
+              transform: `translateY(var(--nudgeY)) scale(var(--scale))`,
+              transformOrigin: "50% 50%",
+            }}
           />
         ) : null}
 
-        {/* Hover overlay */}
-        <span className="floatad__overlay" aria-hidden />
+        {/* Hover overlay (fills card, centered via flex — no 50% tricks) */}
+        <span className="floatad__overlay" aria-hidden>
+          {captionInside && caption !== null && (
+            <span
+              className={[
+                "inline-block px-3.5 py-1 rounded-full text-[14px] leading-none text-white",
+                "shadow-[0_6px_20px_rgba(0,0,0,.35)]",
+                captionClassName ?? "",
+              ].join(" ")}
+              style={{ background: "rgba(0,0,0,.68)" }}
+            >
+              {caption}
+            </span>
+          )}
+        </span>
+      </a>
 
-        {/* Caption */}
-        {caption !== null && (
+      {/* Caption BELOW (normal flow; never affects width) */}
+      {!captionInside && caption !== null && (
+        <div
+          className="not-prose mt-1"
+          style={{ textAlign: "center" }}
+          aria-hidden
+        >
           <span
-            className={["floatad__caption", captionClassName ?? ""].join(" ")}
-            aria-hidden
+            className={[
+              "inline-block px-2.5 py-1 rounded-full text-[12px] leading-none",
+              captionClassName ?? "",
+            ].join(" ")}
+            style={{
+              background: hoverTint ? "rgba(0,0,0,.7)" : "transparent",
+              color: hoverTint ? "#fff" : "currentColor",
+            }}
           >
             {caption}
           </span>
-        )}
-      </a>
+        </div>
+      )}
 
       {/* Per-instance sizing + transform vars */}
       <style jsx>{`
@@ -217,17 +248,15 @@ export default function FloatAd({
           }
         }
 
-        a[data-floatkey="${key}"] > img {
-          border-radius: 0;
-          transform: translateY(var(--nudgeY)) scale(var(--scale));
-          transform-origin: 50% 50%;
-        }
-
-        /* Hover overlay (rounded card highlight) */
-        a[data-floatkey="${key}"] .floatad__overlay{
+        /* Overlay fills the card and centers content with flex */
+        a[data-floatkey="${key}"] .floatad__overlay {
           position: absolute;
-          z-index: 1;
-          inset: ${overlayInset};
+          inset: 0;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          padding: 10px;
+          pointer-events: none;
           border-radius: 12px;
           transform: translateY(var(--nudgeY)) scale(var(--scale));
           transform-origin: 50% 50%;
@@ -236,56 +265,10 @@ export default function FloatAd({
             : "transparent"};
           opacity: 0;
           transition: opacity .15s ease;
-          pointer-events: none;
         }
+
         a[data-floatkey="${key}"]:hover .floatad__overlay,
         a[data-floatkey="${key}"]:focus-visible .floatad__overlay {
-          opacity: 1;
-        }
-
-        /* Caption ON-IMAGE (default) */
-        a[data-floatkey="${key}"][data-cap="in"] .floatad__caption{
-          position: absolute;
-          z-index: 2;
-          left: 50%;
-          bottom: 10px;                 /* sit on the image */
-          top: auto;
-          transform: translateX(-50%) translateY(var(--nudgeY)) scale(var(--scale));
-          transform-origin: 50% 50%;
-          font-size: 14px;
-          line-height: 1;
-          padding: 6px 14px;
-          border-radius: 9999px;
-          background: rgba(0,0,0,.68);
-          color: #fff;
-          box-shadow: 0 6px 20px rgba(0,0,0,.35);
-          white-space: nowrap;
-          opacity: 0;
-          transition: opacity .15s ease, transform .15s ease;
-          pointer-events: none;
-        }
-
-        /* Caption BELOW image (opt-in) */
-        a[data-floatkey="${key}"][data-cap="below"] .floatad__caption{
-          position: absolute;
-          z-index: 2;
-          left: 50%;
-          top: calc(100% + 6px);
-          transform: translateX(-50%);
-          font-size: 12px;
-          line-height: 1;
-          padding: 2px 8px;
-          border-radius: 9999px;
-          background: ${hoverTint ? "rgba(0,0,0,.7)" : "transparent"};
-          color: ${hoverTint ? "#fff" : "currentColor"};
-          white-space: nowrap;
-          opacity: 0;
-          transition: opacity .15s ease;
-          pointer-events: none;
-        }
-
-        a[data-floatkey="${key}"]:hover .floatad__caption,
-        a[data-floatkey="${key}"]:focus-visible .floatad__caption{
           opacity: 1;
         }
       `}</style>

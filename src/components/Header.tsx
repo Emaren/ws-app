@@ -27,6 +27,7 @@ export default function Header() {
   const menuPanelRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Expose header height
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -42,6 +43,7 @@ export default function Header() {
     };
   }, []);
 
+  // Expose logo height
   useEffect(() => {
     const img = logoRef.current;
     if (!img) return;
@@ -58,6 +60,7 @@ export default function Header() {
     };
   }, []);
 
+  // Close popovers on route change / outside click / Esc
   useEffect(() => {
     setMenuOpen(false);
     setProfileOpen(false);
@@ -103,7 +106,9 @@ export default function Header() {
   };
 
   const isAdmin = session?.user?.role === "ADMIN";
-  const rightRailPx = 30;
+
+  // Right rail for hamburger (44px target + breathing room)
+  const rightRailPx = 56;
   const dropRatio = session ? 0.4 : 0.15;
 
   return (
@@ -113,7 +118,8 @@ export default function Header() {
       role="banner"
     >
       <div
-        className="ws-container py-3 grid items-start gap-4 min-w-0"
+        // slightly tighter on mobile
+        className="ws-container pt-1 pb-0.5 md:pt-2 md:pb-2 grid items-center gap-4 min-w-0"
         style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
       >
         {/* Logo */}
@@ -125,7 +131,8 @@ export default function Header() {
             alt="Wheat & Stone"
             width={560}
             height={168}
-            style={{ height: "clamp(72px, 12vw, 168px)", width: "auto" }}
+            // slightly larger word-mark on small screens
+            style={{ height: "clamp(72px, 10.8vw, 150px)", width: "auto" }}
             className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
@@ -146,26 +153,37 @@ export default function Header() {
           profileRef={profileRef}
         />
 
-        {/* Mobile hamburger */}
-        <div className="md:hidden" style={{ gridColumn: 3 }} ref={menuBtnRef}>
+        {/* Mobile hamburger — flush right in its own rail */}
+        <div
+          className="md:hidden justify-self-end self-center"
+          style={{ gridColumn: 4, transform: "translateY(3px)", marginRight: "-2px" }}
+          ref={menuBtnRef}
+        >
           <button
-            aria-label="Open menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+            className="w-11 h-11 inline-flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 active:scale-[0.98] transition cursor-pointer"
           >
             <svg
-              className={`h-6 w-6 transition-transform ${menuOpen ? "rotate-90" : ""}`}
+              className={`w-6 h-6 text-[var(--foreground)] opacity-90 transition-transform ${menuOpen ? "rotate-90" : ""}`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
             >
               {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <path d="M6 18L18 6M6 6l12 12" />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M3 12h18M3 18h18" />
+                <>
+                  <path d="M3 6h18" />
+                  <path d="M3 12h18" />
+                  <path d="M3 18h18" />
+                </>
               )}
             </svg>
           </button>

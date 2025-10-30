@@ -4,29 +4,35 @@
 import React from "react";
 import type { Article } from "@prisma/client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import ArticleBody from "./ArticleBody";
-import ArticleHeaderArt from "./ArticleHeaderArt";
 import ReactionsBar from "./ReactionsBar";
 import AffiliatePair from "./AffiliatePair";
-import CommentsSection from "./CommentsSection";
-import AdFullWidth from "./AdFullWidth";
-import ActionLinks from "../site/ActionLinks";
-import SocialIconsRow from "../site/SocialIconsRow";
 
-type Props = { article?: Article | null; variant: "summary" | "full" };
+// Client-only to avoid hydration diffs
+const ArticleHeaderArt = dynamic(() => import("./ArticleHeaderArt"), { ssr: false });
 
-function formatStable(dt?: Date | string | null) {
+type Props = {
+  article?: Article | null;
+  variant: "summary" | "full";
+  publishedAtUTC?: string;
+  publishedAtISOString?: string;
+};
+
+const formatUTC = (dt?: Date | string | null) => {
   if (!dt) return "";
   const d = typeof dt === "string" ? new Date(dt) : dt;
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day}, ${hh}:${mm} UTC`;
-}
+  const iso = d.toISOString();
+  const [date, time] = iso.split("T");
+  return `${date} ${time.slice(0, 5)} UTC`;
+};
 
-export default function ArticleView({ article, variant }: Props) {
+export default function ArticleView({
+  article,
+  variant,
+  publishedAtUTC,
+  publishedAtISOString,
+}: Props) {
   if (!article) {
     return (
       <div className="ws-container">
@@ -41,7 +47,6 @@ export default function ArticleView({ article, variant }: Props) {
     return (
       <article className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
         {article.coverUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={article.coverUrl}
             alt=""
@@ -60,19 +65,22 @@ export default function ArticleView({ article, variant }: Props) {
           >
             {article.title ?? "Untitled"}
           </Link>
-          {article.excerpt && <p className="opacity-80 leading-relaxed">{article.excerpt}</p>}
+          {article.excerpt && (
+            <p className="opacity-80 leading-relaxed">{article.excerpt}</p>
+          )}
           <div className="text-sm opacity-60">
-            {article.publishedAt ? formatStable(article.publishedAt) : "Unpublished"}
+            {article.publishedAt
+              ? publishedAtUTC ?? formatUTC(article.publishedAt)
+              : "Unpublished"}
           </div>
         </div>
       </article>
     );
   }
 
-  // ----- Full article -----
   return (
     <>
-      {/* 1) Title/byline */}
+      {/* Title/byline */}
       <div className="ws-container">
         <div className="ws-article">
           <header className="mb-6 md:mb-8">
@@ -84,16 +92,22 @@ export default function ArticleView({ article, variant }: Props) {
                 Author: {(article as any).contributor ?? "Wheat & Stone Team"}
               </div>
               <div className="opacity-60">
-                {article.publishedAt ? formatStable(article.publishedAt) : "Unpublished"}
+                {article.publishedAt ? (
+                  <time dateTime={publishedAtISOString} suppressHydrationWarning>
+                    {publishedAtUTC ?? formatUTC(article.publishedAt)}
+                  </time>
+                ) : (
+                  "Unpublished"
+                )}
               </div>
             </div>
           </header>
         </div>
       </div>
 
-      {/* 2) Hero */}
+      {/* Hero */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <ArticleHeaderArt
             title={article.title}
             slug={article.slug}
@@ -104,23 +118,23 @@ export default function ArticleView({ article, variant }: Props) {
         </div>
       </div>
 
-      {/* 3) Body */}
+      {/* Body (hard clamp any horizontal overflow) */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <ArticleBody article={article} />
         </div>
       </div>
 
-      {/* 4) Divider before reactions */}
+      {/* Divider */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <hr className="adbay-rule my-8 md:my-10" />
         </div>
       </div>
 
-      {/* 5) Reactions */}
+      {/* Reactions */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <div className="mt-6 md:mt-8 mb-8 md:mb-10 flex items-center justify-between">
             <ReactionsBar
               slug={article.slug}
@@ -132,54 +146,41 @@ export default function ArticleView({ article, variant }: Props) {
         </div>
       </div>
 
-      {/* 6) Divider under reactions */}
+      {/* Divider */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <hr className="adbay-rule my-6 md:my-8" />
         </div>
       </div>
 
-      {/* 7) Affiliate pair */}
+      {/* Affiliate pair */}
       <div className="ws-container">
-        <div className="ws-article">
-        <AffiliatePair
-          left={{
-            title: "NESQUICK CHOCOLATE POWDER 44.9OZ (2.81LBS)",
-            href: "https://www.amazon.ca/dp/B09FTPGQ3B?tag=wheatandstone-20",
-            imageSrc: "/NQ.png",
-            badge: "Beast System",
-            priceHint: "From $34.60",
-          }}
-          right={{
-            title: "Avalon Organic Chocolate Milk",
-            href: "mailto:tony@wheatandstone.ca?subject=Chocolate Milk Order&body=Hi%20Tony,%20I’d%20like%20to%20order%20Avalon%20Organic%20Chocolate%20Milk.%20Please%20send%20me%20the%20details.",
-            imageSrc: "/AV.png",
-            badge: "Health Pick",
-            priceHint: "From $5.79",
-          }}
-        />
+        <div className="ws-article overflow-x-clip">
+          <AffiliatePair
+            left={{
+              title: "NESQUICK CHOCOLATE POWDER 44.9OZ (2.81LBS)",
+              href: "https://www.amazon.ca/dp/B09FTPGQ3B?tag=wheatandstone-20",
+              imageSrc: "/NQ.png",
+              badge: "Beast System",
+              priceHint: "From $34.60",
+            }}
+            right={{
+              title: "Avalon Organic Chocolate Milk",
+              href: "mailto:tony@wheatandstone.ca?subject=Chocolate Milk Order&body=Hi%20Tony,%20I’d%20like%20to%20order%20Avalon%20Organic%20Chocolate%20Milk.%20Please%20send%20me%20the%20details.",
+              imageSrc: "/AV.png",
+              badge: "Health Pick",
+              priceHint: "From $5.79",
+            }}
+          />
         </div>
       </div>
 
-      {/* 8) End-of-article rule */}
+      {/* End rule */}
       <div className="ws-container">
-        <div className="ws-article">
+        <div className="ws-article overflow-x-clip">
           <hr className="adbay-rule" />
         </div>
       </div>
-
-      <div className="flex flex-col gap-y-[var(--section-gap)] md:gap-y-[var(--section-gap-lg)]">
-        <CommentsSection article={article} />
-        <ActionLinks />
-        <AdFullWidth label="TokenTap.ca" />
-      </div>
-
-      {/* 12) Social icons row (below ad) */}
-      <SocialIconsRow
-        facebookUrl="https://www.facebook.com/"
-        discordUrl="https://discord.gg/"
-        email="mailto:tony@wheatandstone.ca"
-      />
     </>
   );
 }

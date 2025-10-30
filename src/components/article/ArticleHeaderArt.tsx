@@ -1,6 +1,7 @@
 // src/components/article/ArticleHeaderArt.tsx
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import React from "react";
 
 function extractFirstImageSrc(html: string | null | undefined): string | null {
@@ -9,19 +10,21 @@ function extractFirstImageSrc(html: string | null | undefined): string | null {
   return m ? m[1] : null;
 }
 
+type Props = {
+  title?: string | null;
+  slug?: string | null;
+  coverUrl?: string | null;
+  headerImageUrl?: string | null;
+  contentHtml?: string | null;
+};
+
 export default function ArticleHeaderArt({
   title,
   slug,
   coverUrl,
   headerImageUrl: explicitHeader,
   contentHtml,
-}: {
-  title?: string | null;
-  slug?: string | null;
-  coverUrl?: string | null;
-  headerImageUrl?: string | null;
-  contentHtml?: string | null;
-}) {
+}: Props) {
   const isAvalon =
     !!(slug && slug.toLowerCase().includes("avalon")) ||
     !!(title && title.toLowerCase().includes("avalon"));
@@ -37,19 +40,15 @@ export default function ArticleHeaderArt({
   if (!headerImageUrl) return null;
 
   return (
-    <>
-      {/* md+ layout: badge (fixed 220) + bottle (fills strip, capped by --header-media-max) */}
+    <section className="mt-4 md:mt-6 w-full overflow-hidden">
+      {/* ===== md+ : badge + bottle ===== */}
       <div
-        className="mt-6 hidden md:grid w-full items-start"
-        style={{
-          gridTemplateColumns: "220px minmax(0, 1fr)",
-          columnGap: 24,
-        }}
+        className="hidden md:grid w-full items-start gap-6 overflow-hidden"
+        style={{ gridTemplateColumns: "220px minmax(0,1fr)" }}
       >
-        {/* Badge + legend */}
-        <div className="flex items-start justify-center">
-          <div className="flex flex-col items-center justify-end" style={{ marginTop: -15, height: "100%" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Badge + lines (no bullets) */}
+        <div className="flex items-start justify-center overflow-hidden">
+          <div className="flex flex-col items-center justify-end h-full overflow-hidden">
             <img
               src="/WSNI.png"
               alt="Product score indicator"
@@ -60,80 +59,88 @@ export default function ArticleHeaderArt({
                 height: "auto",
                 maxWidth: 220,
                 filter: "drop-shadow(0 2px 8px rgba(0,0,0,.35))",
+                display: "block",
               }}
               loading="lazy"
               decoding="async"
+              draggable={false}
             />
 
-            <div
-              className="mt-5 text-[12px] leading-[1.05] tracking-tight text-center select-none space-y-0.5"
-              style={{ listStyle: "none" }}
-            >
-              <div className="opacity-80">🏅 Trusted Classic</div>
-              <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
+            <ul className="mt-4 list-none p-0 m-0 text-[12px] leading-[1.1] tracking-tight text-center select-none space-y-1">
+              <li className="opacity-80">🏅 Trusted Classic</li>
+              <li className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
                 🍫 Honest&nbsp;Indulgence
-              </div>
-              <div className="opacity-75">🌿 Modern Nourishment</div>
-              <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
-            </div>
+              </li>
+              <li className="opacity-75">🌿 Modern Nourishment</li>
+              <li className="opacity-75">🥛 Whole Dairy, Honestly Made</li>
+            </ul>
           </div>
         </div>
 
-        {/* Bottle — fills remaining width up to --header-media-max */}
-        <div className="min-w-0 justify-self-end">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Bottle (desktop) */}
+        <div className="min-w-0 justify-self-end overflow-hidden">
           <img
             src={headerImageUrl}
             alt=""
             className="block rounded-2xl"
             style={{
-              width: "100%",
-              maxWidth: "var(--header-media-max, 600px)",
-              height: "auto",
+              inlineSize: "min(100%, 420px)",
+              maxInlineSize: "100%",
+              blockSize: "auto",
+              display: "block",
             }}
             loading="lazy"
             decoding="async"
+            sizes="(min-width: 768px) 420px, 92vw"
+            draggable={false}
           />
         </div>
       </div>
 
-      {/* Mobile: stack badge + bottle */}
-      <div className="mt-6 md:hidden flex flex-col items-center gap-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/WSNI.png"
-          alt="Product score indicator"
-          width={180}
-          height={180}
-          className="w-[180px] h-auto"
-          loading="lazy"
-          decoding="async"
-        />
-        <div className="text-[13px] leading-snug font-medium text-amber-700 dark:text-amber-300/90 tracking-tight text-center select-none -mt-2">
-          🏅 Trusted Classic
-        </div>
-        <div className="opacity-80">🍫 Honest&nbsp;Indulgence</div>
-        <div className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
-          🌿 Modern Nourishment
-        </div>
-        <div className="opacity-75">🥛 Whole Dairy, Honestly Made</div>
+      {/* ===== Mobile: WSNI + bottle, then 2×2 legend ===== */}
+      <div className="md:hidden w-full overflow-hidden">
+        {/* row: wsni | bottle */}
+        <div
+          className="grid items-start gap-3 overflow-hidden"
+          style={{ gridTemplateColumns: "116px minmax(0,1fr)" }}
+        >
+          <img
+            src="/WSNI.png"
+            alt="Product score indicator"
+            width={116}
+            height={116}
+            className="block w-[116px] h-auto"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={headerImageUrl}
-          alt=""
-          width={560}
-          height={200}
-          className="block rounded-2xl object-contain"
-          style={{
-            width: "100%",
-            height: "auto",
-            maxWidth: "min(560px, var(--header-media-max, 600px))",
-          }}
-          loading="lazy"
-          decoding="async"
-        />
+          <div className="min-w-0 overflow-hidden">
+            <img
+              src={headerImageUrl}
+              alt=""
+              className="block rounded-2xl mx-auto"
+              style={{
+                inlineSize: "min(100%, 220px)", // hard cap small on phones
+                maxInlineSize: "100%",
+                blockSize: "auto",
+                display: "block",
+              }}
+              loading="eager"
+              decoding="async"
+              draggable={false}
+            />
+          </div>
+        </div>
+
+        {/* 2×2 points under the row */}
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] leading-snug tracking-tight text-center select-none">
+          <div className="opacity-90">🏅 Trusted Classic</div>
+          <div className="opacity-90">🍫 Honest&nbsp;Indulgence</div>
+          <div className="opacity-90">🌿 Modern Nourishment</div>
+          <div className="opacity-90">🥛 Whole Dairy, Honestly Made</div>
+        </div>
       </div>
-    </>
+    </section>
   );
 }

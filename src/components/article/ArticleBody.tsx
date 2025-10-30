@@ -70,8 +70,7 @@ function splitHtmlAtBlockFraction(html: string, fraction = 0.33): { head: string
 
 /* ----------------------- main ----------------------- */
 
-/** Lower value = higher left-ad placement (affects how early text wraps) */
-const LEFT_AD_FRACTION = 0.28; // try 0.20 for even higher, 0.40 for lower
+const LEFT_AD_FRACTION = 0.28;
 
 export default function ArticleBody({ article }: { article: Article }) {
   const [parts, setParts] = React.useState<{
@@ -94,13 +93,8 @@ export default function ArticleBody({ article }: { article: Article }) {
       const clean = await sanitizeHtml(raw);
       const unwrapped = stripSingleOuterDiv(clean);
 
-      // 1) Split on the first H2
       const { before, h2Html, afterH2 } = splitAtFirstH2(unwrapped);
-
-      // 2) Keep the FIRST two blocks after H2 full width
       const { firstChunk, rest } = splitAfterNBlocks(afterH2, 2);
-
-      // 3) Split the remainder at a tunable fraction for LEFT ad placement
       const { head, tail } = splitHtmlAtBlockFraction(rest, LEFT_AD_FRACTION);
 
       if (alive) {
@@ -114,9 +108,7 @@ export default function ArticleBody({ article }: { article: Article }) {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [article.content]);
 
   const hasAnyBody =
@@ -132,10 +124,13 @@ export default function ArticleBody({ article }: { article: Article }) {
       <WysiwygStyle />
       <BigThumbs slug={article.slug} />
 
-      <article className="min-w-0" style={{ overflow: "visible" }}>
-      <div className="wysiwyg
-   [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
-   [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0 [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0">
+      {/* Hard clamp horizontal overflow inside the article column */}
+      <article className="min-w-0 overflow-x-clip">
+        <div
+          className="wysiwyg overflow-x-hidden
+            [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
+            [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0 [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
+        >
           {/* 1) Before H2 */}
           {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
 
@@ -180,25 +175,25 @@ export default function ArticleBody({ article }: { article: Article }) {
           {/* 5) LEFT ad at tunable position, then the tail */}
           {parts?.afterBlocksTail && (
             <>
-<FloatAd
-  frameless
-  side="left"
-  label="Beaverlodge Butcher Shop Delivery"
-  imageSrc="/bbs.adcard.center.v4.png"
-  imageAlt="Beaverlodge Butcher Shop delivery"
-  w={200} mdW={200} lgW={220}
-  h={140} mdH={140} lgH={150}
-  pad={0}
-  imgFit="contain"
-  shape="image"
-  shapeMargin={14}          // was 8 — extra space to clear bullet markers
-  shapeThreshold={0.45}
-  mt={40}
-  nudgeY={-6} lgNudgeY={-8}
-  scale={1} lgScale={1}
-  hoverTint={true}
-  caption="Click for Delivery"
-/>
+              <FloatAd
+                frameless
+                side="left"
+                label="Beaverlodge Butcher Shop Delivery"
+                imageSrc="/bbs.adcard.center.v4.png"
+                imageAlt="Beaverlodge Butcher Shop delivery"
+                w={200} mdW={200} lgW={220}
+                h={140} mdH={140} lgH={150}
+                pad={0}
+                imgFit="contain"
+                shape="image"
+                shapeMargin={14}
+                shapeThreshold={0.45}
+                mt={40}
+                nudgeY={-6} lgNudgeY={-8}
+                scale={1} lgScale={1}
+                hoverTint={true}
+                caption="Click for Delivery"
+              />
 
               <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
             </>

@@ -1,457 +1,312 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 
-/* ------------------------------------------------------- */
-/* Global theme tokens & responsive polish                 */
-/* ------------------------------------------------------- */
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------- Global theme tokens ---------------- */
+:root{
+  --background:#ffffff;
+  --foreground:#171717;
 
-  /* Fluid layout tokens (tweak once; site-wide effect) */
-  --page-max: 1200px;
-  --page-gutter: clamp(16px, 4vw, 28px);
+  /* Layout tokens */
+  --page-max:1200px;
+  --page-gutter:clamp(16px,4vw,28px);
+  --article-max:clamp(680px,68ch,840px);
+  --reader-cap:840px;
+  --header-media-max:600px;
+  --rim:clamp(0px,calc((100vw - var(--reader-cap))/2),200px);
 
-  /* Vertical rhythm */
-  --section-gap-sm: clamp(16px, 4vw, 24px);
-  --section-gap: clamp(24px, 5vw, 48px);
-  --section-gap-lg: clamp(32px, 6vw, 64px);
+  --section-gap-sm:clamp(16px,4vw,24px);
+  --section-gap:clamp(24px,5vw,48px);
+  --section-gap-lg:clamp(32px,6vw,64px);
 
-  /* Read column + hero caps */
-  --article-max: clamp(680px, 68ch, 840px);  /* centered body width */
-  --reader-cap: 840px;                       /* used only for gutter math */
-  --header-media-max: 600px;                 /* WSNI + bottle max */
+  --radius:.75rem;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --background:#0a0a0a; --foreground:#ededed; }
+}
+:root{ color-scheme:light dark; }
 
-  /* Flexible side gutters (≈200px each side on very wide screens) */
-  --rim: clamp(0px, calc((100vw - var(--reader-cap)) / 2), 200px);
+/* ---------------- base & overflow safety ---------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
 
-  --radius: 0.75rem;
+html{ text-size-adjust:100%; }
+
+html, body{
+  max-width:100%;
+  overflow-x: clip;
+}
+@supports not (overflow-x: clip) {
+  html, body{ overflow-x:hidden; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body{
+  background:var(--background);
+  color:var(--foreground);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  min-height:100svh;
 }
 
-/* Let UAs pick best system form styles & scrollbars per theme */
-:root { color-scheme: light dark; }
-
-html { text-size-adjust: 100%; }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  min-height: 100svh; /* handle mobile browser chrome gracefully */
-}
-
-/* ------------------------------------------------------- */
-/* Containers & vertical rhythm                            */
-/* ------------------------------------------------------- */
-
-/* Shared page container (use className="ws-container") */
+/* ---------------- Containers & rhythm ---------------- */
 .ws-container{
-  margin-inline: auto;
-  width: 100%;
-  max-width: min(var(--page-max, 1200px), 100%);
-  padding-inline: var(--page-gutter);
+  margin-inline:auto;
+  width:100%;
+  max-width:min(var(--page-max,1200px),100%);
+  padding-inline:var(--page-gutter);
+  overflow-x: clip;
 }
-
-/* Respect iOS safe areas while keeping our gutter */
-@supports(padding:max(0px)) {
+@supports(padding:max(0px)){
   .ws-container{
-    padding-left: max(var(--page-gutter), env(safe-area-inset-left));
-    padding-right: max(var(--page-gutter), env(safe-area-inset-right));
+    padding-left:max(var(--page-gutter),env(safe-area-inset-left));
+    padding-right:max(var(--page-gutter),env(safe-area-inset-right));
   }
 }
-
-/* Center reading strip with flexible side gutters (≈200px on wide screens) */
 .ws-article{
-  display: block;
-  box-sizing: border-box;
-
-  /* Cap the strip and center it */
-  max-width: var(--article-max);
-  width: calc(100vw - 2 * var(--rim));
-  margin-inline: auto;
+  display:block; box-sizing:border-box;
+  max-width:var(--article-max);
+  width:100%;
+  margin-inline:auto;
+  overflow-x: clip;
 }
-/* NOTE: keep .ws-article free of padding — gutters live on .ws-container */
 
-/* Let a section “bleed” to the container edges (good for header media) */
+/* Bleed (desktop only). On mobile we neutralize it completely. */
 .bleed{
-  margin-left: calc(-1 * var(--page-gutter));
-  margin-right: calc(-1 * var(--page-gutter));
-  width: calc(100% + 2 * var(--page-gutter));
+  margin-left:calc(-1*var(--page-gutter));
+  margin-right:calc(-1*var(--page-gutter));
+  width:calc(100% + 2*var(--page-gutter));
 }
 @supports(padding:max(0px)){
   .bleed{
-    margin-left: calc(-1 * max(var(--page-gutter), env(safe-area-inset-left)));
-    margin-right: calc(-1 * max(var(--page-gutter), env(safe-area-inset-right)));
-    width: calc(
-      100% + max(var(--page-gutter), env(safe-area-inset-left)) + max(var(--page-gutter), env(safe-area-inset-right))
-    );
+    margin-left:calc(-1*max(var(--page-gutter),env(safe-area-inset-left)));
+    margin-right:calc(-1*max(var(--page-gutter),env(safe-area-inset-right)));
+    width:calc(100% + max(var(--page-gutter),env(safe-area-inset-left)) + max(var(--page-gutter),env(safe-area-inset-right)));
+  }
+}
+@media (max-width:768px){
+  .bleed{
+    margin-left:0 !important;
+    margin-right:0 !important;
+    width:100% !important;
   }
 }
 
-/* Simple vertical stack utility: adds space between direct children */
-.stack > * + *{ margin-block-start: var(--section-gap); }
-.stack--sm{ --section-gap: var(--section-gap-sm); }
-.stack--lg{ --section-gap: var(--section-gap-lg); }
+/* Simple vertical stack */
+.stack > * + *{ margin-block-start:var(--section-gap); }
+.stack--sm{ --section-gap:var(--section-gap-sm); }
+.stack--lg{ --section-gap:var(--section-gap-lg); }
 
-/* Better wrapping for long headings & prose on small screens */
-h1, h2 { text-wrap: balance; }
-p, li { text-wrap: pretty; }
+/* Small readability helpers */
+h1,h2{ text-wrap:balance; }
+p,li{ text-wrap:pretty; }
 
-/* Respect reduced motion for users who request it */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce){
+  *{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
   }
 }
 
-/* Make autofilled inputs match our dark style */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-textarea:-webkit-autofill,
-select:-webkit-autofill {
-  -webkit-text-fill-color: #ffffff !important;
-  -webkit-box-shadow: 0 0 0px 1000px #000 inset !important;
-  box-shadow: 0 0 0px 1000px #000 inset !important;
-  caret-color: #ffffff !important;
-  transition: background-color 9999s ease-in-out 0s;
+/* ---------------- Theme-aware autofill ---------------- */
+@media (prefers-color-scheme:dark){
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill{
+    -webkit-text-fill-color:#fff !important;
+    -webkit-box-shadow:0 0 0 1000px #000 inset !important;
+    box-shadow:0 0 0 1000px #000 inset !important;
+    caret-color:#fff !important;
+    transition:background-color 9999s ease-in-out 0s;
+  }
 }
-
-/* ------------------------------------------------------------------ */
-/* Reader typography (.wysiwyg)                                        */
-/* ------------------------------------------------------------------ */
-
-.wysiwyg {
-  font-size: 1.0625rem; /* 17px */
-  line-height: 1.8;
-  display: block; /* allow floats to intrude so text wraps around them */
-}
-
-.wysiwyg::after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-/* Optional narrow “reader” mode if you ever add that class */
-.wysiwyg.wysiwyg-reader { max-width: 72ch; }
-
-/* Headings */
-.wysiwyg h1,
-.wysiwyg h2,
-.wysiwyg h3,
-.wysiwyg h4 {
-  font-weight: 700;
-  line-height: 1.25;
-  margin: 1.75em 0 0.7em;
-}
-.wysiwyg h1 { font-size: 2rem; }
-.wysiwyg h2 {
-  font-size: 1.5rem;
-  padding-bottom: .5rem;
-  border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent);
-  display: block;
-  overflow: visible;
-  break-inside: avoid;
-}
-.wysiwyg h3 { font-size: 1.25rem; }
-.wysiwyg h4 { font-size: 1.1rem; }
-
-/* Paragraphs & spacing */
-.wysiwyg p { margin: 1em 0; }
-
-/* A little lighter than default bold to match Pages feel */
-.wysiwyg b,
-.wysiwyg strong { font-weight: 600; }
-
-.wysiwyg hr {
-  border: 0;
-  height: 0;
-  border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
-  margin: 1.75em 0;
-  clear: both;
-}
-
-/* Links */
-.wysiwyg a { color: #2563eb; text-decoration: underline; text-underline-offset: 3px; }
-@media (prefers-color-scheme: dark) {
-  .wysiwyg a { color: #60a5fa; }
-}
-
-/* Lists */
-.wysiwyg ul,
-.wysiwyg ol {
-  margin: 0.85em 0 0.85em 1.25em;
-  padding-left: 1.25em;
-}
-.wysiwyg ul { list-style: disc outside; }
-.wysiwyg ol { list-style: decimal outside; }
-.wysiwyg li { margin: 0.35em 0; }
-.wysiwyg li > ul,
-.wysiwyg li > ol { margin-top: .35em; }
-
-/* Blockquote */
-.wysiwyg blockquote {
-  margin: 1.2em 0;
-  padding: .9em 1.1em;
-  border-left: 3px solid color-mix(in oklab, currentColor 35%, transparent);
-  background: color-mix(in oklab, currentColor 8%, transparent);
-  border-radius: .6rem;
-}
-
-/* Images (non-size safety; sizing rules are below) */
-.wysiwyg img {
-  max-width: 100%;
-  height: auto;
-  border-radius: .6rem;
-  margin: 1.1em 0;
-  /* Perf hint: render large bodies progressively */
-  content-visibility: auto;
-  contain-intrinsic-size: 800px 600px;
-}
-
-/* Tables */
-.wysiwyg table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.1em 0 1.4em;
-  font-size: 0.96rem;
-  overflow: hidden;
-  border-radius: .6rem;
-}
-.wysiwyg thead th {
-  text-align: left;
-  font-weight: 700;
-}
-.wysiwyg th,
-.wysiwyg td {
-  padding: .65em .8em;
-  border: 1px solid color-mix(in oklab, currentColor 22%, transparent);
-  vertical-align: top;
-}
-.wysiwyg tbody tr:nth-child(odd) {
-  background: color-mix(in oklab, currentColor 6%, transparent);
-}
-
-/* Code (inline) */
-.wysiwyg code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  font-size: 0.95em;
-  background: color-mix(in oklab, currentColor 16%, transparent);
-  padding: .15em .35em;
-  border-radius: .35rem;
-}
-
-/* ------------------------------------------------------------------ */
-/* FloatAd polish                                                     */
-/* ------------------------------------------------------------------ */
-
-/* Back-compat: if the element has .floatad */
-.floatad { position: relative; }
-.floatad__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  background-color: transparent;
-  transition: opacity .15s ease, background-color .15s ease;
-  pointer-events: none;
-}
-.floatad:hover .floatad__overlay,
-.floatad:focus-visible .floatad__overlay,
-.floatad:active .floatad__overlay {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.30);
-}
-
-/* New path: FloatAd anchor carries data-floatkey */
-a[data-floatkey] { position: relative; }
-a[data-floatkey] .floatad__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  background-color: transparent;
-  transition: opacity .15s ease, background-color .15s ease;
-  pointer-events: none;
-}
-a[data-floatkey]:hover .floatad__overlay,
-a[data-floatkey]:focus-visible .floatad__overlay,
-a[data-floatkey]:active .floatad__overlay {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.30);
-}
-
-/* Collapse floated ads on small screens */
-@media (max-width: 768px) {
-  .floatad,
-  a[data-floatkey] {
-    float: none !important;
-    width: 100% !important;
-    margin: 12px 0 !important;
-    shape-outside: none !important;
+@media (prefers-color-scheme:light){
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill{
+    -webkit-text-fill-color:#111 !important;
+    -webkit-box-shadow:0 0 0 1000px #fff inset !important;
+    box-shadow:0 0 0 1000px #fff inset !important;
+    caret-color:#111 !important;
+    transition:background-color 9999s ease-in-out 0s;
   }
 }
 
-/* Allow wrap after a floated ad; just add a small gap (no clear) */
-.floatad + .wysiwyg,
-a[data-floatkey] + .wysiwyg { margin-top: 8px; }
+/* ===================================================== */
+/* Article body image sizing & floats (global, on purpose)*/
+/* ===================================================== */
 
-/* ------------------------------------------------------------------ */
-/* Article body images & floats                                       */
-/* ------------------------------------------------------------------ */
+/* Clear floats inside .wysiwyg */
+.wysiwyg::after{ content:""; display:table; clear:both; }
 
-/* Center NON-floated images at 50% */
-.wysiwyg :is(img, a>img, figure>img):not(
-  .alignleft,
-  .alignright,
-  .ws-float-left,
-  .ws-float-right,
-  [style*="float:left"],
-  [style*="float: left"],
-  [style*="float:right"],
-  [style*="float: right"]
+/* keep any rogue child from pushing width */
+.wysiwyg{ overflow-x: clip; }
+@supports not (overflow-x: clip) { .wysiwyg{ overflow-x:hidden; } }
+
+/* Media never exceed their column */
+.wysiwyg img, .wysiwyg svg, .wysiwyg video, .wysiwyg iframe, .wysiwyg table{
+  max-inline-size:100%;
+  height:auto;
+}
+
+/* Center NON-floated images at 50% on desktop */
+.wysiwyg :is(img,a>img,figure>img):not(
+  .alignleft,.alignright,.ws-float-left,.ws-float-right,
+  [style*="float:left"],[style*="float: left"],
+  [style*="float:right"],[style*="float: right"]
 ){
-  display: block !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  width: 50% !important;
-  max-width: 50% !important;
-  height: auto !important;
-  border-radius: 0.75rem !important;
+  display:block !important;
+  margin-inline:auto !important;
+  width:50% !important; max-width:50% !important;
+  height:auto !important; border-radius:.75rem !important;
 }
-
-/* Beat width/height & inline width, but only for non-floated images */
-.wysiwyg :is(img[width], img[height], img[style*="width"]):not(
-  .alignleft,
-  .alignright,
-  .ws-float-left,
-  .ws-float-right,
-  [style*="float:left"],
-  [style*="float: left"],
-  [style*="float:right"],
-  [style*="float: right"]
+/* Beat inline width/height on non-floated images */
+.wysiwyg :is(img[width],img[height],img[style*="width"]):not(
+  .alignleft,.alignright,.ws-float-left,.ws-float-right,
+  [style*="float:left"],[style*="float: left"],
+  [style*="float:right"],[style*="float: right"]
 ){
-  width: 50% !important;
-  max-width: 50% !important;
-  height: auto !important;
+  width:50% !important; max-width:50% !important; height:auto !important;
 }
 
-/* Respect floats from classes or inline styles */
+/* Floats (left/right) */
 .wysiwyg img.alignleft,
-.wysiwyg .alignleft > img,
+.wysiwyg .alignleft>img,
 .wysiwyg img.ws-float-left,
 .wysiwyg img[style*="float:left"],
 .wysiwyg img[style*="float: left"]{
-  float: left;
-  margin: 6px 16px 6px 0;
-  shape-outside: inset(0 round 12px);
+  float:left; margin:6px 16px 6px 0; shape-outside:inset(0 round 12px);
 }
-
 .wysiwyg img.alignright,
-.wysiwyg .alignright > img,
+.wysiwyg .alignright>img,
 .wysiwyg img.ws-float-right,
 .wysiwyg img[style*="float:right"],
 .wysiwyg img[style*="float: right"]{
-  float: right;
-  margin: 6px 0 6px 16px;
-  shape-outside: inset(0 round 12px);
+  float:right; margin:6px 0 6px 16px; shape-outside:inset(0 round 12px);
 }
 
-/* EXCEPTION: don't shrink images inside FloatAd cards */
+/* Do NOT shrink images inside FloatAd cards */
 .wysiwyg a[data-floatkey] img,
-.wysiwyg .floatad img {
-  width: 100% !important;
-  max-width: none !important;
-  height: 100% !important;
-  margin: 0 !important;
-  border-radius: 0 !important; /* card provides rounding */
+.wysiwyg .floatad img{
+  width:100% !important; max-width:none !important; height:100% !important;
+  margin:0 !important; border-radius:0 !important;
 }
 
-/* -------- Remove inner width clamps so text can wrap around floats -------- */
-.wysiwyg :where(.prose, .container, .ql-editor, .ql-container, .editor-content, .content, .post-body, .article) {
-  max-width: none !important;
-  width: auto !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+/* Remove inner width clamps so text wraps around floats cleanly */
+.wysiwyg :where(
+  .prose,.container,.ql-editor,.ql-container,
+  .editor-content,.content,.post-body,.article
+){
+  max-width:none !important; width:auto !important;
+  margin-left:0 !important; margin-right:0 !important;
+  padding-left:0 !important; padding-right:0 !important;
+}
+/* Kill common inline clamps */
+.wysiwyg :where([style*="max-width"],[style*="width"],[style*="margin:0 auto"],[style*="margin: 0 auto"]){
+  max-width:100% !important; width:auto !important; margin-left:0 !important; margin-right:0 !important;
 }
 
-/* Kill inline max-width/width & center clamps like margin:0 auto */
-.wysiwyg :where([style*="max-width"], [style*="width"], [style*="margin:0 auto"], [style*="margin: 0 auto"]) {
-  max-width: 100% !important;
-  width: auto !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
+/* ----------- SAFE CONTAINER GUARDS ----------- */
+.wysiwyg > *{ max-width:100% !important; overflow-x: clip; }
+.wysiwyg :is(figure,picture){ max-width:100% !important; width:100% !important; overflow-x: clip; }
+.wysiwyg table{ display:block; max-width:100%; width:100%; overflow-x:auto; }
+.wysiwyg :is(figure,picture) img{ width:100% !important; max-width:100% !important; height:auto !important; }
 
-/* Neutralize utility-based clamps that might sneak in */
-.wysiwyg :where([class*="max-w-"], [class~="container"], .mx-auto) {
-  max-width: none !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-/* Make sure immediate children don't clamp themselves */
-.wysiwyg > * { max-width: none !important; }
-
-/* Mobile: drop floats & restore full width for readability */
-@media (max-width: 768px) {
-  .wysiwyg :is(img, a>img, figure>img),
-  .wysiwyg :is(img[width], img[height], img[style*="width"]) {
-    width: 100% !important;
-    max-width: 100% !important;
+/* Mobile: full-width images, no floats */
+@media (max-width:768px){
+  .wysiwyg :is(img,a>img,figure>img),
+  .wysiwyg :is(img[width],img[height],img[style*="width"]){
+    width:100% !important; max-width:100% !important;
   }
   .wysiwyg img.alignleft,
-  .wysiwyg .alignleft > img,
+  .wysiwyg .alignleft>img,
   .wysiwyg img.alignright,
-  .wysiwyg .alignright > img,
+  .wysiwyg .alignright>img,
   .wysiwyg img.ws-float-left,
   .wysiwyg img.ws-float-right,
   .wysiwyg img[style*="float:left"],
   .wysiwyg img[style*="float: left"],
   .wysiwyg img[style*="float:right"],
   .wysiwyg img[style*="float: right"]{
-    float: none !important;
-    margin: 1.1em 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    float:none !important; margin:1.1em 0 !important; width:100% !important; max-width:100% !important;
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Misc                                                               */
-/* ------------------------------------------------------------------ */
+/* ---------------- FloatAd hover overlay (DRY) --------- */
+:is(.floatad,a[data-floatkey]){ position:relative; }
+:is(.floatad,a[data-floatkey]) .floatad__overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  opacity:0; background-color:transparent; transition:opacity .15s ease, background-color .15s ease;
+  pointer-events:none;
+}
+:is(.floatad,a[data-floatkey]):where(:hover,:focus-visible,:active) .floatad__overlay{
+  opacity:1; background-color:rgba(0,0,0,.30);
+}
+@media (max-width:768px){
+  :is(.floatad, a[data-floatkey]){
+    float:none !important;
+    width:100% !important;
+    margin:12px 0 !important;
+    shape-outside:none !important;
 
-.adbay-rule {
-  border: 0;
-  height: 0;
-  border-top: 1px solid color-mix(in oklab, currentColor 20%, transparent);
-  margin: 1.75em 0;
-  display: block;
+    /* Kill any accidental positioning that could cause overflow */
+    position:static !important;
+    left:auto !important;
+    right:auto !important;
+    transform:none !important;
+  }
+}
+:is(.floatad,a[data-floatkey]) + .wysiwyg{ margin-top:8px; }
+
+/* ---------------- Misc ---------------- */
+.adbay-rule{
+  border:0; height:0;
+  border-top:1px solid color-mix(in oklab,currentColor 20%,transparent);
+  margin:1.75em 0; display:block;
 }
 
-/* Facebook comments polish (round + full width) */
-.fb_iframe_widget,
-.fb_iframe_widget > span,
-.fb_iframe_widget iframe {
+/* Kill Next dev overlay width on iOS (dev only) */
+[id^="nextjs"], [data-nextjs-dialog], [data-nextjs-toast], [id^="__next-build"]{
+  max-width: 100vw !important;
+  overflow-x: clip !important;
+}
+@media (max-width: 900px){
+  [data-nextjs-toast]{ display:none !important; }
+}
+
+/* Root should never exceed the visual viewport on iOS */
+html, body, #__next, #viewport-clamp { max-width: 100svw; overflow-x: clip; }
+@supports not (overflow-x: clip) { html, body, #__next, #viewport-clamp { overflow-x: hidden; } }
+
+/* Defensive: elements that try to use viewport units inside padded containers */
+.w-screen,
+.min-w-screen,
+[style*="width:100vw"],
+[style*="width: 100vw"],
+[style*="min-width:100vw"],
+[style*="min-width: 100vw"]{
+  max-width: 100% !important;
   width: 100% !important;
-  border-radius: 1rem !important;
-  overflow: hidden !important;
 }
+/* Scope the same clamp to anything inside our site container */
+.ws-container :is(.w-screen,.min-w-screen,[style*="width:100vw"],[style*="min-width:100vw"]){
+  max-width:100% !important;
+  width:100% !important;
+}
+
+/* FINAL MOBILE GUARD: nothing inside the content column can exceed it */
+@media (max-width: 768px){
+  .ws-container,
+  .ws-article,
+  main, header, footer { overflow-x: clip !important; }
+  .ws-container * { max-inline-size: 100% !important; }
+}
+
+/* Global media guard */
+img, svg, video, canvas { max-width: 100%; height: auto; }

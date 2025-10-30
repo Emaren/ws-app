@@ -12,7 +12,6 @@ function toneClasses(tone: Tone) {
     case "stone":  return { bg: "bg-stone-50 dark:bg-stone-900", border: "border-stone-200 dark:border-stone-800", text: "text-stone-600 dark:text-stone-300" };
     case "amber":  return { bg: "bg-amber-50 dark:bg-stone-900", border: "border-amber-100 dark:border-stone-800", text: "text-amber-700 dark:text-stone-200" };
     case "indigo": return { bg: "bg-indigo-50 dark:bg-zinc-900", border: "border-indigo-100 dark:border-zinc-800", text: "text-indigo-700 dark:text-zinc-200" };
-    case "neutral":
     default:       return { bg: "bg-neutral-900", border: "border-neutral-800", text: "text-neutral-300" };
   }
 }
@@ -30,15 +29,14 @@ export default function AdFullWidth({
   const [imgError, setImgError] = useState(false);
 
   return (
-    // remove mt-0 so the parent space-y-* can add the gap above this block
-    <div className="w-full px-[max(env(safe-area-inset-left),0px)] pr-[max(env(safe-area-inset-right),0px)]">
+    <div className="bleed my-[var(--section-gap-sm)]">
       <a
         href="https://tokentap.ca"
         target="_blank"
         rel="noopener noreferrer external"
         aria-label={`Visit ${label}`}
         className={[
-          "w-full rounded-2xl border block overflow-hidden",
+          "block w-full rounded-2xl border overflow-hidden",
           toneCls.bg,
           toneCls.border,
           "focus:outline-none focus:ring-0 active:outline-none active:ring-0",
@@ -54,8 +52,8 @@ export default function AdFullWidth({
             loading="lazy"
             decoding="async"
             sizes="100vw"
-            className="object-contain outline-none pointer-events-none select-none"
-            style={{ height: `${Math.round(height * 0.46)}px`, width: "auto", maxWidth: "95%" }}
+            className="block w-full h-auto max-w-none object-contain select-none pointer-events-none"
+            style={{ maxHeight: Math.round(height * 0.46) }}
             onError={() => setImgError(true)}
             draggable={false}
           />

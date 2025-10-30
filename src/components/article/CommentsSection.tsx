@@ -77,19 +77,19 @@ export default function CommentsSection({ article }: Props) {
           src={commentsSrc}
           style={{ width: "100%", minHeight: 420, border: "none", overflow: "hidden" }}
           scrolling="no"
-          loading="eager"
+          loading="lazy"
           allow="clipboard-write; encrypted-media; picture-in-picture; web-share"
           referrerPolicy="strict-origin-when-cross-origin"
         />
         <p className="mt-2 text-[12px] text-neutral-300">
-          If you don’t see comments, a privacy extension or browser setting may be blocking Facebook embeds.{" "}
+          If you don’t see comments, a privacy extension or browser setting may be blocking Facebook embeds{" "}
           <a
             href={commentsSrc}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 cursor-pointer"
           >
-            Open comments in a new tab
+            — open comments in a new tab
           </a>
           .
         </p>
