@@ -27,15 +27,22 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full scroll-smooth transition-colors">
+      <head>
+        {/* Plausible Analytics */}
+        <script
+          async
+          defer
+          data-domain="wheatandstone.ca"
+          src="https://plausible.io/js/script.js"
+        ></script>
+      </head>
       <body
         className={[
           geistSans.variable,
           geistMono.variable,
           "font-sans",
           "min-h-svh antialiased bg-[var(--background)] text-[var(--foreground)]",
-          // horizontal safe-area padding is handled inside .ws-container;
-          // keep body padding neutral so pages stay consistent
-          "overflow-x-clip", 
+          "overflow-x-clip",
         ].join(" ")}
       >
         <ClientLayout>{children}</ClientLayout>

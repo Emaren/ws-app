@@ -15,12 +15,12 @@ const devLike = !isProd || isPreview;
 
 // Directives that differ by mode
 const scriptSrc = devLike
-  ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:"]
-  : ["'self'", "'unsafe-inline'"];
+  ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://plausible.io"]
+  : ["'self'", "'unsafe-inline'", "https://plausible.io"];
 
 const connectSrc = devLike
-  ? ["'self'", "http:", "https:", "ws:", "wss:"]
-  : ["'self'", "https:"];
+  ? ["'self'", "http:", "https:", "ws:", "wss:", "https://plausible.io"]
+  : ["'self'", "https:", "https://plausible.io"];
 
 const imgSrc = devLike
   ? "img-src 'self' http: https: data: blob:"

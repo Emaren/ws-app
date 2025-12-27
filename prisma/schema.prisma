@@ -1,32 +1,23 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   password  String
   name      String
-  role      Role     @default(STONEHOLDER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  role      Role       @default(STONEHOLDER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   articles  Article[]
   comments  Comment[]
   reactions Reaction[]
-}
-
-enum Role {
-  ADMIN
-  CONTRIBUTOR
-  STONEHOLDER
 }
 
 model Article {
@@ -38,53 +29,50 @@ model Article {
   content     String
   publishedAt DateTime?
   status      ArticleStatus @default(DRAFT)
+  authorId    String?
+  likeCount   Int           @default(0)
+  wowCount    Int           @default(0)
+  hmmCount    Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  author      User?         @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+  reactions   Reaction[]
+}
 
-  authorId String?
-  author   User?   @relation(fields: [authorId], references: [id])
-
-  likeCount Int @default(0)
-  wowCount  Int @default(0)
-  hmmCount  Int @default(0)
-
-  // ✅ add these:
+model Comment {
+  id         String   @id @default(cuid())
+  articleId  String
+  userId     String?
+  authorName String?
+  body       String
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  article    Article  @relation(fields: [articleId], references: [id])
+  author     User?    @relation(fields: [userId], references: [id])
+}
 
-  comments  Comment[]
-  reactions Reaction[]
+model Reaction {
+  id        String       @id @default(cuid())
+  articleId String
+  userId    String?
+  ipHash    String?
+  type      ReactionType
+  createdAt DateTime     @default(now())
+  article   Article      @relation(fields: [articleId], references: [id])
+  user      User?        @relation(fields: [userId], references: [id])
+
+  @@unique([articleId, userId, type])
+}
+
+enum Role {
+  ADMIN
+  CONTRIBUTOR
+  STONEHOLDER
 }
 
 enum ArticleStatus {
   DRAFT
   PUBLISHED
-}
-
-model Comment {
-  id        String  @id @default(cuid())
-  articleId String
-  article   Article @relation(fields: [articleId], references: [id])
-
-  userId String?
-  author User?   @relation(fields: [userId], references: [id])
-
-  authorName String?
-  body       String
-  createdAt  DateTime @default(now())
-}
-
-model Reaction {
-  id        String  @id @default(cuid())
-  articleId String
-  article   Article @relation(fields: [articleId], references: [id])
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  ipHash    String?
-  type      ReactionType
-  createdAt DateTime     @default(now())
-
-  @@unique([articleId, userId, type])
 }
 
 enum ReactionType {
