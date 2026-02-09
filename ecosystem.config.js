@@ -3,7 +3,7 @@ module.exports = {
   apps: [
     {
       name: "ws-app",
-      cwd: "/var/www/ws-app",
+      cwd: "/var/www/wheatandstone/ws-app",
       script: "pnpm",
       args: "start",
       exec_mode: "fork",

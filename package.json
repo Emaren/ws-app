@@ -17,8 +17,8 @@
     "//5": "---- Prisma helpers ----",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "studio:dev": "DATABASE_URL='file:./prisma/dev.db' prisma studio",
-    "studio:prod": "DATABASE_URL='file:/var/www/ws-app/prisma/prod.db' prisma studio --hostname 127.0.0.1 --port 5556 --browser none",
+    "studio:dev": "prisma studio",
+    "studio:prod": "prisma studio --hostname 127.0.0.1 --port 5556 --browser none",
     "prepare": "husky"
   },
   "dependencies": {

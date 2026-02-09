@@ -4,7 +4,7 @@
 
 set -Eeuo pipefail
 
-APP_DIR="/var/www/ws-app"
+APP_DIR="/var/www/wheatandstone/ws-app"
 APP_NAME="ws-app"
 PORT="${PORT:-3011}"                        # nginx expects this
 FORCE_KILL="${FORCE_KILL:-0}"               # 1 = kill unknown holders of $PORT
