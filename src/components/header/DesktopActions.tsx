@@ -4,6 +4,8 @@
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { roleBadgePrefix } from "@/lib/rbac";
+import ThemeCircles from "./ThemeCircles";
+import type { ThemeMode } from "@/lib/theme";
 
 type SessionLike = {
   user?: { email?: string | null; role?: string | null } | null;
@@ -24,6 +26,8 @@ export default function DesktopActions({
   gridColumn,
   dropRatio,
   session,
+  theme,
+  setTheme,
   isAdmin,
   walletConnected,
   walletBusy,
@@ -37,6 +41,8 @@ export default function DesktopActions({
   gridColumn: number;
   dropRatio: number;
   session: SessionLike;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
   isAdmin: boolean;
   walletConnected: boolean;
   walletBusy: boolean;
@@ -63,6 +69,7 @@ export default function DesktopActions({
         transform: `translateY(calc(var(--logo-h, 96px) * ${dropRatio}))`,
       }}
     >
+      <ThemeCircles value={theme} onChange={setTheme} />
       {!session ? (
         // Guest: Register/Login on the first row, Premium under them
         <div className="flex flex-col items-end">

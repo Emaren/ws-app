@@ -3,6 +3,8 @@
 
 import { useRouter } from "next/navigation";
 import { roleBadgePrefix } from "@/lib/rbac";
+import ThemeCircles from "./ThemeCircles";
+import type { ThemeMode } from "@/lib/theme";
 
 type SessionLike = {
   user?: { email?: string | null; role?: string | null } | null;
@@ -10,6 +12,8 @@ type SessionLike = {
 
 export default function MobileMenu({
   session,
+  theme,
+  setTheme,
   isAdmin,
   walletConnected,
   walletBusy,
@@ -20,6 +24,8 @@ export default function MobileMenu({
   close,
 }: {
   session: SessionLike;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
   isAdmin: boolean;
   walletConnected: boolean;
   walletBusy: boolean;
@@ -42,6 +48,10 @@ export default function MobileMenu({
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-4 flex flex-col gap-4">
+      <div className="flex items-center justify-start">
+        <ThemeCircles value={theme} onChange={setTheme} compact />
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => go("/articles")}

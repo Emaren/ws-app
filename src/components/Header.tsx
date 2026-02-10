@@ -33,7 +33,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
+import ThemeCircles from "./header/ThemeCircles";
 import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
+import {
+  applyThemeToDocument,
+  cycleTheme,
+  getSystemDefaultTheme,
+  persistTheme,
+  readThemeFromDocument,
+  readThemeFromStorage,
+  type ThemeMode,
+} from "@/lib/theme";
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -65,6 +75,7 @@ export default function Header() {
   const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>("dark");
 
   const headerRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
@@ -188,6 +199,13 @@ export default function Header() {
     };
   }, [session?.user?.id]);
 
+  useEffect(() => {
+    const stored = readThemeFromStorage();
+    const nextTheme = stored ?? readThemeFromDocument() ?? getSystemDefaultTheme();
+    applyThemeToDocument(nextTheme);
+    setTheme(nextTheme);
+  }, []);
+
   const connectWallet = async () => {
     if (walletBusy) {
       return;
@@ -282,11 +300,14 @@ export default function Header() {
     }
   };
 
+  const updateTheme = (nextTheme: ThemeMode) => {
+    applyThemeToDocument(nextTheme);
+    persistTheme(nextTheme);
+    setTheme(nextTheme);
+  };
+
   const toggleTheme = () => {
-    const html = document.documentElement;
-    const isDark = html.classList.contains("dark");
-    html.classList.toggle("dark", !isDark);
-    localStorage.setItem("theme", isDark ? "light" : "dark");
+    updateTheme(cycleTheme(theme));
   };
 
   const isAdmin = isEditorialRole(session?.user?.role);
@@ -337,6 +358,8 @@ export default function Header() {
           gridColumn={3}
           dropRatio={dropRatio}
           session={session}
+          theme={theme}
+          setTheme={updateTheme}
           isAdmin={!!isAdmin}
           walletConnected={walletConnected}
           walletBusy={walletBusy}
@@ -389,6 +412,7 @@ export default function Header() {
       {/* Mobile quick actions for better discoverability */}
       <div className="ws-container md:hidden pb-2">
         <div className="flex gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <ThemeCircles value={theme} onChange={updateTheme} compact />
           {session ? (
             <>
               <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
@@ -461,6 +485,8 @@ export default function Header() {
       >
         <MobileMenu
           session={session}
+          theme={theme}
+          setTheme={updateTheme}
           isAdmin={!!isAdmin}
           walletConnected={walletConnected}
           walletBusy={walletBusy}

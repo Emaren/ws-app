@@ -5,18 +5,19 @@ import { useEffect, type ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
 import Header from "../components/Header";
 import PwaClient from "../components/pwa/PwaClient";
+import {
+  applyThemeToDocument,
+  getSystemDefaultTheme,
+  readThemeFromStorage,
+} from "@/lib/theme";
 
 const container = "ws-container";
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   // theme
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      const html = document.documentElement;
-      if (saved === "light") html.classList.remove("dark");
-      else html.classList.add("dark");
-    } catch {}
+    const saved = readThemeFromStorage();
+    applyThemeToDocument(saved ?? getSystemDefaultTheme());
   }, []);
 
   // overflow debugger (visit with ?debug=overflow)

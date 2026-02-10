@@ -20,10 +20,29 @@
 
   --radius:.75rem;
 }
-@media (prefers-color-scheme:dark){
-  :root{ --background:#0a0a0a; --foreground:#ededed; }
+
+:root[data-theme="light"]{
+  --background:#ffffff;
+  --foreground:#171717;
 }
-:root{ color-scheme:light dark; }
+
+:root[data-theme="dark"]{
+  --background:#0a0a0a;
+  --foreground:#ededed;
+}
+
+:root[data-theme="sepia"]{
+  --background:#f4ecd9;
+  --foreground:#2f2417;
+}
+
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme]){ --background:#0a0a0a; --foreground:#ededed; }
+}
+
+:root{ color-scheme:light; }
+:root.dark,
+:root[data-theme="dark"]{ color-scheme:dark; }
 
 /* ---------------- base & overflow safety ---------------- */
 *,
