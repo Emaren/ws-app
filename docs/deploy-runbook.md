@@ -20,10 +20,19 @@ git fetch --prune origin
 git checkout main
 git pull --ff-only origin main
 pnpm install --frozen-lockfile
+pnpm prisma:migrate:deploy
 pnpm build
 sudo systemctl restart wheatandstone-app
 sudo systemctl --no-pager --full status wheatandstone-app
 ```
+
+If `pnpm prisma:migrate:deploy` fails with `P3005` (legacy DB missing migration baseline), use this one-time fallback:
+
+```bash
+pnpm exec prisma db push
+```
+
+Then continue with service restart and smoke checks.
 
 If your host still uses `wheatandstone-web.service`, restart it as well:
 
