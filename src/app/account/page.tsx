@@ -3,8 +3,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
-import { prisma } from "@/lib/prisma";
 import SignOutButton from "./SignOutButton";
+import TokenBalancesCard from "./TokenBalancesCard";
 
 function roleLandingPath(roleInput: string | null | undefined): string {
   const role = normalizeAppRole(roleInput);
@@ -30,19 +30,6 @@ function parseProfileTokenSymbols() {
   return [...new Set([...DEFAULT_PROFILE_TOKEN_SYMBOLS, ...configured])];
 }
 
-function toTokenAmount(value: unknown) {
-  const numeric = Number(typeof value === "object" && value !== null ? String(value) : value);
-  if (!Number.isFinite(numeric)) return 0;
-  return numeric;
-}
-
-function formatTokenBalance(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(value);
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
@@ -55,34 +42,6 @@ export default async function AccountPage() {
   const primaryPath = roleLandingPath(session.user.role);
   const primaryLabel = primaryPath === "/admin/new" ? "New Article" : primaryPath === "/admin" ? "Admin" : "Home";
   const trackedTokens = parseProfileTokenSymbols();
-
-  const rewardEntries = await prisma.rewardLedger.findMany({
-    where: { userId: session.user.id },
-    select: {
-      token: true,
-      direction: true,
-      amount: true,
-    },
-  });
-
-  const balancesByToken = new Map<string, number>();
-  for (const entry of rewardEntries) {
-    const token = String(entry.token || "").toUpperCase();
-    if (!token) continue;
-    const signedAmount =
-      entry.direction === "DEBIT" ? -toTokenAmount(entry.amount) : toTokenAmount(entry.amount);
-    balancesByToken.set(token, (balancesByToken.get(token) || 0) + signedAmount);
-  }
-
-  const tokenSymbols = [
-    ...trackedTokens,
-    ...[...balancesByToken.keys()].filter((symbol) => !trackedTokens.includes(symbol)),
-  ];
-
-  const tokenBalances = tokenSymbols.map((symbol) => ({
-    symbol,
-    balance: balancesByToken.get(symbol) || 0,
-  }));
 
   return (
     <main className="ws-container py-8 md:py-10">
@@ -103,28 +62,7 @@ export default async function AccountPage() {
           </div>
         </dl>
 
-        <section className="rounded-xl border border-black/10 dark:border-white/15 bg-black/[0.02] dark:bg-white/[0.03] p-4 md:p-5 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base md:text-lg font-semibold">Token Balances</h2>
-            <span className="text-xs opacity-70">Extensible display</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-            {tokenBalances.map((token) => (
-              <div
-                key={token.symbol}
-                className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2"
-              >
-                <p className="text-xs uppercase tracking-[0.2em] opacity-70">${token.symbol}</p>
-                <p className="mt-1 text-xl font-semibold">{formatTokenBalance(token.balance)}</p>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-xs opacity-70">
-            Add more display symbols via <code>NEXT_PUBLIC_PROFILE_TOKEN_SYMBOLS</code> (comma separated).
-          </p>
-        </section>
+        <TokenBalancesCard userId={session.user.id} trackedTokens={trackedTokens} />
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Link
