@@ -22,6 +22,8 @@
     "//5": "---- Prisma helpers ----",
     "prisma:generate": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "node prisma/seed.mjs",
+    "prisma:migrate:seed": "pnpm prisma:migrate:deploy && pnpm prisma:seed",
     "studio:dev": "prisma studio",
     "studio:prod": "prisma studio --hostname 127.0.0.1 --port 5556 --browser none",
     "prepare": "husky"
