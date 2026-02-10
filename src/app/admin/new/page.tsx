@@ -38,15 +38,20 @@ export default function NewArticle() {
   };
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-6">New Article</h1>
+    <section className="space-y-4">
+      <div className="admin-card p-4 md:p-6">
+        <h2 className="text-xl font-semibold md:text-2xl">New Article</h2>
+        <p className="mt-1 text-sm opacity-75">
+          Write rich review content for mobile and desktop readers.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="admin-card space-y-4 p-4 md:p-6">
         <label className="block">
           <span className="text-sm font-medium">Title</span>
           <input
             type="text"
-            className="w-full px-4 py-2 border rounded mt-1"
+            className="admin-surface mt-1 w-full rounded-xl px-4 py-2"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -59,18 +64,18 @@ export default function NewArticle() {
         </div>
 
         {/* Rich WYSIWYG field */}
-        <div className="border rounded">
+        <div className="overflow-hidden rounded-xl border">
           <RichField value={content} onChange={setContent} height={440} />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 rounded cursor-pointer disabled:opacity-60 bg-white text-black hover:bg-neutral-100 border"
+          className="rounded-xl border border-amber-300/40 bg-amber-200/20 px-6 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
         >
           {loading ? "Saving..." : "Create Article"}
         </button>
       </form>
-    </main>
+    </section>
   );
 }

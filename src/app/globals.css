@@ -310,3 +310,17 @@ html, body, #__next, #viewport-clamp { max-width: 100svw; overflow-x: clip; }
 
 /* Global media guard */
 img, svg, video, canvas { max-width: 100%; height: auto; }
+
+/* ---------------- Admin shell ---------------- */
+.admin-card{
+  border:1px solid color-mix(in oklab,currentColor 18%,transparent);
+  border-radius:1rem;
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in oklab,currentColor 10%,transparent), transparent 60%),
+    color-mix(in oklab,var(--background) 86%, var(--foreground) 14%);
+}
+
+.admin-surface{
+  border:1px solid color-mix(in oklab,currentColor 16%,transparent);
+  background:color-mix(in oklab,var(--background) 92%, var(--foreground) 8%);
+}

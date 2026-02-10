@@ -120,14 +120,12 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
-      <h1 className="text-xl font-semibold">Edit Article</h1>
-
+    <form onSubmit={save} className="admin-card space-y-5 p-4 md:p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="flex flex-col gap-2">
           <span className="text-sm font-medium">Title</span>
           <input
-            className="border rounded-xl px-3 py-2"
+            className="admin-surface rounded-xl px-3 py-2"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Post title"
@@ -138,7 +136,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         <label className="flex flex-col gap-2">
           <span className="text-sm font-medium">Slug</span>
           <input
-            className="border rounded-xl px-3 py-2"
+            className="admin-surface rounded-xl px-3 py-2"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="my-article-slug"
@@ -152,7 +150,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <label className="flex flex-col gap-2">
         <span className="text-sm font-medium">Excerpt</span>
         <textarea
-          className="border rounded-xl px-3 py-2 min-h-[80px]"
+          className="admin-surface min-h-[80px] rounded-xl px-3 py-2"
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
           placeholder="Short summary for listings and previews"
@@ -162,7 +160,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <label className="flex flex-col gap-2">
         <span className="text-sm font-medium">Cover URL</span>
         <input
-          className="border rounded-xl px-3 py-2"
+          className="admin-surface rounded-xl px-3 py-2"
           value={coverUrl}
           onChange={(e) => setCoverUrl(e.target.value)}
           placeholder="https://…"
@@ -183,7 +181,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Status:</span>
         <select
-          className="border rounded-xl px-3 py-2"
+          className="admin-surface rounded-xl px-3 py-2"
           value={status}
           onChange={(e) => setStatus(e.target.value as ArticleStatus)}
         >
@@ -197,7 +195,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="submit"
-          className="px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-100 dark:bg-black dark:text-white dark:hover:bg-neutral-800 disabled:opacity-60"
+          className="rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
           disabled={isPending}
           aria-label="Save article"
         >

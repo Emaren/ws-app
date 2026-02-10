@@ -50,11 +50,14 @@ export default async function EditArticlePage(
   };
 
   return (
-    <main className="mx-auto max-w-screen-xl px-4 py-8">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-2xl font-semibold mb-4">Edit Article</h1>
-        <Editor initialArticle={uiArticle} />
+    <section className="space-y-4">
+      <div className="admin-card p-4 md:p-6">
+        <h2 className="text-xl font-semibold md:text-2xl">Edit Article</h2>
+        <p className="mt-1 text-sm opacity-75">
+          Update content, lifecycle status, and publishing metadata.
+        </p>
       </div>
-    </main>
+      <Editor initialArticle={uiArticle} />
+    </section>
   );
 }
