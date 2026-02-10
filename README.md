@@ -15,6 +15,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Stripe checkout + webhook-driven subscription entitlement sync
 - Owner/admin billing reconciliation tooling
 - Session-backed wallet link proxy routes for signature-based linking
+- Owner/admin rewards reporting/export terminal proxied to ws-api
 - Direct Prisma database access
 
 Even though `ws-api` exists as a separate backend repo, `ws-app` is still the active source of truth for most content/auth operations today.

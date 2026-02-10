@@ -48,6 +48,12 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     summary: "Stripe reconciliation + mismatch repair",
     roles: RBAC_ROLE_GROUPS.ownerAdmin,
   },
+  {
+    href: "/admin/rewards",
+    label: "Rewards Ledger",
+    summary: "Off-chain accrual reporting + export pipeline",
+    roles: RBAC_ROLE_GROUPS.ownerAdmin,
+  },
 ];
 
 export function getRoleAwareAdminNavigation(
