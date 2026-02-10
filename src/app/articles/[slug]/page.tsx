@@ -1,5 +1,6 @@
 // src/app/articles/[slug]/page.tsx
 import { prisma } from "@/lib/prisma";
+import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
@@ -16,8 +17,9 @@ export default async function ArticlePage({
 }) {
   const { slug } = await params;
   const article = await prisma.article.findUnique({ where: { slug } });
+  const status = normalizeArticleStatus(article?.status);
 
-  if (!article || article.status !== "PUBLISHED") {
+  if (!article || !status || !isPubliclyVisibleArticle(status, article.publishedAt)) {
     return (
       <main className="ws-container">
         <div className="py-16 text-center opacity-70">Article not found.</div>

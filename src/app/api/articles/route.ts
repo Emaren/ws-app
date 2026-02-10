@@ -1,10 +1,12 @@
 // src/app/api/articles/route.ts
+import type { ArticleStatus, Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import {
   canSetCreateStatus,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { prisma } from "@/lib/prisma";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
@@ -36,15 +38,27 @@ export async function GET(req: NextRequest) {
   const auth = await getApiAuthContext(req);
   const isEditorial = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
   const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
+  const legacyVisibleStatuses: ArticleStatus[] = ["DRAFT", "REVIEW"];
+  const publicVisibilityWhere: Prisma.ArticleWhereInput = {
+    OR: [
+      { status: "PUBLISHED" },
+      {
+        AND: [
+          { status: { in: legacyVisibleStatuses } },
+          { publishedAt: { not: null } },
+        ],
+      },
+    ],
+  };
 
   const where =
     !auth.token || !isEditorial
-      ? { status: "PUBLISHED" as const }
+      ? publicVisibilityWhere
       : isStaff
       ? {}
       : {
           OR: [
-            { status: "PUBLISHED" as const },
+            publicVisibilityWhere,
             { authorId: auth.userId ?? "__no-author__" },
           ],
         };
@@ -109,10 +123,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const sanitizedContent = sanitizeArticleHtml(body.content);
+  if (!sanitizedContent.trim()) {
+    return NextResponse.json(
+      { message: "Article content is empty after sanitization" },
+      { status: 400 },
+    );
+  }
+
   const article = await prisma.article.create({
     data: {
       title: body.title.trim(),
-      content: body.content,
+      content: sanitizedContent,
       excerpt: body.excerpt ?? null,
       coverUrl: body.coverUrl ?? null,
       status,

@@ -1,19 +1,9 @@
 // src/components/article/ArticleBody.tsx
-"use client";
-
-import React from "react";
 import type { Article } from "@prisma/client";
+import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import FloatAd from "./FloatAd";
 import WysiwygStyle from "./WysiwygStyle";
 import BigThumbs from "./BigThumbs";
-
-/* ----------------------- helpers ----------------------- */
-
-async function sanitizeHtml(html: string): Promise<string> {
-  const mod = await import("isomorphic-dompurify");
-  const DOMPurify = (mod as any).default ?? mod;
-  return DOMPurify.sanitize(html);
-}
 
 function stripSingleOuterDiv(html: string): string {
   const t = html.trim();
@@ -73,43 +63,20 @@ function splitHtmlAtBlockFraction(html: string, fraction = 0.33): { head: string
 const LEFT_AD_FRACTION = 0.28;
 
 export default function ArticleBody({ article }: { article: Article }) {
-  const [parts, setParts] = React.useState<{
-    introHtml: string;
-    h2Html: string;
-    firstBlocksAfterH2: string;
-    afterBlocksHead: string;
-    afterBlocksTail: string;
-  } | null>(null);
+  const raw = article.content ?? "";
+  const clean = sanitizeArticleHtml(raw);
+  const unwrapped = stripSingleOuterDiv(clean);
+  const { before, h2Html, afterH2 } = splitAtFirstH2(unwrapped);
+  const { firstChunk, rest } = splitAfterNBlocks(afterH2, 2);
+  const { head, tail } = splitHtmlAtBlockFraction(rest, LEFT_AD_FRACTION);
 
-  React.useEffect(() => {
-    let alive = true;
-    (async () => {
-      const raw = article.content ?? "";
-      if (!raw.trim()) {
-        if (alive) setParts(null);
-        return;
-      }
-
-      const clean = await sanitizeHtml(raw);
-      const unwrapped = stripSingleOuterDiv(clean);
-
-      const { before, h2Html, afterH2 } = splitAtFirstH2(unwrapped);
-      const { firstChunk, rest } = splitAfterNBlocks(afterH2, 2);
-      const { head, tail } = splitHtmlAtBlockFraction(rest, LEFT_AD_FRACTION);
-
-      if (alive) {
-        setParts({
-          introHtml: before,
-          h2Html,
-          firstBlocksAfterH2: firstChunk,
-          afterBlocksHead: head,
-          afterBlocksTail: tail,
-        });
-      }
-    })();
-
-    return () => { alive = false; };
-  }, [article.content]);
+  const parts = {
+    introHtml: before,
+    h2Html,
+    firstBlocksAfterH2: firstChunk,
+    afterBlocksHead: head,
+    afterBlocksTail: tail,
+  };
 
   const hasAnyBody =
     !!parts &&
@@ -131,6 +98,10 @@ export default function ArticleBody({ article }: { article: Article }) {
             [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
             [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0 [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
         >
+          {!hasAnyBody && (
+            <p className="opacity-70">No formatted article content available yet.</p>
+          )}
+
           {/* 1) Before H2 */}
           {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
 

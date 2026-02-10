@@ -6,9 +6,9 @@ import React from "react";
 type Props = { slug: string };
 
 export default function BigThumbs({ slug }: Props) {
-  const [busy, setBusy] = React.useState<"like" | "boo" | null>(null);
+  const [busy, setBusy] = React.useState<"like" | "hmm" | null>(null);
 
-  async function react(type: "like" | "boo") {
+  async function react(type: "like" | "hmm") {
     if (busy) return;
     setBusy(type);
     try {
@@ -70,7 +70,7 @@ export default function BigThumbs({ slug }: Props) {
           aria-label="Thumbs down"
           title="Not for me"
           className={`${base} thumb thumb--boo mt-[6px] cursor-pointer`}
-          onClick={() => react("boo")}
+          onClick={() => react("hmm")}
           disabled={!!busy}
         >
           <span aria-hidden className="halo" />

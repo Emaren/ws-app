@@ -1,4 +1,5 @@
 // src/app/articles/page.tsx
+import type { ArticleStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -9,17 +10,29 @@ export default async function ArticlesPage(
   const page = Math.max(1, Number(pageParam ?? 1));
   const take = 10;
   const skip = (page - 1) * take;
+  const legacyVisibleStatuses: ArticleStatus[] = ["DRAFT", "REVIEW"];
+  const publicVisibilityWhere: Prisma.ArticleWhereInput = {
+    OR: [
+      { status: "PUBLISHED" },
+      {
+        AND: [
+          { status: { in: legacyVisibleStatuses } },
+          { publishedAt: { not: null } },
+        ],
+      },
+    ],
+  };
 
   const [items, total] = await Promise.all([
     prisma.article.findMany({
-      where: { status: "PUBLISHED" },
+      where: publicVisibilityWhere,
       orderBy: { publishedAt: "desc" },
       select: { slug: true, title: true, excerpt: true, publishedAt: true },
       skip,
       take,
     }),
     prisma.article.count({
-      where: { status: "PUBLISHED" },
+      where: publicVisibilityWhere,
     }),
   ]);
 

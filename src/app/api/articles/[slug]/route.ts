@@ -9,8 +9,10 @@ import {
   canReadArticle,
   canTransitionArticleStatus,
   derivePublishedAtPatch,
+  isPubliclyVisibleArticle,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,7 +52,7 @@ export async function GET(
     return new NextResponse("Invalid article status", { status: 500 });
   }
 
-  if (status !== "PUBLISHED") {
+  if (!isPubliclyVisibleArticle(status, article.publishedAt)) {
     const auth = await getApiAuthContext(req);
     const isOwner = Boolean(auth.userId && article.authorId === auth.userId);
     const canRead = canReadArticle(status, auth.role, isOwner);
@@ -81,12 +83,14 @@ export async function PATCH(
   if (body?.op === "react") {
     const existing = await prisma.article.findUnique({
       where: { slug },
-      select: { status: true },
+      select: { status: true, publishedAt: true },
     });
     if (!existing) {
       return notFound();
     }
-    if (existing.status !== "PUBLISHED") {
+
+    const existingStatus = normalizeArticleStatus(existing.status);
+    if (!existingStatus || !isPubliclyVisibleArticle(existingStatus, existing.publishedAt)) {
       return forbidden();
     }
 
@@ -208,7 +212,11 @@ export async function PATCH(
     if (!content.trim()) {
       return badRequest("Content cannot be empty");
     }
-    patch.content = content;
+    const sanitizedContent = sanitizeArticleHtml(content);
+    if (!sanitizedContent.trim()) {
+      return badRequest("Content is empty after sanitization");
+    }
+    patch.content = sanitizedContent;
   }
   if (nextSlug) patch.slug = nextSlug;
 

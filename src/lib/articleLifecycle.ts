@@ -55,6 +55,21 @@ export function canReadArticle(
   return role === "CONTRIBUTOR" && isOwner;
 }
 
+export function isPubliclyVisibleArticle(
+  status: ArticleLifecycleStatus,
+  publishedAt: Date | string | null | undefined,
+): boolean {
+  if (status === "PUBLISHED") {
+    return true;
+  }
+
+  if (status === "ARCHIVED") {
+    return false;
+  }
+
+  return Boolean(publishedAt);
+}
+
 export function canEditArticleContent(
   status: ArticleLifecycleStatus,
   role: AppRole | undefined,
@@ -146,7 +161,7 @@ export function derivePublishedAtPatch(
   }
 
   if (nextStatus === "ARCHIVED") {
-    return currentPublishedAt;
+    return null;
   }
 
   return null;

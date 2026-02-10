@@ -1,6 +1,4 @@
 // src/components/article/WysiwygStyle.tsx
-"use client";
-
 import { WYSIWYG_CSS } from "@/components/editor/wysiwygStyle";
 
 /**

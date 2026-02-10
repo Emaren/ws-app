@@ -1,16 +1,10 @@
 // src/components/article/ArticleView.tsx
-"use client";
-
-import React from "react";
 import type { Article } from "@prisma/client";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import ArticleBody from "./ArticleBody";
 import ReactionsBar from "./ReactionsBar";
 import AffiliatePair from "./AffiliatePair";
-
-// Client-only to avoid hydration diffs
-const ArticleHeaderArt = dynamic(() => import("./ArticleHeaderArt"), { ssr: false });
+import ArticleHeaderArt from "./ArticleHeaderArt";
 
 type Props = {
   article?: Article | null;

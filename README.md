@@ -11,6 +11,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Authentication UI/session via NextAuth (backed by `ws-api` auth endpoints)
 - Article and registration API routes
 - Article lifecycle/ownership enforcement (`DRAFT/REVIEW/PUBLISHED/ARCHIVED`)
+- Safe rich article render path with server-side HTML sanitization
 - Stripe checkout session creation
 - Direct Prisma database access
 

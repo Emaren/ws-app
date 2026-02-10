@@ -1,4 +1,6 @@
 // src/components/article/AffiliatePair.tsx
+"use client";
+
 import React from "react";
 
 type Product = {
