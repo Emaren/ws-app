@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 import type { JWT } from "next-auth/jwt";
 import type { AppRole } from "@/lib/rbac";
 import { normalizeAppRole } from "@/lib/rbac";
@@ -14,6 +13,7 @@ export interface ApiAuthContext {
 export async function getApiAuthContext(req: NextRequest): Promise<ApiAuthContext> {
   let token: JWT | null = null;
   try {
+    const { getToken } = await import("next-auth/jwt");
     token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET,
