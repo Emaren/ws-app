@@ -15,9 +15,11 @@ if [ -n "$bad" ]; then
   exit 1
 fi
 
-# Block .env files
-if git diff --cached --name-only | grep -qE '(^|/)\.env'; then
-  echo "❌ Refusing to commit .env files."
+# Block .env files (allow .env.example)
+env_staged="$(git diff --cached --name-only | grep -E '(^|/)\\.env($|\\.)' | grep -vE '(^|/)\\.env\\.example$' || true)"
+if [ -n "$env_staged" ]; then
+  echo "❌ Refusing to commit private .env files:"
+  echo "$env_staged"
   exit 1
 fi
 

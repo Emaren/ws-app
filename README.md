@@ -56,6 +56,7 @@ Core required:
 - `DATABASE_URL`
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
+- `PORT` (default local dev port expected by scripts)
 
 Checkout flow required (if premium page enabled):
 
@@ -73,9 +74,13 @@ Optional:
 ## Scripts
 
 - `pnpm dev`
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
 - `pnpm build`
 - `pnpm start`
 - `pnpm preview`
+- `pnpm verify`
 - `pnpm prisma:migrate:deploy`
 - `pnpm studio:dev`
 
@@ -83,6 +88,7 @@ Optional:
 
 - `docs/baseline-audit.md` current architecture, env matrix, risks, missing guardrails
 - `docs/repo-analysis.md` deeper walkthrough of code layout and route behavior
+- `docs/repo-health.md` script reliability and repo hygiene baseline
 
 ## Known gaps (summary)
 
