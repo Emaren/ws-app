@@ -16,6 +16,12 @@ Updated: 2026-02-10
 
 `/api/register` in `ws-app` proxies to `ws-api` `POST /auth/register`.
 
+## Forgot password flow
+
+- `/forgot-password` provides the UI entry point from login.
+- `/api/auth/forgot-password` returns a generic success response and logs reset intent for existing users.
+- The endpoint is non-enumerating by design (same response whether user exists or not).
+
 ## Required env
 
 - `WS_API_BASE_URL`

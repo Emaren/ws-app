@@ -80,6 +80,12 @@ export default function LoginPage() {
           {loading ? "Please wait..." : "Login"}
         </button>
 
+        <p className="mt-3 text-center text-sm">
+          <a href="/forgot-password" className="text-blue-500 underline">
+            Forgot password?
+          </a>
+        </p>
+
         <p className="text-center mt-4">
           Don’t have an account?{" "}
           <a href="/register" className="text-blue-500 underline">Register</a>
