@@ -1,7 +1,7 @@
 // src/components/article/ReactionsBar.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   slug: string;
@@ -10,94 +10,227 @@ type Props = {
   hmmCount: number;
 };
 
+type ArticleReactionType = "LIKE" | "WOW" | "HMM";
+
+type Counts = {
+  like: number;
+  wow: number;
+  hmm: number;
+};
+
+type ApiResponse = {
+  counts?: Partial<Counts>;
+  selected?: "like" | "wow" | "hmm" | null;
+};
+
+function toClientType(type: ArticleReactionType): "like" | "wow" | "hmm" {
+  if (type === "LIKE") return "like";
+  if (type === "WOW") return "wow";
+  return "hmm";
+}
+
+function updateCounts(
+  current: Counts,
+  previous: ArticleReactionType | null,
+  next: ArticleReactionType,
+): Counts {
+  const updated = { ...current };
+
+  if (previous === "LIKE") updated.like = Math.max(0, updated.like - 1);
+  if (previous === "WOW") updated.wow = Math.max(0, updated.wow - 1);
+  if (previous === "HMM") updated.hmm = Math.max(0, updated.hmm - 1);
+
+  if (next === "LIKE") updated.like += 1;
+  if (next === "WOW") updated.wow += 1;
+  if (next === "HMM") updated.hmm += 1;
+
+  return updated;
+}
+
 export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Props) {
-  const [counts, setCounts] = useState({ like: likeCount, wow: wowCount, hmm: hmmCount });
-  const [voted, setVoted] = useState<null | "LIKE" | "WOW" | "HMM">(null);
+  const [counts, setCounts] = useState<Counts>({ like: likeCount, wow: wowCount, hmm: hmmCount });
+  const [selected, setSelected] = useState<ArticleReactionType | null>(null);
+  const [animating, setAnimating] = useState<ArticleReactionType | null>(null);
   const [sending, setSending] = useState(false);
 
-  async function react(type: "LIKE" | "WOW" | "HMM") {
-    if (sending) return;
-    if (voted === type) return;
+  const endpoint = useMemo(
+    () => `/api/articles/${encodeURIComponent(slug)}/reactions?scope=article`,
+    [slug],
+  );
 
-    const prev = counts;
-    setCounts({
-      like: prev.like + (type === "LIKE" ? 1 : 0),
-      wow: prev.wow + (type === "WOW" ? 1 : 0),
-      hmm: prev.hmm + (type === "HMM" ? 1 : 0),
-    });
-    setVoted(type);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch(endpoint, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as ApiResponse;
+        if (!active) return;
+
+        setCounts({
+          like: Math.max(0, Number(data.counts?.like ?? likeCount)),
+          wow: Math.max(0, Number(data.counts?.wow ?? wowCount)),
+          hmm: Math.max(0, Number(data.counts?.hmm ?? hmmCount)),
+        });
+
+        if (data.selected === "like") setSelected("LIKE");
+        else if (data.selected === "wow") setSelected("WOW");
+        else if (data.selected === "hmm") setSelected("HMM");
+        else setSelected(null);
+      } catch {
+        // Keep server-rendered counts if hydration sync fails.
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [endpoint, likeCount, wowCount, hmmCount]);
+
+  useEffect(() => {
+    if (!animating) return;
+    const timer = window.setTimeout(() => setAnimating(null), 260);
+    return () => window.clearTimeout(timer);
+  }, [animating]);
+
+  async function react(type: ArticleReactionType) {
+    if (sending) return;
+
+    setAnimating(type);
+    if (selected === type) {
+      return;
+    }
+
+    const previousSelected = selected;
+    const previousCounts = counts;
+
+    setSelected(type);
+    setCounts(updateCounts(previousCounts, previousSelected, type));
     setSending(true);
 
     try {
-      const res = await fetch(`/api/articles/${encodeURIComponent(slug)}`, {
+      const res = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "react", type }),
+        body: JSON.stringify({ type }),
         cache: "no-store",
         keepalive: true,
       });
-      if (!res.ok) {
-        setCounts(prev);
-        setVoted(null);
-        const txt = await res.text().catch(() => "");
-        alert(`Could not register reaction: ${res.status}${txt ? ` — ${txt}` : ""}`);
+
+      if (res.status === 401) {
+        throw new Error("Sign in required to react");
       }
-    } catch {
-      setCounts(prev);
-      setVoted(null);
-      alert("Network error — could not register reaction.");
+
+      if (!res.ok) {
+        throw new Error(`Reaction update failed (${res.status})`);
+      }
+
+      const data = (await res.json()) as ApiResponse;
+      setCounts({
+        like: Math.max(0, Number(data.counts?.like ?? 0)),
+        wow: Math.max(0, Number(data.counts?.wow ?? 0)),
+        hmm: Math.max(0, Number(data.counts?.hmm ?? 0)),
+      });
+
+      if (data.selected === "like") setSelected("LIKE");
+      else if (data.selected === "wow") setSelected("WOW");
+      else if (data.selected === "hmm") setSelected("HMM");
+      else setSelected(type);
+    } catch (error) {
+      setSelected(previousSelected);
+      setCounts(previousCounts);
+      if (error instanceof Error && error.message.includes("Sign in required")) {
+        alert("Please sign in to react.");
+      } else {
+        alert("Network error — could not register reaction.");
+      }
     } finally {
       setSending(false);
     }
   }
 
-  const btnCls =
-    "inline-flex items-center gap-3 bg-transparent border-0 px-2 py-2 " +
-    "text-2xl md:text-3xl cursor-pointer select-none " +
-    "transition-transform hover:scale-110 active:scale-95 " +
-    "focus:outline-none focus-visible:ring-0 disabled:opacity-50";
+  const buttonClass =
+    "reaction-btn inline-flex items-center gap-2 border-0 bg-transparent px-2 py-2 " +
+    "cursor-pointer select-none focus:outline-none disabled:opacity-50";
 
-  const countCls = "tabular-nums text-lg md:text-xl font-medium";
+  const countClass = "tabular-nums text-lg md:text-xl font-medium";
 
   return (
     <div className="w-full flex justify-center">
-      <div className="inline-flex items-center gap-16 sm:gap-20 md:gap-28">
+      <div className="inline-flex items-center gap-12 sm:gap-16 md:gap-20">
         <button
           type="button"
-          className={btnCls}
+          className={`${buttonClass} ${selected === "LIKE" ? "is-selected" : ""} ${animating === "LIKE" ? "is-popping" : ""}`}
           onClick={() => react("LIKE")}
           disabled={sending}
-          aria-pressed={voted === "LIKE"}
+          aria-pressed={selected === "LIKE"}
           title="Like"
         >
-          <span role="img" aria-label="Like">👍</span>
-          <span className={countCls}>{counts.like}</span>
+          <span role="img" aria-label="Like" className="reaction-emoji">👍</span>
+          <span className={countClass} aria-live="polite">{counts.like}</span>
         </button>
 
         <button
           type="button"
-          className={btnCls}
+          className={`${buttonClass} ${selected === "WOW" ? "is-selected" : ""} ${animating === "WOW" ? "is-popping" : ""}`}
           onClick={() => react("WOW")}
           disabled={sending}
-          aria-pressed={voted === "WOW"}
+          aria-pressed={selected === "WOW"}
           title="Wow"
         >
-          <span role="img" aria-label="Wow">😮</span>
-          <span className={countCls}>{counts.wow}</span>
+          <span role="img" aria-label="Wow" className="reaction-emoji">😮</span>
+          <span className={countClass} aria-live="polite">{counts.wow}</span>
         </button>
 
         <button
           type="button"
-          className={btnCls}
+          className={`${buttonClass} ${selected === "HMM" ? "is-selected" : ""} ${animating === "HMM" ? "is-popping" : ""}`}
           onClick={() => react("HMM")}
           disabled={sending}
-          aria-pressed={voted === "HMM"}
+          aria-pressed={selected === "HMM"}
           title="Hmm"
         >
-          <span role="img" aria-label="Hmm">🤔</span>
-          <span className={countCls}>{counts.hmm}</span>
+          <span role="img" aria-label="Hmm" className="reaction-emoji">🤔</span>
+          <span className={countClass} aria-live="polite">{counts.hmm}</span>
         </button>
       </div>
+
+      <style jsx>{`
+        @keyframes reaction-pop {
+          0% { transform: scale(1); }
+          55% { transform: scale(1.18); }
+          100% { transform: scale(1); }
+        }
+
+        :global(.reaction-btn) {
+          transition: transform 160ms ease, filter 160ms ease;
+        }
+
+        :global(.reaction-btn .reaction-emoji) {
+          font-size: 2rem;
+          line-height: 1;
+          transition: transform 160ms ease, filter 160ms ease;
+        }
+
+        :global(.reaction-btn:hover .reaction-emoji),
+        :global(.reaction-btn:focus-visible .reaction-emoji),
+        :global(.reaction-btn.is-selected .reaction-emoji) {
+          transform: scale(1.08);
+          filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.6));
+        }
+
+        :global(.reaction-btn.is-popping .reaction-emoji) {
+          animation: reaction-pop 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          :global(.reaction-btn),
+          :global(.reaction-btn .reaction-emoji) {
+            transition: none;
+            animation: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -60,16 +60,20 @@ model Comment {
 }
 
 model Reaction {
-  id        String       @id @default(cuid())
-  articleId String
-  userId    String?
-  ipHash    String?
-  type      ReactionType
-  createdAt DateTime     @default(now())
-  article   Article      @relation(fields: [articleId], references: [id])
-  user      User?        @relation(fields: [userId], references: [id])
+  id          String        @id @default(cuid())
+  articleId   String
+  userId      String?
+  ipHash      String?
+  type        ReactionType
+  scope       ReactionScope @default(ARTICLE)
+  productSlug String?
+  createdAt   DateTime      @default(now())
+  article     Article       @relation(fields: [articleId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
 
-  @@unique([articleId, userId, type])
+  @@unique([articleId, userId, scope])
+  @@index([articleId, scope, type])
+  @@index([userId, articleId, scope])
 }
 
 model Business {
@@ -428,6 +432,11 @@ enum ReactionType {
   LIKE
   WOW
   HMM
+}
+
+enum ReactionScope {
+  ARTICLE
+  PRODUCT
 }
 
 enum BusinessStatus {
