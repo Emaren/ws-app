@@ -71,7 +71,20 @@ type CampaignFormState = {
   sendMode: SendMode;
   scheduledFor: string;
   maxAttempts: string;
+  fallbackEmailAudience: string;
+  fallbackSmsAudience: string;
 };
+
+type PushPermissionState = NotificationPermission | "unsupported";
+
+interface PushSubscriptionJsonShape {
+  endpoint?: string;
+  expirationTime?: number | null;
+  keys?: {
+    p256dh?: string;
+    auth?: string;
+  };
+}
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -161,7 +174,54 @@ function createCampaignForm(businessId: string): CampaignFormState {
     sendMode: "send_now",
     scheduledFor: "",
     maxAttempts: "3",
+    fallbackEmailAudience: "",
+    fallbackSmsAudience: "",
   };
+}
+
+function base64UrlEncode(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  const encoded = btoa(binary);
+  return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function urlBase64ToArrayBuffer(base64: string): ArrayBuffer {
+  const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded = padding === 0 ? normalized : `${normalized}${"=".repeat(4 - padding)}`;
+  const raw = atob(padded);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) {
+    output[i] = raw.charCodeAt(i);
+  }
+  return output.buffer as ArrayBuffer;
+}
+
+function encodeWebPushAudience(
+  subscription: PushSubscriptionJsonShape | null,
+): string | null {
+  if (!subscription) return null;
+  if (!subscription.endpoint) return null;
+  if (!subscription.keys?.p256dh || !subscription.keys.auth) return null;
+  return `webpush:${base64UrlEncode(JSON.stringify(subscription))}`;
+}
+
+function browserPushSupported(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window
+  );
+}
+
+function shortAudienceToken(value: string): string {
+  if (value.length <= 38) return value;
+  return `${value.slice(0, 16)}...${value.slice(-16)}`;
 }
 
 function resolveAudience(mode: AudienceMode, rawValue: string): string {
@@ -193,6 +253,10 @@ export default function NotificationCampaignComposer() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushPermission, setPushPermission] =
+    useState<PushPermissionState>("unsupported");
+  const [pushAudienceToken, setPushAudienceToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -302,6 +366,141 @@ export default function NotificationCampaignComposer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingBusinesses, selectedBusinessId, historyFilter.status, historyFilter.channel]);
 
+  useEffect(() => {
+    if (!browserPushSupported()) {
+      setPushPermission("unsupported");
+      return;
+    }
+
+    setPushPermission(Notification.permission);
+
+    let cancelled = false;
+    const loadSubscription = async () => {
+      try {
+        const registration =
+          (await navigator.serviceWorker.getRegistration()) ??
+          (await navigator.serviceWorker.register("/sw.js"));
+        const subscription = await registration.pushManager.getSubscription();
+        const audienceToken = encodeWebPushAudience(subscription?.toJSON() ?? null);
+
+        if (cancelled || !audienceToken) return;
+        setPushAudienceToken(audienceToken);
+      } catch {
+        // no-op: subscription capture is optional
+      }
+    };
+
+    void loadSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function subscribeBrowserForPush() {
+    setError(null);
+    setNotice(null);
+
+    if (!browserPushSupported()) {
+      setPushPermission("unsupported");
+      setError("This browser does not support web push.");
+      return;
+    }
+
+    const vapidPublicKey = process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY?.trim() ?? "";
+    if (!vapidPublicKey) {
+      setError("NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY is not configured for web push.");
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      setPushPermission("denied");
+      setError("Browser notifications are blocked. Enable notifications in site settings.");
+      return;
+    }
+
+    try {
+      setPushBusy(true);
+      const permission =
+        Notification.permission === "granted"
+          ? "granted"
+          : await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission !== "granted") {
+        throw new Error("Notification permission was not granted.");
+      }
+
+      const registration =
+        (await navigator.serviceWorker.getRegistration()) ??
+        (await navigator.serviceWorker.register("/sw.js"));
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToArrayBuffer(vapidPublicKey),
+        });
+      }
+
+      const encodedAudience = encodeWebPushAudience(subscription.toJSON());
+      if (!encodedAudience) {
+        throw new Error("Browser returned an invalid push subscription.");
+      }
+
+      setPushAudienceToken(encodedAudience);
+      setForm((prev) => ({
+        ...prev,
+        channel: "push",
+        audienceMode: "direct",
+        audienceValue: encodedAudience,
+      }));
+      setNotice("Browser push subscription captured and direct audience prefilled.");
+    } catch (subscribeError) {
+      setError(
+        subscribeError instanceof Error ? subscribeError.message : String(subscribeError),
+      );
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function unsubscribeBrowserPush() {
+    setError(null);
+    setNotice(null);
+
+    if (!browserPushSupported()) {
+      setPushPermission("unsupported");
+      return;
+    }
+
+    try {
+      setPushBusy(true);
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+
+      setPushAudienceToken("");
+      setForm((prev) => {
+        if (prev.audienceValue !== pushAudienceToken) {
+          return prev;
+        }
+        return {
+          ...prev,
+          audienceValue: "",
+        };
+      });
+      setNotice("Browser push subscription removed.");
+    } catch (unsubscribeError) {
+      setError(
+        unsubscribeError instanceof Error ? unsubscribeError.message : String(unsubscribeError),
+      );
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
   async function submitCampaign(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -325,6 +524,16 @@ export default function NotificationCampaignComposer() {
       const audience = resolveAudience(form.audienceMode, form.audienceValue);
       if (!audience) {
         throw new Error("Audience target is required for this mode");
+      }
+      if (
+        form.channel === "push" &&
+        form.audienceMode === "direct" &&
+        !audience.startsWith("webpush:") &&
+        !audience.startsWith("{")
+      ) {
+        throw new Error(
+          "Push direct target must be a browser subscription token. Use \"Use this browser subscription\".",
+        );
       }
 
       const maxAttempts = Number.parseInt(form.maxAttempts.trim(), 10);
@@ -350,6 +559,16 @@ export default function NotificationCampaignComposer() {
       };
       if (scheduledForIso) {
         metadata.scheduledFor = scheduledForIso;
+      }
+      if (form.channel === "push") {
+        const fallbackEmail = form.fallbackEmailAudience.trim();
+        const fallbackSms = form.fallbackSmsAudience.trim();
+        if (fallbackEmail || fallbackSms) {
+          metadata.fallback = {
+            ...(fallbackEmail ? { emailAudience: fallbackEmail } : {}),
+            ...(fallbackSms ? { smsAudience: fallbackSms } : {}),
+          };
+        }
       }
 
       setBusyAction("campaign-submit");
@@ -593,11 +812,62 @@ export default function NotificationCampaignComposer() {
                     setForm((prev) => ({ ...prev, audienceValue: event.target.value }))
                   }
                   className="admin-surface w-full rounded-xl px-3 py-2"
-                  placeholder={form.audienceMode === "segment" ? "vip-east" : "email, phone, or push token"}
+                  placeholder={
+                    form.audienceMode === "segment"
+                      ? "vip-east"
+                      : form.channel === "push"
+                        ? "webpush:<subscription-token>"
+                        : "email, phone, or push token"
+                  }
                   required
                 />
               </label>
             )}
+
+            {form.channel === "push" ? (
+              <div className="rounded-xl border border-blue-300/20 bg-blue-500/10 p-3 text-sm sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-blue-200/80">
+                  Browser Push Subscription
+                </p>
+                <p className="mt-1 text-xs text-blue-100/90">
+                  Permission:{" "}
+                  <span className="font-medium uppercase">
+                    {pushPermission === "unsupported" ? "UNSUPPORTED" : pushPermission}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-blue-100/80">
+                  Captured token:{" "}
+                  {pushAudienceToken ? (
+                    <span className="font-mono">{shortAudienceToken(pushAudienceToken)}</span>
+                  ) : (
+                    "none"
+                  )}
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void subscribeBrowserForPush()}
+                    disabled={pushBusy || busyAction !== null}
+                    className="rounded-lg border border-blue-300/40 bg-blue-400/20 px-3 py-1.5 text-xs font-medium transition hover:bg-blue-400/30 disabled:opacity-60"
+                  >
+                    {pushBusy ? "Working..." : "Use this browser subscription"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void unsubscribeBrowserPush()}
+                    disabled={pushBusy || !pushAudienceToken || busyAction !== null}
+                    className="rounded-lg border border-white/25 px-3 py-1.5 text-xs font-medium transition hover:bg-white/10 disabled:opacity-60"
+                  >
+                    Unsubscribe browser
+                  </button>
+                </div>
+
+                <p className="mt-2 text-[11px] text-blue-100/75">
+                  For direct push sends, this fills the audience with a webpush token the API can deliver to.
+                </p>
+              </div>
+            ) : null}
 
             {form.channel === "email" ? (
               <label className="space-y-1 text-sm sm:col-span-2">
@@ -611,6 +881,42 @@ export default function NotificationCampaignComposer() {
                   placeholder="Optional, falls back to campaign name"
                 />
               </label>
+            ) : null}
+
+            {form.channel === "push" ? (
+              <>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span>Fallback email audience (optional)</span>
+                  <input
+                    value={form.fallbackEmailAudience}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        fallbackEmailAudience: event.target.value,
+                      }))
+                    }
+                    className="admin-surface w-full rounded-xl px-3 py-2"
+                    placeholder="alerts@example.com"
+                  />
+                </label>
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span>Fallback SMS audience (optional)</span>
+                  <input
+                    value={form.fallbackSmsAudience}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        fallbackSmsAudience: event.target.value,
+                      }))
+                    }
+                    className="admin-surface w-full rounded-xl px-3 py-2"
+                    placeholder="+17801230000"
+                  />
+                </label>
+                <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs opacity-80 sm:col-span-2">
+                  If push cannot be delivered, ws-api will queue fallback email/SMS jobs from these targets.
+                </p>
+              </>
             ) : null}
 
             <label className="space-y-1 text-sm sm:col-span-2">

@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-const VERSION = "ws-pwa-v1";
+const VERSION = "ws-pwa-v2";
 const OFFLINE_URL = "/offline";
 const SHELL_CACHE = `${VERSION}:shell`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;
@@ -43,6 +43,22 @@ self.addEventListener("message", (event) => {
   }
 });
 
+function parsePushPayload(event) {
+  if (!event.data) {
+    return {};
+  }
+
+  try {
+    return event.data.json();
+  } catch {
+    try {
+      return { body: event.data.text() };
+    } catch {
+      return {};
+    }
+  }
+}
+
 function shouldHandleRequest(request) {
   if (request.method !== "GET") return false;
   const url = new URL(request.url);
@@ -52,6 +68,59 @@ function shouldHandleRequest(request) {
 function isStaticAsset(pathname) {
   return /\.(?:js|css|png|jpg|jpeg|svg|webp|gif|ico|woff2?)$/i.test(pathname);
 }
+
+self.addEventListener("push", (event) => {
+  const payload = parsePushPayload(event);
+  const title =
+    typeof payload.title === "string" && payload.title.trim()
+      ? payload.title.trim()
+      : "Wheat & Stone";
+  const body =
+    typeof payload.body === "string" && payload.body.trim()
+      ? payload.body.trim()
+      : "New update is available.";
+
+  const notificationOptions = {
+    body,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data:
+      payload && typeof payload.data === "object" && payload.data
+        ? payload.data
+        : {},
+  };
+
+  event.waitUntil(self.registration.showNotification(title, notificationOptions));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const payloadData =
+    event.notification?.data && typeof event.notification.data === "object"
+      ? event.notification.data
+      : {};
+  const targetUrl =
+    typeof payloadData.url === "string" && payloadData.url.trim()
+      ? payloadData.url.trim()
+      : "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if ("focus" in client && client.url === targetUrl) {
+          return client.focus();
+        }
+      }
+
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+
+      return undefined;
+    }),
+  );
+});
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
