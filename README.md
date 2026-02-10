@@ -1,86 +1,91 @@
-# Wheat & Stone App
+# WheatAndStone `ws-app`
 
-A content publishing platform built with Next.js 15 and React 19. It supports editorial workflows with TinyMCE-powered writing tools, authenticated contributor/admin dashboards, and public-facing article pages with comments and reaction tracking.
+Frontend + in-process application API for WheatAndStone.ca.
 
-The project is configured to run on SQLite via Prisma ORM and uses NextAuth credential-based authentication.
+## Current role in the system
 
-## Tech Stack
-- **Framework:** Next.js 15 (App Router)
-- **UI:** React 19, Tailwind CSS 4, custom WYSIWYG styles, TinyMCE editor
-- **Auth:** NextAuth.js with credentials provider
-- **Database:** SQLite managed by Prisma ORM
-- **Runtime tooling:** pnpm, TypeScript, PM2 (production)
+`ws-app` is the live Next.js application that currently handles:
 
-## Repository Guide
-- `src/app/` – Route handlers, pages, and layouts
-- `src/components/` – Reusable UI components (article rendering, ads, header, etc.)
-- `src/lib/` – Prisma client, auth configuration, helper utilities
-- `prisma/` – Prisma schema and migrations
-- `docs/repo-analysis.md` – Architectural overview, API summary, and known risks
-- `scripts/` – Deployment and asset helper scripts
-- `ecosystem.config.js` – PM2 process definition used in production
+- Public article and home pages
+- Admin/editor UI
+- Authentication (NextAuth credentials)
+- Article and registration API routes
+- Stripe checkout session creation
+- Direct Prisma database access
 
-## Prerequisites
+Even though `ws-api` exists as a separate backend repo, `ws-app` is still the active source of truth for most content/auth operations today.
+
+## Tech stack
+
+- Next.js 15 (App Router)
+- React 19 + Tailwind CSS
+- NextAuth (credentials)
+- Prisma ORM
+- TypeScript
+
+## Key directories
+
+- `src/app/` routes and API handlers
+- `src/components/` UI components
+- `src/lib/` shared auth/prisma helpers
+- `prisma/` schema and migrations
+- `scripts/` deploy/preview helpers
+- `docs/` architecture and audit docs
+
+## Local setup
+
+Prereqs:
+
 - Node.js 20+
 - pnpm 9+
-- SQLite (bundled with the OS; Prisma manages the database file)
+- Postgres instance reachable by `DATABASE_URL`
 
-## Local Setup
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-2. Create an environment file `.env.local` (Next.js will also pick up `.env`) and define the variables:
-   ```env
-   DATABASE_URL="file:./prisma/dev.db"
-   NEXTAUTH_SECRET="changeme"
-   NEXTAUTH_URL="http://localhost:3111"
-   ```
-   > The production PM2 config in `ecosystem.config.js` includes hard-coded secrets—replace them with environment variables before deploying.
-3. Run Prisma migrations (generates the SQLite database file):
-   ```bash
-   pnpm exec prisma migrate deploy
-   ```
-   For local iteration you can instead use:
-   ```bash
-   pnpm exec prisma migrate dev
-   ```
-4. Start the development server:
-   ```bash
-   pnpm dev
-   ```
-   The app listens on [http://localhost:3111](http://localhost:3111).
+Install and run:
 
-### Useful Development Commands
-- Launch Prisma Studio for browsing the database:
-  ```bash
-  pnpm studio:dev
-  ```
-- Build for production:
-  ```bash
-  pnpm build
-  pnpm start
-  ```
+```bash
+pnpm install
+pnpm prisma:generate
+pnpm prisma:migrate:deploy
+pnpm dev
+```
 
-## Authentication
-- Registration happens via `/api/register`, which stores bcrypt-hashed passwords.
-- Sessions use JWT strategy. The `NEXTAUTH_SECRET` must be set for both development and production.
+## Environment variables
 
-## Database Notes
-- The schema defines `User`, `Article`, `Comment`, and `Reaction` models. Articles can be published or draft, and reaction counts are aggregated per article.
-- Default setup stores data in `prisma/dev.db`. Back up or reset by deleting the file and re-running migrations.
+Core required:
 
-## Deployment
-- Production deployment is scripted through `scripts/deploy-prod.sh`, which installs dependencies, runs migrations, builds, and restarts the PM2 process.
-- Update `ecosystem.config.js` (or better, environment variables) with real secrets before running `pnpm start` under PM2.
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
 
-## Additional Documentation
-- See [`docs/repo-analysis.md`](docs/repo-analysis.md) for an in-depth walkthrough of the architecture, API routes, and outstanding risks (such as unauthenticated article creation). Use it as a companion guide for onboarding or further hardening the platform.
+Checkout flow required (if premium page enabled):
 
-## Contributing
-1. Fork and clone the repository.
-2. Create a feature branch: `git checkout -b feature/your-change`.
-3. Follow the setup instructions above.
-4. Submit a PR with a summary of changes and testing steps.
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRICE_ID_MONTHLY`
 
-Please open an issue if you discover security concerns (e.g., the unauthenticated article submission route) so they can be prioritized.
+Optional:
+
+- `NEXT_PUBLIC_SITE_ORIGIN`
+- `STRIPE_SUCCESS_URL`
+- `STRIPE_CANCEL_URL`
+- `PORT`
+- `NEXT_DIST_DIR`
+
+## Scripts
+
+- `pnpm dev`
+- `pnpm build`
+- `pnpm start`
+- `pnpm preview`
+- `pnpm prisma:migrate:deploy`
+- `pnpm studio:dev`
+
+## Baseline documentation
+
+- `docs/baseline-audit.md` current architecture, env matrix, risks, missing guardrails
+- `docs/repo-analysis.md` deeper walkthrough of code layout and route behavior
+
+## Known gaps (summary)
+
+- Missing repo-level `lint`, `test`, and `typecheck` scripts
+- Article create route currently unauthenticated
+- Ownership and rate-limit guardrails are incomplete
