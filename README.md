@@ -14,6 +14,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Safe rich article render path with server-side HTML sanitization
 - Stripe checkout + webhook-driven subscription entitlement sync
 - Owner/admin billing reconciliation tooling
+- Session-backed wallet link proxy routes for signature-based linking
 - Direct Prisma database access
 
 Even though `ws-api` exists as a separate backend repo, `ws-app` is still the active source of truth for most content/auth operations today.
@@ -61,6 +62,7 @@ Core required:
 - `NEXTAUTH_URL`
 - `PORT` (default local dev port expected by scripts)
 - `WS_API_BASE_URL` (backend auth base URL, e.g. `http://127.0.0.1:3012`)
+- `NEXT_PUBLIC_WALLET_CHAIN_ID` (wallet chain id for Keplr, default `wheatandstone`)
 
 Checkout flow required (if premium page enabled):
 

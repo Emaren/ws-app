@@ -12,6 +12,9 @@ export default function MobileMenu({
   session,
   isAdmin,
   walletConnected,
+  walletBusy,
+  walletAddressLabel,
+  walletError,
   connectWallet,
   toggleTheme,
   close,
@@ -19,6 +22,9 @@ export default function MobileMenu({
   session: SessionLike;
   isAdmin: boolean;
   walletConnected: boolean;
+  walletBusy: boolean;
+  walletAddressLabel: string | null;
+  walletError: string | null;
   connectWallet: () => Promise<void> | void;
   toggleTheme: () => void;
   close: () => void;
@@ -90,16 +96,31 @@ export default function MobileMenu({
                 await connectWallet();
                 close();
               }}
+              disabled={walletBusy}
               className={`w-full px-3 py-2 rounded text-sm font-medium text-center cursor-pointer transition ${
                 walletConnected
                   ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/25"
                   : "bg-black text-white dark:bg-white dark:text-black"
               }`}
             >
-              {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+              {walletBusy
+                ? "Linking..."
+                : walletConnected
+                  ? "Wallet Linked"
+                  : "Connect Wallet"}
             </button>
 
             <div className="mt-2 text-[12px] opacity-80 break-all">{identityLabel}</div>
+            {walletAddressLabel ? (
+              <div className="mt-1 text-[12px] text-emerald-300/90 break-all">
+                {walletAddressLabel}
+              </div>
+            ) : null}
+            {walletError ? (
+              <div className="mt-1 text-[12px] text-amber-300/90 break-all">
+                {walletError}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-2">

@@ -26,6 +26,8 @@ export default function DesktopActions({
   session,
   isAdmin,
   walletConnected,
+  walletBusy,
+  walletAddressLabel,
   connectWallet,
   toggleTheme,
   profileOpen,
@@ -37,6 +39,8 @@ export default function DesktopActions({
   session: SessionLike;
   isAdmin: boolean;
   walletConnected: boolean;
+  walletBusy: boolean;
+  walletAddressLabel: string | null;
   connectWallet: () => Promise<void> | void;
   toggleTheme: () => void;
   profileOpen: boolean;
@@ -102,19 +106,29 @@ export default function DesktopActions({
           <div className="flex min-w-[220px] max-w-[36ch] flex-col items-end">
             <button
               onClick={connectWallet}
+              disabled={walletBusy}
               className={`shrink-0 px-3 py-1 rounded-md border transition cursor-pointer ${
                 walletConnected
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
                   : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
               }`}
             >
-              {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+              {walletBusy
+                ? "Linking..."
+                : walletConnected
+                  ? "Wallet Linked"
+                  : "Connect Wallet"}
             </button>
 
             {/* On constrained widths, identity lives below Connect Wallet. */}
             <span className="mt-1 hidden w-full truncate text-right text-[11px] opacity-75 lg:block xl:hidden">
               {identityLabel}
             </span>
+            {walletAddressLabel ? (
+              <span className="mt-1 hidden w-full truncate text-right text-[11px] text-emerald-300/90 lg:block xl:hidden">
+                {walletAddressLabel}
+              </span>
+            ) : null}
           </div>
 
           <span className="hidden max-w-[38ch] truncate text-sm xl:block">

@@ -2,8 +2,29 @@
 "use client";
 
 declare global {
+  interface KeplrKey {
+    bech32Address: string;
+    pubKey: Uint8Array;
+  }
+
+  interface KeplrSignResult {
+    signature: string;
+    pub_key?: {
+      type: string;
+      value: string;
+    };
+  }
+
   interface Window {
-    keplr?: { enable: (chainId: string) => Promise<void> };
+    keplr?: {
+      enable: (chainId: string) => Promise<void>;
+      getKey: (chainId: string) => Promise<KeplrKey>;
+      signArbitrary: (
+        chainId: string,
+        signer: string,
+        data: string,
+      ) => Promise<KeplrSignResult>;
+    };
   }
 }
 
@@ -14,11 +35,34 @@ import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
 import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
 
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const value of bytes) {
+    binary += String.fromCharCode(value);
+  }
+
+  return btoa(binary);
+}
+
+function shortWallet(address: string | null): string | null {
+  if (!address) {
+    return null;
+  }
+
+  if (address.length <= 18) {
+    return address;
+  }
+
+  return `${address.slice(0, 8)}...${address.slice(-6)}`;
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [walletConnected, setWalletConnected] = useState(false);
+  const [linkedWalletAddress, setLinkedWalletAddress] = useState<string | null>(null);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -90,12 +134,151 @@ export default function Header() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!session?.user) {
+      setLinkedWalletAddress(null);
+      setWalletError(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const refreshWalletLink = async () => {
+      try {
+        const response = await fetch("/api/wallet/link", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | { wallet?: { walletAddress?: string | null } | null; message?: string }
+          | null;
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setLinkedWalletAddress(null);
+          if (response.status !== 401) {
+            setWalletError(payload?.message ?? "Failed to read wallet link");
+          }
+          return;
+        }
+
+        const walletAddress = payload?.wallet?.walletAddress;
+        setLinkedWalletAddress(
+          typeof walletAddress === "string" && walletAddress.trim()
+            ? walletAddress.trim()
+            : null,
+        );
+      } catch (error) {
+        if (cancelled) return;
+        setLinkedWalletAddress(null);
+        setWalletError(
+          error instanceof Error ? error.message : "Failed to read wallet link",
+        );
+      }
+    };
+
+    void refreshWalletLink();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
   const connectWallet = async () => {
+    if (walletBusy) {
+      return;
+    }
+
+    if (!session?.user) {
+      setWalletError("Login required before linking a wallet");
+      return;
+    }
+
     try {
-      await window.keplr?.enable("wheatandstone");
-      setWalletConnected(true);
-    } catch {
-      console.warn("Wallet not connected.");
+      setWalletBusy(true);
+      setWalletError(null);
+
+      const chainId = process.env.NEXT_PUBLIC_WALLET_CHAIN_ID || "wheatandstone";
+      const keplr = window.keplr;
+      if (!keplr) {
+        throw new Error("Keplr wallet not found");
+      }
+
+      await keplr.enable(chainId);
+      const key = await keplr.getKey(chainId);
+      const walletAddress = key.bech32Address;
+
+      const challengeResponse = await fetch("/api/wallet/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainType: "COSMOS",
+          walletAddress,
+        }),
+      });
+
+      const challengePayload = (await challengeResponse
+        .json()
+        .catch(() => null)) as
+        | {
+            challengeId?: string;
+            message?: string;
+            expiresAt?: string;
+            error?: string;
+          }
+        | null;
+
+      if (!challengeResponse.ok) {
+        throw new Error(
+          challengePayload?.message ||
+            challengePayload?.error ||
+            "Failed to create wallet challenge",
+        );
+      }
+
+      const challengeId = challengePayload?.challengeId;
+      const challengeMessage = challengePayload?.message;
+      if (!challengeId || !challengeMessage) {
+        throw new Error("Wallet challenge payload was incomplete");
+      }
+
+      const signed = await keplr.signArbitrary(chainId, walletAddress, challengeMessage);
+      const publicKey = signed.pub_key?.value || bytesToBase64(key.pubKey);
+
+      const linkResponse = await fetch("/api/wallet/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId,
+          signature: signed.signature,
+          publicKey,
+        }),
+      });
+
+      const linkPayload = (await linkResponse.json().catch(() => null)) as
+        | { wallet?: { walletAddress?: string | null }; message?: string; error?: string }
+        | null;
+
+      if (!linkResponse.ok) {
+        throw new Error(
+          linkPayload?.message || linkPayload?.error || "Wallet link failed",
+        );
+      }
+
+      const normalizedAddress = linkPayload?.wallet?.walletAddress ?? walletAddress;
+      setLinkedWalletAddress(normalizedAddress);
+      setWalletError(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Wallet not connected.";
+      setWalletError(message);
+      console.warn(message);
+    } finally {
+      setWalletBusy(false);
     }
   };
 
@@ -107,6 +290,8 @@ export default function Header() {
   };
 
   const isAdmin = isEditorialRole(session?.user?.role);
+  const walletConnected = Boolean(linkedWalletAddress);
+  const walletShortAddress = shortWallet(linkedWalletAddress);
   const dropRatio = session ? 0.4 : 0.15;
   const identityLabel = session?.user?.email
     ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
@@ -154,6 +339,8 @@ export default function Header() {
           session={session}
           isAdmin={!!isAdmin}
           walletConnected={walletConnected}
+          walletBusy={walletBusy}
+          walletAddressLabel={walletShortAddress}
           connectWallet={connectWallet}
           toggleTheme={toggleTheme}
           profileOpen={profileOpen}
@@ -207,15 +394,30 @@ export default function Header() {
               <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
                 <button
                   onClick={connectWallet}
+                  disabled={walletBusy}
                   className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
                     walletConnected
                       ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
                       : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
                   }`}
                 >
-                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+                  {walletBusy
+                    ? "Linking..."
+                    : walletConnected
+                      ? "Wallet Linked"
+                      : "Connect Wallet"}
                 </button>
                 <p className="mt-1.5 truncate text-[11px] opacity-75">{identityLabel}</p>
+                {walletShortAddress ? (
+                  <p className="mt-1 truncate text-[11px] text-emerald-300/90">
+                    {walletShortAddress}
+                  </p>
+                ) : null}
+                {walletError ? (
+                  <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
+                    {walletError}
+                  </p>
+                ) : null}
               </div>
 
               <button onClick={() => router.push("/articles")} className={mobileChipClass}>
@@ -261,6 +463,9 @@ export default function Header() {
           session={session}
           isAdmin={!!isAdmin}
           walletConnected={walletConnected}
+          walletBusy={walletBusy}
+          walletAddressLabel={walletShortAddress}
+          walletError={walletError}
           connectWallet={connectWallet}
           toggleTheme={toggleTheme}
           close={() => setMenuOpen(false)}
