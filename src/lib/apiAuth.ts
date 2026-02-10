@@ -12,10 +12,15 @@ export interface ApiAuthContext {
 }
 
 export async function getApiAuthContext(req: NextRequest): Promise<ApiAuthContext> {
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+  let token: JWT | null = null;
+  try {
+    token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+  } catch {
+    token = null;
+  }
 
   const rawRole = token && typeof token.role === "string" ? token.role : undefined;
   const role = normalizeAppRole(rawRole);
