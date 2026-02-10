@@ -81,6 +81,16 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
     return "";
   }
 
-  const clean = sanitizeHtml(html, SANITIZE_OPTIONS);
-  return addSafeRelToTargetBlankLinks(clean);
+  try {
+    const clean = sanitizeHtml(html, SANITIZE_OPTIONS);
+    return addSafeRelToTargetBlankLinks(clean);
+  } catch {
+    // Defensive fallback for malformed legacy markup (e.g. href="[object Object]").
+    const normalized = html.replace(
+      /\s(?:href|src)\s*=\s*(['"])\[object Object\]\1/gi,
+      "",
+    );
+    const clean = sanitizeHtml(normalized, SANITIZE_OPTIONS);
+    return addSafeRelToTargetBlankLinks(clean);
+  }
 }
