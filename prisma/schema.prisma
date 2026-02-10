@@ -327,6 +327,34 @@ model AffiliateClick {
   @@index([userId])
 }
 
+model SubscriptionEntitlement {
+  id                   String             @id @default(cuid())
+  userExternalId       String?            @unique
+  userEmail            String?
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(NONE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  stripeProductId      String?
+  checkoutSessionId    String?
+  latestInvoiceId      String?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  trialEndsAt          DateTime?
+  syncedAt             DateTime?
+  mismatchReason       String?
+  metadata             Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([userEmail])
+  @@index([plan])
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
 model AnalyticsEvent {
   id              String             @id @default(cuid())
   eventType       AnalyticsEventType
@@ -470,6 +498,25 @@ enum AffiliateNetwork {
   LOCAL_DIRECT
   TOKENTAP
   OTHER
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM_MONTHLY
+  PREMIUM_YEARLY
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  NONE
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
 }
 
 enum AnalyticsEventType {

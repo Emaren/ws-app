@@ -3,9 +3,28 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import CheckoutButton from "@/components/premium/CheckoutButton";
+import { prisma } from "@/lib/prisma";
+import {
+  entitlementHasPremiumAccess,
+  getUserEntitlementByIdentity,
+} from "@/lib/billing/entitlements";
+
+function formatPeriod(value: Date | null | undefined): string {
+  if (!value) return "n/a";
+  return value.toLocaleDateString();
+}
 
 export default async function PremiumPage() {
   const session = await getServerSession(authOptions);
+  const entitlement =
+    session?.user
+      ? await getUserEntitlementByIdentity(prisma, {
+          userExternalId: session.user.id,
+          userEmail: session.user.email ?? undefined,
+        })
+      : null;
+
+  const hasAccess = entitlementHasPremiumAccess(entitlement);
 
   return (
     <main className="ws-container">
@@ -50,10 +69,28 @@ export default async function PremiumPage() {
               </div>
             ) : (
               <div className="mt-6">
-                <CheckoutButton />
-                <p className="mt-3 text-xs opacity-70">
-                  You’ll be redirected to secure checkout. Cancel anytime.
-                </p>
+                {hasAccess ? (
+                  <div className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm">
+                    <p className="font-medium text-emerald-100">Premium access active</p>
+                    <p className="mt-1 text-emerald-100/85">
+                      Plan: {entitlement?.plan ?? "PREMIUM"} • Status:{" "}
+                      {entitlement?.status ?? "ACTIVE"} • Renews through{" "}
+                      {formatPeriod(entitlement?.currentPeriodEnd)}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <CheckoutButton />
+                    <p className="mt-3 text-xs opacity-70">
+                      You’ll be redirected to secure checkout. Cancel anytime.
+                    </p>
+                    {entitlement ? (
+                      <p className="mt-2 text-xs opacity-60">
+                        Last entitlement: {entitlement.plan} / {entitlement.status}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
             )}
           </div>

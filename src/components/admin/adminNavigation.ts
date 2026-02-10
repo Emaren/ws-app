@@ -42,6 +42,12 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     summary: "Role and account governance",
     roles: RBAC_ROLE_GROUPS.ownerAdmin,
   },
+  {
+    href: "/admin/billing",
+    label: "Billing Integrity",
+    summary: "Stripe reconciliation + mismatch repair",
+    roles: RBAC_ROLE_GROUPS.ownerAdmin,
+  },
 ];
 
 export function getRoleAwareAdminNavigation(
@@ -54,4 +60,3 @@ export function getRoleAwareAdminNavigation(
 
   return ADMIN_NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
-

@@ -12,7 +12,8 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Article and registration API routes
 - Article lifecycle/ownership enforcement (`DRAFT/REVIEW/PUBLISHED/ARCHIVED`)
 - Safe rich article render path with server-side HTML sanitization
-- Stripe checkout session creation
+- Stripe checkout + webhook-driven subscription entitlement sync
+- Owner/admin billing reconciliation tooling
 - Direct Prisma database access
 
 Even though `ws-api` exists as a separate backend repo, `ws-app` is still the active source of truth for most content/auth operations today.
@@ -65,9 +66,11 @@ Checkout flow required (if premium page enabled):
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_PRICE_ID_MONTHLY`
+- `STRIPE_WEBHOOK_SECRET`
 
 Optional:
 
+- `STRIPE_PRICE_ID_YEARLY`
 - `NEXT_PUBLIC_SITE_ORIGIN`
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
@@ -93,6 +96,7 @@ Optional:
 - `docs/repo-analysis.md` deeper walkthrough of code layout and route behavior
 - `docs/repo-health.md` script reliability and repo hygiene baseline
 - `docs/auth-integration.md` ws-api-backed auth login/logout/me/session flow
+- `docs/billing-reconciliation.md` subscription entitlement + Stripe reconciliation contract
 
 ## Known gaps (summary)
 
