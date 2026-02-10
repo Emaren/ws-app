@@ -47,6 +47,9 @@ export default function DesktopActions({
     | React.RefObject<HTMLDivElement | null>;
 }) {
   const router = useRouter();
+  const identityLabel = session?.user?.email
+    ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
+    : roleBadgePrefix(session?.user?.role);
 
   return (
     <div
@@ -96,20 +99,27 @@ export default function DesktopActions({
             </button>
           )}
 
-          <span className="text-sm max-w-[38ch] truncate">
-            {roleBadgePrefix(session?.user?.role)} – {session?.user?.email}
-          </span>
+          <div className="flex min-w-[220px] max-w-[36ch] flex-col items-end">
+            <button
+              onClick={connectWallet}
+              className={`shrink-0 px-3 py-1 rounded-md border transition cursor-pointer ${
+                walletConnected
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
+                  : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+              }`}
+            >
+              {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+            </button>
 
-          <button
-            onClick={connectWallet}
-            className={`shrink-0 px-3 py-1 rounded-md border transition cursor-pointer ${
-              walletConnected
-                ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
-                : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
-            }`}
-          >
-            {walletConnected ? "Wallet Connected" : "Connect Wallet"}
-          </button>
+            {/* On constrained widths, identity lives below Connect Wallet. */}
+            <span className="mt-1 hidden w-full truncate text-right text-[11px] opacity-75 lg:block xl:hidden">
+              {identityLabel}
+            </span>
+          </div>
+
+          <span className="hidden max-w-[38ch] truncate text-sm xl:block">
+            {identityLabel}
+          </span>
 
           {/* Profile popover */}
           <div className="relative shrink-0" ref={profileRef as any}>

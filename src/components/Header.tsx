@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
-import { isEditorialRole } from "@/lib/rbac";
+import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -107,10 +107,18 @@ export default function Header() {
   };
 
   const isAdmin = isEditorialRole(session?.user?.role);
-
-  // Right rail for hamburger (44px target + breathing room)
-  const rightRailPx = 56;
   const dropRatio = session ? 0.4 : 0.15;
+  const identityLabel = session?.user?.email
+    ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
+    : roleBadgePrefix(session?.user?.role);
+
+  async function openLogin() {
+    const { signIn } = await import("next-auth/react");
+    signIn();
+  }
+
+  const mobileChipClass =
+    "shrink-0 rounded-full border border-black/15 dark:border-white/15 bg-transparent px-3 py-1.5 text-[12px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer";
 
   return (
     <header
@@ -119,9 +127,8 @@ export default function Header() {
       role="banner"
     >
       <div
-        // slightly tighter on mobile
-        className="ws-container pt-1 pb-0.5 md:pt-2 md:pb-2 grid items-center gap-4 min-w-0"
-        style={{ gridTemplateColumns: `auto 1fr auto ${rightRailPx}px` }}
+        className="ws-container pt-1 pb-0.5 md:pt-2 md:pb-2 grid items-center gap-3 min-w-0"
+        style={{ gridTemplateColumns: "auto 1fr auto" }}
       >
         {/* Logo */}
         <a href="/" aria-label="Wheat & Stone home" className="flex items-start shrink-0 cursor-pointer">
@@ -157,7 +164,7 @@ export default function Header() {
         {/* Mobile hamburger — flush right in its own rail */}
         <div
           className="md:hidden justify-self-end self-center"
-          style={{ gridColumn: 4, transform: "translateY(3px)", marginRight: "-2px" }}
+          style={{ gridColumn: 3, transform: "translateY(2px)" }}
           ref={menuBtnRef}
         >
           <button
@@ -165,10 +172,10 @@ export default function Header() {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-11 h-11 inline-flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 active:scale-[0.98] transition cursor-pointer"
+            className="h-11 inline-flex items-center gap-2 rounded-lg border border-black/10 bg-transparent px-3 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10 active:scale-[0.98] transition cursor-pointer"
           >
             <svg
-              className={`w-6 h-6 text-[var(--foreground)] opacity-90 transition-transform ${menuOpen ? "rotate-90" : ""}`}
+              className={`w-5 h-5 text-[var(--foreground)] opacity-90 transition-transform ${menuOpen ? "rotate-90" : ""}`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -187,7 +194,58 @@ export default function Header() {
                 </>
               )}
             </svg>
+            <span className="text-[13px] font-medium">Menu</span>
           </button>
+        </div>
+      </div>
+
+      {/* Mobile quick actions for better discoverability */}
+      <div className="ws-container md:hidden pb-2">
+        <div className="flex gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {session ? (
+            <>
+              <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
+                <button
+                  onClick={connectWallet}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
+                    walletConnected
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
+                      : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                  }`}
+                >
+                  {walletConnected ? "Wallet Connected" : "Connect Wallet"}
+                </button>
+                <p className="mt-1.5 truncate text-[11px] opacity-75">{identityLabel}</p>
+              </div>
+
+              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
+                Articles
+              </button>
+              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
+                Premium
+              </button>
+              {isAdmin ? (
+                <button onClick={() => router.push("/admin")} className={mobileChipClass}>
+                  Admin
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
+                Articles
+              </button>
+              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
+                Premium
+              </button>
+              <button onClick={() => router.push("/register")} className={mobileChipClass}>
+                Register
+              </button>
+              <button onClick={() => void openLogin()} className={mobileChipClass}>
+                Login
+              </button>
+            </>
+          )}
         </div>
       </div>
 
