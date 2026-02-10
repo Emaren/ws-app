@@ -10,6 +10,9 @@ export const revalidate = 0;
 type ClientArticleReaction = "like" | "wow" | "hmm";
 type ClientProductReaction = "like" | "hmm";
 
+const ARTICLE_REACTION_TYPES = [ReactionType.LIKE, ReactionType.WOW, ReactionType.HMM];
+const PRODUCT_REACTION_TYPES = [ReactionType.LIKE, ReactionType.HMM];
+
 function badRequest(message = "Bad Request") {
   return new NextResponse(message, { status: 400 });
 }
@@ -63,10 +66,7 @@ function parseReactionType(
   scope: "article" | "product",
 ): ReactionType | null {
   const raw = String(rawValue ?? "").trim().toUpperCase();
-  const allowed =
-    scope === "product"
-      ? [ReactionType.LIKE, ReactionType.HMM]
-      : [ReactionType.LIKE, ReactionType.WOW, ReactionType.HMM];
+  const allowed = scope === "product" ? PRODUCT_REACTION_TYPES : ARTICLE_REACTION_TYPES;
   return allowed.includes(raw as ReactionType) ? (raw as ReactionType) : null;
 }
 
@@ -127,46 +127,43 @@ export async function GET(
         where: {
           articleId: article.id,
           scope: ReactionScope.PRODUCT,
-          type: { in: [ReactionType.LIKE, ReactionType.HMM] },
+          type: { in: PRODUCT_REACTION_TYPES },
         },
         _count: { _all: true },
       }),
       userId
-        ? prisma.reaction.findUnique({
+        ? prisma.reaction.findMany({
             where: {
-              articleId_userId_scope: {
-                articleId: article.id,
-                userId,
-                scope: ReactionScope.PRODUCT,
-              },
+              articleId: article.id,
+              userId,
+              scope: ReactionScope.PRODUCT,
+              type: { in: PRODUCT_REACTION_TYPES },
             },
             select: { type: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
           })
-        : Promise.resolve(null),
+        : Promise.resolve([]),
     ]);
 
     return NextResponse.json({
       scope,
       counts: mapProductCounts(rows),
-      selected:
-        mine && (mine.type === ReactionType.LIKE || mine.type === ReactionType.HMM)
-          ? (toClientType(mine.type) as ClientProductReaction)
-          : null,
+      selected: mine[0] ? (toClientType(mine[0].type) as ClientProductReaction) : null,
     });
   }
 
   const mine = userId
-    ? await prisma.reaction.findUnique({
+    ? await prisma.reaction.findMany({
         where: {
-          articleId_userId_scope: {
-            articleId: article.id,
-            userId,
-            scope: ReactionScope.ARTICLE,
-          },
+          articleId: article.id,
+          userId,
+          scope: ReactionScope.ARTICLE,
+          type: { in: ARTICLE_REACTION_TYPES },
         },
         select: { type: true },
       })
-    : null;
+    : [];
 
   return NextResponse.json({
     scope,
@@ -175,7 +172,7 @@ export async function GET(
       wow: article.wowCount,
       hmm: article.hmmCount,
     },
-    selected: mine ? toClientType(mine.type) : null,
+    selected: mine.map((row) => toClientType(row.type)),
   });
 }
 
@@ -208,30 +205,34 @@ export async function PATCH(
 
   if (scope === "product") {
     const result = await prisma.$transaction(async (tx) => {
-      const where = {
-        articleId_userId_scope: {
+      const existing = await tx.reaction.findMany({
+        where: {
           articleId: article.id,
-          userId: auth.userId!,
+          userId: auth.userId,
           scope: ReactionScope.PRODUCT,
+          type: { in: PRODUCT_REACTION_TYPES },
         },
-      } as const;
-
-      const existing = await tx.reaction.findUnique({
-        where,
-        select: { type: true },
+        select: { id: true, type: true },
       });
 
-      if (!existing || existing.type !== reactionType) {
-        await tx.reaction.upsert({
-          where,
-          create: {
+      const alreadySelected =
+        existing.length === 1 && existing[0].type === reactionType;
+
+      if (!alreadySelected) {
+        await tx.reaction.deleteMany({
+          where: {
             articleId: article.id,
             userId: auth.userId,
             scope: ReactionScope.PRODUCT,
-            type: reactionType,
-            productSlug: article.slug,
+            type: { in: PRODUCT_REACTION_TYPES },
           },
-          update: {
+        });
+
+        await tx.reaction.create({
+          data: {
+            articleId: article.id,
+            userId: auth.userId,
+            scope: ReactionScope.PRODUCT,
             type: reactionType,
             productSlug: article.slug,
           },
@@ -243,7 +244,7 @@ export async function PATCH(
         where: {
           articleId: article.id,
           scope: ReactionScope.PRODUCT,
-          type: { in: [ReactionType.LIKE, ReactionType.HMM] },
+          type: { in: PRODUCT_REACTION_TYPES },
         },
         _count: { _all: true },
       });
@@ -262,81 +263,75 @@ export async function PATCH(
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const where = {
-      articleId_userId_scope: {
+    const existing = await tx.reaction.findFirst({
+      where: {
         articleId: article.id,
-        userId: auth.userId!,
+        userId: auth.userId,
         scope: ReactionScope.ARTICLE,
+        type: reactionType,
       },
-    } as const;
+      select: { id: true },
+    });
 
-    const [existing, currentArticleCounts] = await Promise.all([
-      tx.reaction.findUnique({ where, select: { type: true } }),
-      tx.article.findUnique({
-        where: { id: article.id },
-        select: { likeCount: true, wowCount: true, hmmCount: true },
-      }),
-    ]);
-
-    if (!currentArticleCounts) {
-      throw new Error("Article disappeared during reaction update");
-    }
-
-    let nextCounts = {
-      like: currentArticleCounts.likeCount,
-      wow: currentArticleCounts.wowCount,
-      hmm: currentArticleCounts.hmmCount,
-    };
-
-    if (!existing || existing.type !== reactionType) {
-      await tx.reaction.upsert({
-        where,
-        create: {
+    if (!existing) {
+      await tx.reaction.create({
+        data: {
           articleId: article.id,
           userId: auth.userId,
           scope: ReactionScope.ARTICLE,
           type: reactionType,
           productSlug: article.slug,
         },
-        update: {
-          type: reactionType,
-          productSlug: article.slug,
-        },
       });
 
-      if (existing?.type === ReactionType.LIKE) {
-        nextCounts.like = Math.max(0, nextCounts.like - 1);
-      }
-      if (existing?.type === ReactionType.WOW) {
-        nextCounts.wow = Math.max(0, nextCounts.wow - 1);
-      }
-      if (existing?.type === ReactionType.HMM) {
-        nextCounts.hmm = Math.max(0, nextCounts.hmm - 1);
-      }
-
+      const incrementPatch: {
+        likeCount?: { increment: number };
+        wowCount?: { increment: number };
+        hmmCount?: { increment: number };
+      } = {};
       if (reactionType === ReactionType.LIKE) {
-        nextCounts.like += 1;
+        incrementPatch.likeCount = { increment: 1 };
       }
       if (reactionType === ReactionType.WOW) {
-        nextCounts.wow += 1;
+        incrementPatch.wowCount = { increment: 1 };
       }
       if (reactionType === ReactionType.HMM) {
-        nextCounts.hmm += 1;
+        incrementPatch.hmmCount = { increment: 1 };
       }
 
       await tx.article.update({
         where: { id: article.id },
-        data: {
-          likeCount: nextCounts.like,
-          wowCount: nextCounts.wow,
-          hmmCount: nextCounts.hmm,
-        },
+        data: incrementPatch,
       });
     }
 
+    const [articleCounts, mine] = await Promise.all([
+      tx.article.findUnique({
+        where: { id: article.id },
+        select: { likeCount: true, wowCount: true, hmmCount: true },
+      }),
+      tx.reaction.findMany({
+        where: {
+          articleId: article.id,
+          userId: auth.userId,
+          scope: ReactionScope.ARTICLE,
+          type: { in: ARTICLE_REACTION_TYPES },
+        },
+        select: { type: true },
+      }),
+    ]);
+
+    if (!articleCounts) {
+      throw new Error("Article disappeared during reaction update");
+    }
+
     return {
-      counts: nextCounts,
-      selected: toClientType(reactionType),
+      counts: {
+        like: articleCounts.likeCount,
+        wow: articleCounts.wowCount,
+        hmm: articleCounts.hmmCount,
+      },
+      selected: mine.map((row) => toClientType(row.type)),
     };
   });
 

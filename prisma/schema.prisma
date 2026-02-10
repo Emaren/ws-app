@@ -71,7 +71,8 @@ model Reaction {
   article     Article       @relation(fields: [articleId], references: [id])
   user        User?         @relation(fields: [userId], references: [id])
 
-  @@unique([articleId, userId, scope])
+  @@unique([articleId, userId, scope, type])
+  @@index([articleId, userId, scope])
   @@index([articleId, scope, type])
   @@index([userId, articleId, scope])
 }
