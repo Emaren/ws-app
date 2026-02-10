@@ -126,8 +126,8 @@ export default function DesktopActions({
             </button>
 
             <button
-              aria-label="Open account settings"
-              title="Account settings"
+              aria-label="Open profile"
+              title="Profile"
               onClick={() => router.push("/account")}
               className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
             >

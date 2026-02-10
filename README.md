@@ -66,6 +66,8 @@ Core required:
 - `PORT` (default local dev port expected by scripts)
 - `WS_API_BASE_URL` (backend auth base URL, e.g. `http://127.0.0.1:3012`)
 - `NEXT_PUBLIC_WALLET_CHAIN_ID` (wallet chain id for Keplr, default `wheatandstone`)
+- `NEXT_PUBLIC_WALLET_CHAIN_FALLBACK_IDS` (comma list of fallback Cosmos chain ids if primary chain is not installed)
+- `NEXT_PUBLIC_PROFILE_TOKEN_SYMBOLS` (comma list of token symbols shown in Profile balance cards)
 - `NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY` (VAPID public key for browser push subscribe UX)
 
 Checkout flow required (if premium page enabled):

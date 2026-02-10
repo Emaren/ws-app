@@ -69,6 +69,66 @@ function shortWallet(address: string | null): string | null {
   return `${address.slice(0, 8)}...${address.slice(-6)}`;
 }
 
+const DEFAULT_WALLET_CHAIN_ID = "wheatandstone";
+const DEFAULT_WALLET_CHAIN_FALLBACKS = [
+  "cosmoshub-4",
+  "osmosis-1",
+  "juno-1",
+  "stargaze-1",
+];
+
+function chainIdCandidates(): string[] {
+  const primary = (
+    process.env.NEXT_PUBLIC_WALLET_CHAIN_ID || DEFAULT_WALLET_CHAIN_ID
+  ).trim();
+
+  const configuredFallbacks = (process.env.NEXT_PUBLIC_WALLET_CHAIN_FALLBACK_IDS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set([primary, ...configuredFallbacks, ...DEFAULT_WALLET_CHAIN_FALLBACKS])];
+}
+
+function isLikelySafariBrowser() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|FxiOS/i.test(ua);
+}
+
+function isUserRejectedWalletAction(message: string) {
+  return /reject|denied|declined|cancel/i.test(message);
+}
+
+function isMissingChainInfo(message: string) {
+  return /no modular chain info|chain info|unknown chain|chain not found/i.test(message);
+}
+
+function normalizeWalletError(
+  error: unknown,
+  preferredChainId: string,
+  attemptedChainIds: string[],
+) {
+  const raw = error instanceof Error ? error.message : "Wallet not connected.";
+
+  if (isMissingChainInfo(raw)) {
+    const fallbackHint = attemptedChainIds
+      .filter((chainId) => chainId !== preferredChainId)
+      .slice(0, 3)
+      .join(", ");
+    if (fallbackHint) {
+      return `Wallet chain "${preferredChainId}" is not installed. Using fallback chains failed too (${fallbackHint}).`;
+    }
+    return `Wallet chain "${preferredChainId}" is not installed in your wallet.`;
+  }
+
+  if (/No supported wallet found/i.test(raw) && isLikelySafariBrowser()) {
+    return "No wallet extension detected. Safari usually needs a wallet in-app browser, or use Chrome/Brave + Keplr/Leap.";
+  }
+
+  return raw;
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -200,15 +260,56 @@ export default function Header() {
       setWalletBusy(true);
       setWalletError(null);
 
-      const chainId = process.env.NEXT_PUBLIC_WALLET_CHAIN_ID || "wheatandstone";
       const walletProvider = window.keplr ?? window.leap;
       if (!walletProvider) {
+        if (isLikelySafariBrowser()) {
+          throw new Error(
+            "No wallet extension detected. Safari usually needs a wallet in-app browser, or use Chrome/Brave + Keplr/Leap.",
+          );
+        }
         throw new Error("No supported wallet found (install Keplr or Leap).");
       }
 
-      await walletProvider.enable(chainId);
-      const key = await walletProvider.getKey(chainId);
-      const walletAddress = key.bech32Address;
+      const attemptedChainIds = chainIdCandidates();
+      const preferredChainId = attemptedChainIds[0] || DEFAULT_WALLET_CHAIN_ID;
+      let selectedChainId: string | null = null;
+      let key: KeplrKey | null = null;
+      let walletAddress: string | null = null;
+      let lastError: unknown = null;
+
+      for (const chainId of attemptedChainIds) {
+        try {
+          await walletProvider.enable(chainId);
+          const nextKey = await walletProvider.getKey(chainId);
+          if (!nextKey?.bech32Address) {
+            throw new Error(`Wallet key did not include a bech32 address for ${chainId}`);
+          }
+          selectedChainId = chainId;
+          key = nextKey;
+          walletAddress = nextKey.bech32Address;
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          lastError = error;
+          if (isUserRejectedWalletAction(message)) {
+            throw error;
+          }
+
+          // Unknown chain info can happen on custom chains; continue to next candidate.
+          if (isMissingChainInfo(message)) {
+            continue;
+          }
+        }
+      }
+
+      if (!selectedChainId || !key || !walletAddress) {
+        throw (
+          lastError ??
+          new Error(
+            `Could not connect wallet on "${preferredChainId}". Install that chain or set NEXT_PUBLIC_WALLET_CHAIN_ID to an installed chain id.`,
+          )
+        );
+      }
 
       const challengeResponse = await fetch("/api/wallet/challenge", {
         method: "POST",
@@ -245,7 +346,7 @@ export default function Header() {
       }
 
       const signed = await walletProvider.signArbitrary(
-        chainId,
+        selectedChainId,
         walletAddress,
         challengeMessage,
       );
@@ -275,8 +376,8 @@ export default function Header() {
       setLinkedWalletAddress(normalizedAddress);
       setWalletError(null);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Wallet not connected.";
+      const chainIds = chainIdCandidates();
+      const message = normalizeWalletError(error, chainIds[0] || DEFAULT_WALLET_CHAIN_ID, chainIds);
       setWalletError(message);
       console.warn(message);
     } finally {
