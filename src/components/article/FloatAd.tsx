@@ -47,6 +47,7 @@ const DEFAULT_DELIVERY_FORM_STATE: DeliveryLeadFormState = {
   requestedQty: "1",
   notes: "",
 };
+const DEFAULT_DELIVERY_EMAIL = "tony@wheatandstone.ca";
 
 function normalizeQty(raw: string): number | null {
   const parsed = Number.parseInt(raw, 10);
@@ -54,6 +55,19 @@ function normalizeQty(raw: string): number | null {
     return null;
   }
   return parsed;
+}
+
+function buildMailtoHref({
+  to,
+  subject,
+  body,
+}: {
+  to: string;
+  subject: string;
+  body: string;
+}): string {
+  const params = new URLSearchParams({ subject, body });
+  return `mailto:${to}?${params.toString()}`;
 }
 
 type FloatAdProps = {
@@ -169,6 +183,37 @@ export default function FloatAd({
     deliveryLeadContext?.inventoryItemName?.trim() ||
     deliveryLeadContext?.offerTitle?.trim() ||
     label;
+  const deliveryEmailHref = React.useMemo(() => {
+    const subject = `Delivery request: ${contextItemName}`;
+    const bodyLines = [
+      "Hi Wheat & Stone team,",
+      "",
+      "I'd like to request delivery for the item below:",
+      `Item: ${contextItemName}`,
+      contextBusinessName ? `Business: ${contextBusinessName}` : null,
+      deliveryLeadContext?.articleSlug
+        ? `Article: https://wheatandstone.ca/articles/${deliveryLeadContext.articleSlug}`
+        : null,
+      "",
+      "My details:",
+      "Name:",
+      "Phone:",
+      "Address:",
+      "Quantity:",
+      "",
+      "Thanks!",
+    ].filter(Boolean);
+
+    return buildMailtoHref({
+      to: DEFAULT_DELIVERY_EMAIL,
+      subject,
+      body: bodyLines.join("\n"),
+    });
+  }, [
+    contextBusinessName,
+    contextItemName,
+    deliveryLeadContext?.articleSlug,
+  ]);
 
   React.useEffect(() => {
     if (!isDialogOpen) return undefined;
@@ -342,6 +387,7 @@ export default function FloatAd({
         aria-expanded={isDialogOpen}
         aria-label={`${label} - open delivery form`}
         data-floatkey={key}
+        data-ad-slot={isLeft ? "slot-2-left" : "slot-1-right"}
         data-cap={captionInside ? "in" : "below"}
         className={[
           "floatad block w-full p-0 text-left relative cursor-pointer ring-0 transition motion-reduce:transition-none",
@@ -530,6 +576,12 @@ export default function FloatAd({
                 )}
 
                 <footer className="flex items-center justify-end gap-2 pt-2">
+                  <a
+                    href={deliveryEmailHref}
+                    className="mr-auto rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                  >
+                    Email instead
+                  </a>
                   <button
                     type="button"
                     onClick={closeDeliveryDialog}

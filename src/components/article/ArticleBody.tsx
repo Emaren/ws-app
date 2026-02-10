@@ -85,6 +85,7 @@ export default function ArticleBody({ article }: { article: Article }) {
       parts.firstBlocksAfterH2 ||
       parts.afterBlocksHead ||
       parts.afterBlocksTail);
+  const shouldRenderMonetizationSlots = hasAnyBody;
 
   return (
     <>
@@ -120,68 +121,67 @@ export default function ArticleBody({ article }: { article: Article }) {
           {/* Ensure floats stay below the rule */}
           <div aria-hidden style={{ clear: "both" }} />
 
-          {/* 4) RIGHT ad begins here */}
-          {(parts?.afterBlocksHead || parts?.afterBlocksTail) && (
-            <>
-              <FloatAd
-                frameless
-                label="Homesteader Health Delivery"
-                side="right"
-                imageSrc="/hh.tight.h156.v3.png"
-                w={161} mdW={161} lgW={161}
-                h={156} mdH={156} lgH={156}
-                pad={0}
-                imgFit="contain"
-                nudgeY={-6} lgNudgeY={-10}
-                scale={0.88} mdScale={0.88} lgScale={0.94}
-                hoverTint={true}
-                caption="Click for Delivery"
-                deliveryLeadContext={{
-                  source: "LOCAL_AD",
-                  articleSlug: article.slug,
-                  businessSlug: "homesteader-health",
-                  businessName: "Homesteader Health",
-                  inventoryItemName: "Homesteader Health Delivery",
-                }}
-              />
-              {parts?.afterBlocksHead && (
-                <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
-              )}
-            </>
+          {/* 4) RIGHT ad slot (always present when article body is available) */}
+          {shouldRenderMonetizationSlots && (
+            <FloatAd
+              frameless
+              label="Homesteader Health Delivery"
+              side="right"
+              imageSrc="/hh.tight.h156.v3.png"
+              w={161} mdW={161} lgW={161}
+              h={156} mdH={156} lgH={156}
+              pad={0}
+              imgFit="contain"
+              nudgeY={-6} lgNudgeY={-10}
+              scale={0.88} mdScale={0.88} lgScale={0.94}
+              hoverTint={true}
+              caption="Click for Delivery"
+              deliveryLeadContext={{
+                source: "LOCAL_AD",
+                articleSlug: article.slug,
+                businessSlug: "homesteader-health",
+                businessName: "Homesteader Health",
+                inventoryItemName: "Homesteader Health Delivery",
+              }}
+            />
           )}
 
-          {/* 5) LEFT ad at tunable position, then the tail */}
-          {parts?.afterBlocksTail && (
-            <>
-              <FloatAd
-                frameless
-                side="left"
-                label="Beaverlodge Butcher Shop Delivery"
-                imageSrc="/bbs.adcard.center.v4.png"
-                imageAlt="Beaverlodge Butcher Shop delivery"
-                w={200} mdW={200} lgW={220}
-                h={140} mdH={140} lgH={150}
-                pad={0}
-                imgFit="contain"
-                shape="image"
-                shapeMargin={14}
-                shapeThreshold={0.45}
-                mt={40}
-                nudgeY={-6} lgNudgeY={-8}
-                scale={1} lgScale={1}
-                hoverTint={true}
-                caption="Click for Delivery"
-                deliveryLeadContext={{
-                  source: "LOCAL_AD",
-                  articleSlug: article.slug,
-                  businessSlug: "beaverlodge-butcher-shop",
-                  businessName: "Beaverlodge Butcher Shop",
-                  inventoryItemName: "Beaverlodge Butcher Shop Delivery",
-                }}
-              />
+          {parts?.afterBlocksHead && (
+            <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
+          )}
 
-              <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
-            </>
+          {/* 5) LEFT ad slot (always present when article body is available) */}
+          {shouldRenderMonetizationSlots && (
+            <FloatAd
+              frameless
+              side="left"
+              label="Beaverlodge Butcher Shop Delivery"
+              imageSrc="/bbs.adcard.center.v4.png"
+              imageAlt="Beaverlodge Butcher Shop delivery"
+              w={200} mdW={200} lgW={220}
+              h={140} mdH={140} lgH={150}
+              pad={0}
+              imgFit="contain"
+              shape="image"
+              shapeMargin={14}
+              shapeThreshold={0.45}
+              mt={parts?.afterBlocksHead ? 40 : 16}
+              nudgeY={-6} lgNudgeY={-8}
+              scale={1} lgScale={1}
+              hoverTint={true}
+              caption="Click for Delivery"
+              deliveryLeadContext={{
+                source: "LOCAL_AD",
+                articleSlug: article.slug,
+                businessSlug: "beaverlodge-butcher-shop",
+                businessName: "Beaverlodge Butcher Shop",
+                inventoryItemName: "Beaverlodge Butcher Shop Delivery",
+              }}
+            />
+          )}
+
+          {parts?.afterBlocksTail && (
+            <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
           )}
 
           <div style={{ clear: "both" }} />
