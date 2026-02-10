@@ -67,6 +67,28 @@ body{
   min-height:100svh;
 }
 
+/* Visible affordance: interactive elements always show pointer */
+:where(
+  a[href],
+  button,
+  summary,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="image"],
+  label,
+  [aria-controls],
+  [data-clickable="true"]
+):not([aria-disabled="true"], :disabled){
+  cursor:pointer;
+}
+
+:where(button, input, select, textarea):disabled,
+:where([aria-disabled="true"]){
+  cursor:not-allowed;
+}
+
 /* ---------------- Containers & rhythm ---------------- */
 .ws-container{
   margin-inline:auto;

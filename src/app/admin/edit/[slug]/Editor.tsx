@@ -29,6 +29,31 @@ function normalizeSlug(input: string) {
     .replace(/^-|-$/g, "");
 }
 
+function stripHtmlToText(html: string) {
+  return html
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function excerptFromContent(content: string, max = 220) {
+  const plain = stripHtmlToText(content);
+  if (!plain) return "";
+  if (plain.length <= max) return plain;
+  return `${plain.slice(0, max).trimEnd()}…`;
+}
+
+function articleUrlFromSlug(slug: string) {
+  const origin = (process.env.NEXT_PUBLIC_SITE_ORIGIN || "https://wheatandstone.ca").replace(
+    /\/+$/,
+    ""
+  );
+  return `${origin}/articles/${encodeURIComponent(slug)}`;
+}
+
 // ----- component
 
 export default function Editor({ initialArticle }: { initialArticle: EditableArticle }) {
@@ -37,13 +62,35 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
 
   const [title, setTitle] = useState(initialArticle.title ?? "");
   const [slug, setSlug] = useState(initialArticle.slug);
-  const [excerpt, setExcerpt] = useState(initialArticle.excerpt ?? "");
+  const [excerpt, setExcerpt] = useState(
+    initialArticle.excerpt?.trim() || excerptFromContent(initialArticle.content)
+  );
   const [coverUrl, setCoverUrl] = useState(initialArticle.coverUrl ?? "");
   const [content, setContent] = useState(initialArticle.content ?? "");
   const [status, setStatus] = useState<ArticleStatus>(initialArticle.status);
 
   // Prevent rapid double-submits
   const submittingRef = useRef(false);
+
+  const normalizedSlug = normalizeSlug(slug) || initialArticle.slug;
+  const publishedUrl = articleUrlFromSlug(normalizedSlug);
+
+  useEffect(() => {
+    setTitle(initialArticle.title ?? "");
+    setSlug(initialArticle.slug);
+    setExcerpt(initialArticle.excerpt?.trim() || excerptFromContent(initialArticle.content));
+    setCoverUrl(initialArticle.coverUrl ?? "");
+    setContent(initialArticle.content ?? "");
+    setStatus(initialArticle.status);
+  }, [
+    initialArticle.id,
+    initialArticle.slug,
+    initialArticle.title,
+    initialArticle.excerpt,
+    initialArticle.coverUrl,
+    initialArticle.content,
+    initialArticle.status,
+  ]);
 
   // Cmd/Ctrl+S to save
   useEffect(() => {
@@ -121,31 +168,29 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
 
   return (
     <form onSubmit={save} className="admin-card space-y-5 p-4 md:p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Title</span>
-          <input
-            className="admin-surface rounded-xl px-3 py-2"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Post title"
-            required
-          />
-        </label>
+      <label className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Title</span>
+        <input
+          className="admin-surface rounded-xl px-3 py-2"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Post title"
+          required
+        />
+      </label>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Slug</span>
-          <input
-            className="admin-surface rounded-xl px-3 py-2"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="my-article-slug"
-            pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-            title="lowercase letters, numbers, and hyphens only"
-            required
-          />
-        </label>
-      </div>
+      <label className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Slug</span>
+        <input
+          className="admin-surface rounded-xl px-3 py-2"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder="my-article-slug"
+          pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          title="lowercase letters, numbers, and hyphens only"
+          required
+        />
+      </label>
 
       <label className="flex flex-col gap-2">
         <span className="text-sm font-medium">Excerpt</span>
@@ -158,13 +203,25 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Cover URL</span>
+        <span className="text-sm font-medium">Cover Image URL</span>
         <input
           className="admin-surface rounded-xl px-3 py-2"
           value={coverUrl}
           onChange={(e) => setCoverUrl(e.target.value)}
           placeholder="https://…"
           inputMode="url"
+        />
+        <span className="text-xs opacity-70">
+          Optional image shown in listings and article header.
+        </span>
+      </label>
+
+      <label className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Published URL</span>
+        <input
+          className="admin-surface rounded-xl px-3 py-2 opacity-85"
+          value={publishedUrl}
+          readOnly
         />
       </label>
 
