@@ -128,12 +128,14 @@ export default function ArticleBody({ article }: { article: Article }) {
               label="Homesteader Health Delivery"
               side="right"
               imageSrc="/hh.tight.h156.v3.png"
-              w={161} mdW={161} lgW={161}
-              h={156} mdH={156} lgH={156}
+              w={289} mdW={300} lgW={320}
+              h={170} mdH={180} lgH={190}
               pad={0}
               imgFit="contain"
-              nudgeY={-6} lgNudgeY={-10}
-              scale={0.88} mdScale={0.88} lgScale={0.94}
+              shape="rounded"
+              shapeMargin={14}
+              nudgeY={-4} lgNudgeY={-8}
+              scale={1} mdScale={1} lgScale={1}
               hoverTint={true}
               caption="Click for Delivery"
               deliveryLeadContext={{
@@ -158,15 +160,15 @@ export default function ArticleBody({ article }: { article: Article }) {
               label="Beaverlodge Butcher Shop Delivery"
               imageSrc="/bbs.adcard.center.v4.png"
               imageAlt="Beaverlodge Butcher Shop delivery"
-              w={200} mdW={200} lgW={220}
-              h={140} mdH={140} lgH={150}
+              w={320} mdW={328} lgW={340}
+              h={158} mdH={170} lgH={180}
               pad={0}
               imgFit="contain"
               shape="image"
-              shapeMargin={14}
+              shapeMargin={16}
               shapeThreshold={0.45}
-              mt={parts?.afterBlocksHead ? 40 : 16}
-              nudgeY={-6} lgNudgeY={-8}
+              mt={parts?.afterBlocksHead ? 24 : 12}
+              nudgeY={-4} lgNudgeY={-6}
               scale={1} lgScale={1}
               hoverTint={true}
               caption="Click for Delivery"
