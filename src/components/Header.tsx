@@ -15,16 +15,19 @@ declare global {
     };
   }
 
+  interface CosmosWalletProvider {
+    enable: (chainId: string) => Promise<void>;
+    getKey: (chainId: string) => Promise<KeplrKey>;
+    signArbitrary: (
+      chainId: string,
+      signer: string,
+      data: string,
+    ) => Promise<KeplrSignResult>;
+  }
+
   interface Window {
-    keplr?: {
-      enable: (chainId: string) => Promise<void>;
-      getKey: (chainId: string) => Promise<KeplrKey>;
-      signArbitrary: (
-        chainId: string,
-        signer: string,
-        data: string,
-      ) => Promise<KeplrSignResult>;
-    };
+    keplr?: CosmosWalletProvider;
+    leap?: CosmosWalletProvider;
   }
 }
 
@@ -74,13 +77,11 @@ export default function Header() {
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("dark");
 
   const headerRef = useRef<HTMLElement>(null);
   const menuBtnRef = useRef<HTMLDivElement>(null);
   const menuPanelRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
 
   // Expose header height
   useEffect(() => {
@@ -101,7 +102,6 @@ export default function Header() {
   // Close popovers on route change / outside click / Esc
   useEffect(() => {
     setMenuOpen(false);
-    setProfileOpen(false);
   }, [router]);
 
   useEffect(() => {
@@ -110,7 +110,6 @@ export default function Header() {
       if (menuPanelRef.current && !menuPanelRef.current.contains(t) && menuBtnRef.current && !menuBtnRef.current.contains(t)) {
         setMenuOpen(false);
       }
-      if (profileRef.current && !profileRef.current.contains(t)) setProfileOpen(false);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
@@ -120,7 +119,6 @@ export default function Header() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setMenuOpen(false);
-        setProfileOpen(false);
       }
     };
     document.addEventListener("keydown", onKey);
@@ -203,13 +201,13 @@ export default function Header() {
       setWalletError(null);
 
       const chainId = process.env.NEXT_PUBLIC_WALLET_CHAIN_ID || "wheatandstone";
-      const keplr = window.keplr;
-      if (!keplr) {
-        throw new Error("Keplr wallet not found");
+      const walletProvider = window.keplr ?? window.leap;
+      if (!walletProvider) {
+        throw new Error("No supported wallet found (install Keplr or Leap).");
       }
 
-      await keplr.enable(chainId);
-      const key = await keplr.getKey(chainId);
+      await walletProvider.enable(chainId);
+      const key = await walletProvider.getKey(chainId);
       const walletAddress = key.bech32Address;
 
       const challengeResponse = await fetch("/api/wallet/challenge", {
@@ -246,7 +244,11 @@ export default function Header() {
         throw new Error("Wallet challenge payload was incomplete");
       }
 
-      const signed = await keplr.signArbitrary(chainId, walletAddress, challengeMessage);
+      const signed = await walletProvider.signArbitrary(
+        chainId,
+        walletAddress,
+        challengeMessage,
+      );
       const publicKey = signed.pub_key?.value || bytesToBase64(key.pubKey);
 
       const linkResponse = await fetch("/api/wallet/link", {
@@ -335,15 +337,11 @@ export default function Header() {
           session={session}
           theme={theme}
           setTheme={updateTheme}
-          isAdmin={!!isAdmin}
           walletConnected={walletConnected}
           walletBusy={walletBusy}
           walletAddressLabel={walletShortAddress}
+          walletError={walletError}
           connectWallet={connectWallet}
-          toggleTheme={toggleTheme}
-          profileOpen={profileOpen}
-          setProfileOpen={setProfileOpen}
-          profileRef={profileRef}
         />
 
         {/* Mobile hamburger — flush right in its own rail */}

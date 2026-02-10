@@ -3,7 +3,8 @@
 
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { roleBadgePrefix } from "@/lib/rbac";
+import type { SVGProps } from "react";
+import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
 import ThemeCircles from "./ThemeCircles";
 import type { ThemeMode } from "@/lib/theme";
 
@@ -11,7 +12,7 @@ type SessionLike = {
   user?: { email?: string | null; role?: string | null } | null;
 } | null;
 
-function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
+function ProfileIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path
@@ -22,52 +23,55 @@ function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function roleLandingPath(roleInput: string | null | undefined): string {
+  const role = normalizeAppRole(roleInput);
+  if (role === "CONTRIBUTOR") {
+    return "/admin/new";
+  }
+
+  if (role === "OWNER" || role === "ADMIN" || role === "EDITOR") {
+    return "/admin";
+  }
+
+  return "/account";
+}
+
 export default function DesktopActions({
   gridColumn,
   session,
   theme,
   setTheme,
-  isAdmin,
   walletConnected,
   walletBusy,
   walletAddressLabel,
+  walletError,
   connectWallet,
-  toggleTheme,
-  profileOpen,
-  setProfileOpen,
-  profileRef,
 }: {
   gridColumn: number;
   session: SessionLike;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
-  isAdmin: boolean;
   walletConnected: boolean;
   walletBusy: boolean;
   walletAddressLabel: string | null;
+  walletError: string | null;
   connectWallet: () => Promise<void> | void;
-  toggleTheme: () => void;
-  profileOpen: boolean;
-  setProfileOpen: (v: boolean) => void;
-  // accept MutableRefObject or RefObject (null-safe)
-  profileRef:
-    | React.MutableRefObject<HTMLDivElement | null>
-    | React.RefObject<HTMLDivElement | null>;
 }) {
   const router = useRouter();
+  const roleLanding = roleLandingPath(session?.user?.role);
   const identityLabel = session?.user?.email
     ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
     : roleBadgePrefix(session?.user?.role);
 
   return (
     <div
-      className="hidden md:flex items-center gap-2.5 lg:gap-3 whitespace-nowrap min-w-0 justify-end"
+      className="hidden md:flex whitespace-nowrap min-w-0 justify-end"
       style={{
         gridColumn,
       }}
     >
       {!session ? (
-        // Guest: Register/Login on the first row, Premium under them
+        // Guest: Register/Login first row, Premium second row, themes third row.
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-3">
             <button
@@ -96,27 +100,13 @@ export default function DesktopActions({
           <ThemeCircles value={theme} onChange={setTheme} />
         </div>
       ) : (
-        <>
-          {isAdmin && (
-            <button
-              onClick={() => router.push("/admin")}
-              className="inline-flex h-10 items-center shrink-0 rounded-xl border border-black/10 bg-black/10 px-3 text-sm font-medium hover:bg-black/15 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer"
-              aria-label="Open Admin Dashboard"
-              title="Admin Dashboard"
-            >
-              Admin
-            </button>
-          )}
-
-          <div className="flex min-w-[200px] max-w-[34ch] flex-col items-end">
+        <div className="flex min-w-[280px] max-w-[44ch] flex-col items-end gap-1.5">
+          <div className="w-full flex items-center justify-end">
             <button
               onClick={connectWallet}
               disabled={walletBusy}
-              className={`inline-flex h-10 items-center shrink-0 rounded-xl border px-3 text-sm font-medium transition cursor-pointer ${
-                walletConnected
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
-                  : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
-              }`}
+              className="inline-flex h-10 items-center shrink-0 rounded-xl border border-black/10 bg-black/10 px-3 text-sm font-medium hover:bg-black/15 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer"
+              aria-label={walletConnected ? "Wallet linked" : "Connect wallet"}
             >
               {walletBusy
                 ? "Linking..."
@@ -124,67 +114,43 @@ export default function DesktopActions({
                   ? "Wallet Linked"
                   : "Connect Wallet"}
             </button>
-
-            {/* On constrained widths, identity lives below Connect Wallet. */}
-            <span className="mt-1 hidden w-full truncate text-right text-[11px] opacity-75 lg:block xl:hidden">
-              {identityLabel}
-            </span>
-            {walletAddressLabel ? (
-              <span className="mt-1 hidden w-full truncate text-right text-[11px] text-emerald-300/90 lg:block xl:hidden">
-                {walletAddressLabel}
-              </span>
-            ) : null}
           </div>
 
-          <span className="hidden max-w-[38ch] truncate text-sm xl:block">
-            {identityLabel}
-          </span>
-
-          <ThemeCircles value={theme} onChange={setTheme} />
-
-          {/* Profile popover */}
-          <div className="relative shrink-0" ref={profileRef as any}>
+          <div className="w-full flex items-center justify-end gap-2">
             <button
-              aria-haspopup="menu"
-              aria-expanded={profileOpen}
-              aria-label="Profile menu"
-              onClick={() => setProfileOpen(!profileOpen)}
+              onClick={() => router.push(roleLanding)}
+              className="max-w-[34ch] truncate text-sm hover:underline underline-offset-4 cursor-pointer"
+              title={identityLabel}
+            >
+              {identityLabel}
+            </button>
+
+            <button
+              aria-label="Open account settings"
+              title="Account settings"
+              onClick={() => router.push("/account")}
               className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
             >
               <ProfileIcon className="text-[var(--foreground)]" />
             </button>
-
-            {profileOpen && (
-              <div
-                className="absolute right-0 mt-2 w-44 rounded-xl border bg-white text-black shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:text-white z-[60] flex flex-col p-1"
-                role="menu"
-                aria-label="Profile"
-              >
-                <button
-                  role="menuitem"
-                  className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                  onClick={() => {
-                    toggleTheme();
-                    setProfileOpen(false);
-                  }}
-                >
-                  Theme
-                </button>
-                <button
-                  role="menuitem"
-                  className="block w-full px-3 py-2 text-left rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                  onClick={async () => {
-                    setProfileOpen(false);
-                    const { signOut } = await import("next-auth/react");
-                    signOut();
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-            )}
           </div>
-        </>
+
+          <div className="w-full flex items-center justify-end">
+            <ThemeCircles value={theme} onChange={setTheme} />
+          </div>
+
+          {walletAddressLabel ? (
+            <span className="w-full truncate text-right text-[11px] text-emerald-300/90">
+              {walletAddressLabel}
+            </span>
+          ) : null}
+
+          {walletError ? (
+            <span className="w-full truncate text-right text-[11px] text-amber-300/90">
+              {walletError}
+            </span>
+          ) : null}
+        </div>
       )}
     </div>
   );
