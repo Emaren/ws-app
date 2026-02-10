@@ -8,7 +8,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 
 - Public article and home pages
 - Admin/editor UI
-- Authentication (NextAuth credentials)
+- Authentication UI/session via NextAuth (backed by `ws-api` auth endpoints)
 - Article and registration API routes
 - Stripe checkout session creation
 - Direct Prisma database access
@@ -57,6 +57,7 @@ Core required:
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
 - `PORT` (default local dev port expected by scripts)
+- `WS_API_BASE_URL` (backend auth base URL, e.g. `http://127.0.0.1:3012`)
 
 Checkout flow required (if premium page enabled):
 
@@ -89,6 +90,7 @@ Optional:
 - `docs/baseline-audit.md` current architecture, env matrix, risks, missing guardrails
 - `docs/repo-analysis.md` deeper walkthrough of code layout and route behavior
 - `docs/repo-health.md` script reliability and repo hygiene baseline
+- `docs/auth-integration.md` ws-api-backed auth login/logout/me/session flow
 
 ## Known gaps (summary)
 

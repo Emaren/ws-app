@@ -1,8 +1,24 @@
-// src/lib/authOptions.ts
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import {
+  WsApiHttpError,
+  wsApiGetSession,
+  wsApiLogin,
+  wsApiLogout,
+} from "@/lib/wsApiAuth";
+
+const SESSION_SYNC_INTERVAL_MS = 60_000;
+const SESSION_RETRY_INTERVAL_MS = 15_000;
+
+function clearJwtAuthState(token: Record<string, unknown>): void {
+  delete token.id;
+  delete token.role;
+  delete token.email;
+  delete token.name;
+  delete token.wsApiAccessToken;
+  delete token.wsApiSessionId;
+  delete token.wsApiSessionExpiresAt;
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -17,23 +33,29 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          const login = await wsApiLogin(credentials.email, credentials.password);
+          return {
+            id: login.user.id,
+            email: login.user.email,
+            name: login.user.name,
+            role: login.user.role,
+            wsApiAccessToken: login.accessToken,
+            wsApiSessionId: login.session.id,
+            wsApiSessionExpiresAt: login.session.expiresAt,
+          };
+        } catch (error) {
+          if (error instanceof WsApiHttpError && error.statusCode === 401) {
+            return null;
+          }
 
-        if (!user) return null;
-
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
+          console.error("auth authorize failed", error);
+          return null;
+        }
       },
     }),
   ],
@@ -43,30 +65,101 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // Runs during JWT creation/update
     async jwt({ token, user }) {
-      const email = user?.email ?? token.email;
-      if (email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email },
-          select: { id: true, role: true },
-        });
+      const now = Date.now();
 
-        if (dbUser) {
-          token.id = dbUser.id;
-          token.role = dbUser.role;
-        }
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.email = user.email;
+        token.name = user.name;
+        token.wsApiAccessToken = user.wsApiAccessToken;
+        token.wsApiSessionId = user.wsApiSessionId;
+        token.wsApiSessionExpiresAt = user.wsApiSessionExpiresAt;
+        token.wsApiNextCheckAt = now + SESSION_SYNC_INTERVAL_MS;
+        delete token.wsApiError;
+        return token;
       }
+
+      const accessToken =
+        typeof token.wsApiAccessToken === "string" ? token.wsApiAccessToken : "";
+      if (!accessToken) {
+        return token;
+      }
+
+      const nextCheckAt =
+        typeof token.wsApiNextCheckAt === "number" ? token.wsApiNextCheckAt : 0;
+      if (now < nextCheckAt) {
+        return token;
+      }
+
+      try {
+        const remoteSession = await wsApiGetSession(accessToken);
+        if (!remoteSession) {
+          clearJwtAuthState(token);
+          token.wsApiError = "session_expired";
+          token.wsApiNextCheckAt = now + SESSION_RETRY_INTERVAL_MS;
+          return token;
+        }
+
+        token.id = remoteSession.user.id;
+        token.role = remoteSession.user.role;
+        token.email = remoteSession.user.email;
+        token.name = remoteSession.user.name;
+        token.wsApiSessionId = remoteSession.session.id;
+        token.wsApiSessionExpiresAt = remoteSession.session.expiresAt;
+        token.wsApiNextCheckAt = now + SESSION_SYNC_INTERVAL_MS;
+        delete token.wsApiError;
+      } catch (error) {
+        console.error("auth session sync failed", error);
+        token.wsApiError = "sync_failed";
+        token.wsApiNextCheckAt = now + SESSION_RETRY_INTERVAL_MS;
+      }
+
       return token;
     },
 
-    // Runs when building the session object
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = typeof token.id === "string" ? token.id : "";
+        session.user.role = typeof token.role === "string" ? token.role : "";
+        session.user.email = typeof token.email === "string" ? token.email : null;
+        session.user.name = typeof token.name === "string" ? token.name : null;
+        session.wsApi = {
+          sessionId:
+            typeof token.wsApiSessionId === "string" ? token.wsApiSessionId : null,
+          expiresAt:
+            typeof token.wsApiSessionExpiresAt === "string"
+              ? token.wsApiSessionExpiresAt
+              : null,
+          syncedAt: new Date().toISOString(),
+        };
       }
+
+      if (typeof token.wsApiError === "string") {
+        session.error = token.wsApiError;
+      }
+
       return session;
+    },
+  },
+
+  events: {
+    async signOut({ token }) {
+      const accessToken =
+        token && typeof token.wsApiAccessToken === "string"
+          ? token.wsApiAccessToken
+          : "";
+
+      if (!accessToken) {
+        return;
+      }
+
+      try {
+        await wsApiLogout(accessToken);
+      } catch (error) {
+        console.warn("auth signOut sync failed", error);
+      }
     },
   },
 };
