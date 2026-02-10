@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
+import { isEditorialRole } from "@/lib/rbac";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -105,7 +106,7 @@ export default function Header() {
     localStorage.setItem("theme", isDark ? "light" : "dark");
   };
 
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isAdmin = isEditorialRole(session?.user?.role);
 
   // Right rail for hamburger (44px target + breathing room)
   const rightRailPx = 56;

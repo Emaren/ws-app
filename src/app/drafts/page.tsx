@@ -2,11 +2,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { isEditorialRole, normalizeAppRole } from "@/lib/rbac";
 
 export default async function DraftsPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
+  const role = normalizeAppRole(session?.user?.role);
+  if (!session || !isEditorialRole(role)) {
     return <div className="text-center mt-20 text-xl">Access Denied</div>;
   }
 

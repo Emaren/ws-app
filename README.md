@@ -95,5 +95,5 @@ Optional:
 ## Known gaps (summary)
 
 - Missing repo-level `lint`, `test`, and `typecheck` scripts
-- Article create route currently unauthenticated
 - Ownership and rate-limit guardrails are incomplete
+- Prisma role enum/migrations are not yet aligned to the full `OWNER/ADMIN/EDITOR/CONTRIBUTOR/USER` model

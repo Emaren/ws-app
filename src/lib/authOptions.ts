@@ -1,5 +1,6 @@
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { normalizeAppRole } from "@/lib/rbac";
 import {
   WsApiHttpError,
   wsApiGetSession,
@@ -39,11 +40,12 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const login = await wsApiLogin(credentials.email, credentials.password);
+          const normalizedRole = normalizeAppRole(login.user.role) ?? "USER";
           return {
             id: login.user.id,
             email: login.user.email,
             name: login.user.name,
-            role: login.user.role,
+            role: normalizedRole,
             wsApiAccessToken: login.accessToken,
             wsApiSessionId: login.session.id,
             wsApiSessionExpiresAt: login.session.expiresAt,
@@ -69,8 +71,9 @@ export const authOptions: NextAuthOptions = {
       const now = Date.now();
 
       if (user) {
+        const normalizedRole = normalizeAppRole(user.role) ?? "USER";
         token.id = user.id;
-        token.role = user.role;
+        token.role = normalizedRole;
         token.email = user.email;
         token.name = user.name;
         token.wsApiAccessToken = user.wsApiAccessToken;
@@ -103,7 +106,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         token.id = remoteSession.user.id;
-        token.role = remoteSession.user.role;
+        token.role = normalizeAppRole(remoteSession.user.role) ?? "USER";
         token.email = remoteSession.user.email;
         token.name = remoteSession.user.name;
         token.wsApiSessionId = remoteSession.session.id;

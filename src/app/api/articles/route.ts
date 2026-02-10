@@ -1,6 +1,8 @@
 // src/app/api/articles/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { getApiAuthContext } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -46,7 +48,14 @@ export async function GET() {
 
 // POST /api/articles
 // Body: { title: string, content: string, excerpt?: string, coverUrl?: string, status?: "DRAFT"|"PUBLISHED" }
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const auth = await getApiAuthContext(req);
+  const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
+
+  if (!auth.token || !hasEditorRole) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
   const body = (await req.json().catch(() => null)) as
     | {
         title?: string;
@@ -76,6 +85,7 @@ export async function POST(req: Request) {
       coverUrl: body.coverUrl ?? null,
       status,
       slug,
+      authorId: null,
       publishedAt: status === "PUBLISHED" ? new Date() : null,
     },
     select: {

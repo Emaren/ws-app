@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { roleBadgePrefix } from "@/lib/rbac";
 
 type SessionLike = {
   user?: { email?: string | null; role?: string | null } | null;
@@ -96,11 +97,7 @@ export default function DesktopActions({
           )}
 
           <span className="text-sm max-w-[38ch] truncate">
-            {session?.user?.role === "ADMIN" && "👑 Admin "}
-            {session?.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
-            {session?.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-            {session?.user?.role === undefined && "Visitor "}
-            – {session?.user?.email}
+            {roleBadgePrefix(session?.user?.role)} – {session?.user?.email}
           </span>
 
           <button

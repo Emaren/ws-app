@@ -2,6 +2,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { roleBadgePrefix } from "@/lib/rbac";
 
 type SessionLike = {
   user?: { email?: string | null; role?: string | null } | null;
@@ -67,11 +68,7 @@ export default function MobileMenu({
           )}
 
           <div className="text-sm opacity-80">
-            {session?.user?.role === "ADMIN" && "👑 Admin "}
-            {session?.user?.role === "CONTRIBUTOR" && "✍️ Contributor "}
-            {session?.user?.role === "STONEHOLDER" && "🪨 Stoneholder "}
-            {session?.user?.role === undefined && "Visitor "}
-            – {session?.user?.email}
+            {roleBadgePrefix(session?.user?.role)} – {session?.user?.email}
           </div>
 
           <button

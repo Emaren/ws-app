@@ -26,3 +26,5 @@ Updated: 2026-02-10
 
 - Backend auth state (session validity + role) is synchronized from `ws-api`.
 - NextAuth remains the web session wrapper for the frontend.
+- Frontend/admin route and article API RBAC use the shared role set:
+  `OWNER`, `ADMIN`, `EDITOR`, `CONTRIBUTOR`, `USER` (legacy `STONEHOLDER` maps to `USER`).

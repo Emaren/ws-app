@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { isEditorialRole, normalizeAppRole } from "@/lib/rbac";
 import { notFound, redirect } from "next/navigation";
 import Editor from "./Editor";
 
@@ -15,9 +16,8 @@ export default async function EditArticlePage(
 
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  // @ts-ignore - role is injected via NextAuth callbacks
-  const role = session.user.role as "ADMIN" | "CONTRIBUTOR" | "USER" | undefined;
-  if (!role || (role !== "ADMIN" && role !== "CONTRIBUTOR")) redirect("/");
+  const role = normalizeAppRole(session.user.role);
+  if (!isEditorialRole(role)) redirect("/");
 
   const article = await prisma.article.findUnique({
     where: { slug },

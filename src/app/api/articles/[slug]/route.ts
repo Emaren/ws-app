@@ -1,7 +1,8 @@
 // src/app/api/articles/[slug]/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getToken } from "next-auth/jwt";
+import { getApiAuthContext } from "@/lib/apiAuth";
+import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -28,13 +29,19 @@ function normalizeSlug(input: string) {
 
 // --- GET: fetch an article by slug ---
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
 
   const article = await prisma.article.findUnique({ where: { slug } });
   if (!article) return notFound();
+
+  if (article.status !== "PUBLISHED") {
+    const auth = await getApiAuthContext(req);
+    const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
+    if (!auth.token || !hasEditorRole) return forbidden();
+  }
 
   // No caching in APIs by default; callers can decide.
   return NextResponse.json(article);
@@ -81,12 +88,9 @@ export async function PATCH(
   }
 
   // ---- Auth-required editorial updates ----
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-  const role = token?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
-  if (!token || !role) return forbidden();
+  const auth = await getApiAuthContext(req);
+  const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
+  if (!auth.token || !hasEditorRole) return forbidden();
 
   // Accept partials; all fields optional
   const {
@@ -154,12 +158,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-  const role = token?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
-  if (!token || !role) return forbidden();
+  const auth = await getApiAuthContext(req);
+  const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
+  if (!auth.token || !hasEditorRole) return forbidden();
 
   const { slug } = await params;
 

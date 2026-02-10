@@ -4,6 +4,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { isEditorialRole, isStaffRole, normalizeAppRole } from "@/lib/rbac";
 
 type Article = {
   id: string;
@@ -23,6 +24,9 @@ export default function AdminDashboard() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const role = normalizeAppRole(session?.user?.role);
+  const canAccess = isEditorialRole(role);
+  const canDelete = isStaffRole(role);
 
   // Redirect if unauthenticated
   useEffect(() => {
@@ -46,8 +50,8 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    if (session?.user?.role === "ADMIN") load();
-  }, [session]);
+    if (canAccess) load();
+  }, [canAccess]);
 
   // Derived, filtered list
   const filtered = useMemo(() => {
@@ -71,7 +75,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (session?.user?.role !== "ADMIN") {
+  if (!canAccess) {
     // While session is loading, avoid flashing the "no permission" message
     if (status === "loading") {
       return <p className="p-8 opacity-70">Checking permissions…</p>;
@@ -171,6 +175,7 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   onClick={() => handleDelete(article.slug)}
+                  disabled={!canDelete}
                   className="px-3 py-1.5 border rounded border-red-500 text-red-600 hover:bg-red-500/10"
                   title="Delete"
                 >
