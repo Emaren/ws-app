@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { isStaffRole, normalizeAppRole } from "@/lib/rbac";
 import BusinessTerminalClient from "./BusinessTerminalClient";
+import NotificationCampaignComposer from "./NotificationCampaignComposer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export default async function BusinessTerminalPage() {
     redirect("/admin");
   }
 
-  return <BusinessTerminalClient />;
+  return (
+    <div className="space-y-4">
+      <NotificationCampaignComposer />
+      <BusinessTerminalClient />
+    </div>
+  );
 }
-
