@@ -223,14 +223,26 @@ p,li{ text-wrap:pretty; }
 .wysiwyg img.ws-float-left,
 .wysiwyg img[style*="float:left"],
 .wysiwyg img[style*="float: left"]{
-  float:left; margin:6px 16px 6px 0; shape-outside:inset(0 round 12px);
+  float:left;
+  width:clamp(170px,24vw,250px) !important;
+  max-width:42% !important;
+  margin:8px 18px 10px 0;
+  shape-outside:inset(0 round 12px);
+  border-radius:12px;
+  display:block;
 }
 .wysiwyg img.alignright,
 .wysiwyg .alignright>img,
 .wysiwyg img.ws-float-right,
 .wysiwyg img[style*="float:right"],
 .wysiwyg img[style*="float: right"]{
-  float:right; margin:6px 0 6px 16px; shape-outside:inset(0 round 12px);
+  float:right;
+  width:clamp(170px,24vw,250px) !important;
+  max-width:42% !important;
+  margin:8px 0 10px 18px;
+  shape-outside:inset(0 round 12px);
+  border-radius:12px;
+  display:block;
 }
 
 /* Do NOT shrink images inside FloatAd cards */
@@ -260,7 +272,7 @@ p,li{ text-wrap:pretty; }
 .wysiwyg table{ display:block; max-width:100%; width:100%; overflow-x:auto; }
 .wysiwyg :is(figure,picture) img{ width:100% !important; max-width:100% !important; height:auto !important; }
 
-/* Mobile: full-width images, no floats */
+/* Mobile: full-width for regular images; keep wrapped float ads readable */
 @media (max-width:768px){
   .wysiwyg :is(img,a>img,figure>img),
   .wysiwyg :is(img[width],img[height],img[style*="width"]){
@@ -276,7 +288,29 @@ p,li{ text-wrap:pretty; }
   .wysiwyg img[style*="float: left"],
   .wysiwyg img[style*="float:right"],
   .wysiwyg img[style*="float: right"]{
-    float:none !important; margin:1.1em 0 !important; width:100% !important; max-width:100% !important;
+    width:clamp(126px,44vw,190px) !important;
+    max-width:48% !important;
+    margin:8px 12px !important;
+    border-radius:10px;
+    display:block;
+  }
+  .wysiwyg img.alignleft,
+  .wysiwyg .alignleft>img,
+  .wysiwyg img.ws-float-left,
+  .wysiwyg img[style*="float:left"],
+  .wysiwyg img[style*="float: left"]{
+    float:left !important;
+    margin-left:0 !important;
+    margin-right:12px !important;
+  }
+  .wysiwyg img.alignright,
+  .wysiwyg .alignright>img,
+  .wysiwyg img.ws-float-right,
+  .wysiwyg img[style*="float:right"],
+  .wysiwyg img[style*="float: right"]{
+    float:right !important;
+    margin-left:12px !important;
+    margin-right:0 !important;
   }
 }
 
