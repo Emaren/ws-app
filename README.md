@@ -10,6 +10,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Admin/editor UI
 - Authentication UI/session via NextAuth (backed by `ws-api` auth endpoints)
 - Article and registration API routes
+- Article lifecycle/ownership enforcement (`DRAFT/REVIEW/PUBLISHED/ARCHIVED`)
 - Stripe checkout session creation
 - Direct Prisma database access
 
@@ -95,5 +96,5 @@ Optional:
 ## Known gaps (summary)
 
 - Missing repo-level `lint`, `test`, and `typecheck` scripts
-- Ownership and rate-limit guardrails are incomplete
+- No dedicated frontend unit tests for article lifecycle helpers yet
 - Prisma role enum/migrations are not yet aligned to the full `OWNER/ADMIN/EDITOR/CONTRIBUTOR/USER` model

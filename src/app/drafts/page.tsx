@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { isEditorialRole, normalizeAppRole } from "@/lib/rbac";
+import { statusBadgeLabel } from "@/lib/articleLifecycle";
 
 export default async function DraftsPage() {
   const session = await getServerSession(authOptions);
@@ -14,11 +15,11 @@ export default async function DraftsPage() {
 
   const drafts = await prisma.article.findMany({
     where: {
-      author: { email: session.user?.email || undefined },
-      publishedAt: { equals: null as any }, // ✅ null must be explicitly cast
+      authorId: session.user.id || "__no-user__",
+      status: { in: ["DRAFT", "REVIEW"] },
     },
     orderBy: {
-      publishedAt: "desc",
+      updatedAt: "desc",
     },
   });
 
@@ -36,11 +37,10 @@ export default async function DraftsPage() {
               className="border rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
             >
               <div className="font-bold">{draft.title || "Untitled"}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Created:{" "}
-                {draft.publishedAt
-                  ? new Date(draft.publishedAt).toLocaleDateString()
-                  : "Draft"}
+              <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                <span>{statusBadgeLabel(draft.status)}</span>
+                <span>·</span>
+                <span>Updated {new Date(draft.updatedAt).toLocaleDateString()}</span>
               </div>
             </li>
           ))}

@@ -99,48 +99,6 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
     }
   }
 
-  async function publish() {
-    if (isPending || submittingRef.current) return;
-    submittingRef.current = true;
-    try {
-      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "PUBLISHED" as ArticleStatus }),
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        alert(`Publish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-        return;
-      }
-      setStatus("PUBLISHED");
-      startTransition(() => router.refresh());
-    } finally {
-      submittingRef.current = false;
-    }
-  }
-
-  async function unpublish() {
-    if (isPending || submittingRef.current) return;
-    submittingRef.current = true;
-    try {
-      const res = await fetch(`/api/articles/${encodeURIComponent(initialArticle.slug)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "DRAFT" as ArticleStatus }),
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        alert(`Unpublish failed: ${res.status}${txt ? ` — ${txt}` : ""}`);
-        return;
-      }
-      setStatus("DRAFT");
-      startTransition(() => router.refresh());
-    } finally {
-      submittingRef.current = false;
-    }
-  }
-
   async function destroy() {
     if (isPending || submittingRef.current) return;
     if (!confirm("Delete this article? This cannot be undone.")) return;
@@ -230,7 +188,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           onChange={(e) => setStatus(e.target.value as ArticleStatus)}
         >
           <option value="DRAFT">Draft</option>
+          <option value="REVIEW">In Review</option>
           <option value="PUBLISHED">Published</option>
+          <option value="ARCHIVED">Archived</option>
         </select>
       </div>
 
@@ -243,28 +203,6 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         >
           {isPending ? "Saving…" : "Save"}
         </button>
-
-        {status === "PUBLISHED" ? (
-          <button
-            type="button"
-            onClick={unpublish}
-            className="rounded-xl px-4 py-2 border disabled:opacity-60"
-            disabled={isPending}
-            aria-label="Unpublish article"
-          >
-            Unpublish
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={publish}
-            className="rounded-xl px-4 py-2 border disabled:opacity-60"
-            disabled={isPending}
-            aria-label="Publish article"
-          >
-            Publish
-          </button>
-        )}
 
         <button
           type="button"

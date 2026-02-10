@@ -5,14 +5,20 @@ import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { isEditorialRole, isStaffRole, normalizeAppRole } from "@/lib/rbac";
+import {
+  canDeleteArticle,
+  normalizeArticleStatus,
+  statusBadgeClassName,
+  statusBadgeLabel,
+} from "@/lib/articleLifecycle";
 
 type Article = {
   id: string;
   title: string;
   slug: string;
-  published: boolean;     // kept to match your existing API shape
-  createdAt: string;      // ISO string
-  // Optional fields if your API already returns them; ignored otherwise
+  status: string;
+  authorId: string | null;
+  createdAt: string;
   updatedAt?: string;
   publishedAt?: string | null;
 };
@@ -26,7 +32,7 @@ export default function AdminDashboard() {
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canAccess = isEditorialRole(role);
-  const canDelete = isStaffRole(role);
+  const canDeleteAsStaff = isStaffRole(role);
 
   // Redirect if unauthenticated
   useEffect(() => {
@@ -130,10 +136,18 @@ export default function AdminDashboard() {
 
       <ul className="space-y-3">
         {filtered.map((article) => {
-          const created = new Date(article.createdAt);
-          const when = isNaN(created.getTime())
+          const activityDate = new Date(article.updatedAt || article.createdAt);
+          const when = isNaN(activityDate.getTime())
             ? ""
-            : created.toLocaleDateString();
+            : activityDate.toLocaleDateString();
+          const lifecycleStatus = normalizeArticleStatus(article.status) ?? "DRAFT";
+          const canDelete = canDeleteAsStaff
+            ? true
+            : canDeleteArticle(
+                lifecycleStatus,
+                role,
+                Boolean(session?.user?.id && article.authorId === session.user.id),
+              );
 
           return (
             <li
@@ -144,13 +158,11 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold truncate">{article.title}</h2>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      article.published
-                        ? "bg-green-600/15 text-green-500 border border-green-600/30"
-                        : "bg-yellow-600/15 text-yellow-400 border border-yellow-600/30"
-                    }`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${statusBadgeClassName(
+                      lifecycleStatus,
+                    )}`}
                   >
-                    {article.published ? "Published" : "Draft"}
+                    {statusBadgeLabel(lifecycleStatus)}
                   </span>
                 </div>
                 <p className="text-xs opacity-60 truncate">

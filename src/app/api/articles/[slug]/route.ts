@@ -3,6 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
+import {
+  canDeleteArticle,
+  canEditArticleContent,
+  canReadArticle,
+  canTransitionArticleStatus,
+  derivePublishedAtPatch,
+  normalizeArticleStatus,
+} from "@/lib/articleLifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,10 +45,18 @@ export async function GET(
   const article = await prisma.article.findUnique({ where: { slug } });
   if (!article) return notFound();
 
-  if (article.status !== "PUBLISHED") {
+  const status = normalizeArticleStatus(article.status);
+  if (!status) {
+    return new NextResponse("Invalid article status", { status: 500 });
+  }
+
+  if (status !== "PUBLISHED") {
     const auth = await getApiAuthContext(req);
-    const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
-    if (!auth.token || !hasEditorRole) return forbidden();
+    const isOwner = Boolean(auth.userId && article.authorId === auth.userId);
+    const canRead = canReadArticle(status, auth.role, isOwner);
+    if (!canRead) {
+      return auth.token ? forbidden() : notFound();
+    }
   }
 
   // No caching in APIs by default; callers can decide.
@@ -63,6 +79,17 @@ export async function PATCH(
 
   // ---- Public reaction endpoint (no auth) ----
   if (body?.op === "react") {
+    const existing = await prisma.article.findUnique({
+      where: { slug },
+      select: { status: true },
+    });
+    if (!existing) {
+      return notFound();
+    }
+    if (existing.status !== "PUBLISHED") {
+      return forbidden();
+    }
+
     const type = String(body?.type || "").toUpperCase();
     if (!["LIKE", "WOW", "HMM"].includes(type)) {
       return badRequest("Invalid reaction type");
@@ -90,7 +117,28 @@ export async function PATCH(
   // ---- Auth-required editorial updates ----
   const auth = await getApiAuthContext(req);
   const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
-  if (!auth.token || !hasEditorRole) return forbidden();
+  if (!auth.token || !hasEditorRole || !auth.userId) return forbidden();
+
+  const existing = await prisma.article.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      authorId: true,
+      publishedAt: true,
+    },
+  });
+  if (!existing) {
+    return notFound();
+  }
+
+  const currentStatus = normalizeArticleStatus(existing.status);
+  if (!currentStatus) {
+    return new NextResponse("Invalid article status", { status: 500 });
+  }
+
+  const isOwner = existing.authorId === auth.userId;
 
   // Accept partials; all fields optional
   const {
@@ -106,14 +154,22 @@ export async function PATCH(
     excerpt?: string | null;
     coverUrl?: string | null;
     content?: string;
-    status?: "DRAFT" | "PUBLISHED";
+    status?: string;
   } = body || {};
+
+  const nextStatus = status === undefined ? undefined : normalizeArticleStatus(status);
+  if (status !== undefined && !nextStatus) {
+    return badRequest("Invalid article status");
+  }
 
   // Normalize slug if provided
   const nextSlug =
     typeof nextSlugRaw === "string" && nextSlugRaw.length
       ? normalizeSlug(nextSlugRaw)
       : undefined;
+  if (nextSlugRaw !== undefined && !nextSlug) {
+    return badRequest("Invalid slug");
+  }
 
   // If changing slug, ensure uniqueness
   if (nextSlug && nextSlug !== slug) {
@@ -121,21 +177,45 @@ export async function PATCH(
     if (exists) return new NextResponse("Slug already in use", { status: 409 });
   }
 
+  const hasContentPatch =
+    title !== undefined ||
+    excerpt !== undefined ||
+    coverUrl !== undefined ||
+    content !== undefined ||
+    nextSlug !== undefined;
+  if (hasContentPatch && !canEditArticleContent(currentStatus, auth.role, isOwner)) {
+    return forbidden();
+  }
+
+  if (
+    nextStatus &&
+    !canTransitionArticleStatus(currentStatus, nextStatus, auth.role, isOwner)
+  ) {
+    return forbidden();
+  }
+
   // Build patch object
   const patch: Record<string, any> = {};
-  if (title !== undefined) patch.title = title;
+  if (title !== undefined) {
+    if (!title.trim()) {
+      return badRequest("Title cannot be empty");
+    }
+    patch.title = title.trim();
+  }
   if (excerpt !== undefined) patch.excerpt = excerpt;
   if (coverUrl !== undefined) patch.coverUrl = coverUrl;
-  if (content !== undefined) patch.content = content;
+  if (content !== undefined) {
+    if (!content.trim()) {
+      return badRequest("Content cannot be empty");
+    }
+    patch.content = content;
+  }
   if (nextSlug) patch.slug = nextSlug;
 
   // Publish/unpublish controls publishedAt
-  if (status === "PUBLISHED") {
-    patch.status = "PUBLISHED";
-    patch.publishedAt = new Date();
-  } else if (status === "DRAFT") {
-    patch.status = "DRAFT";
-    patch.publishedAt = null;
+  if (nextStatus) {
+    patch.status = nextStatus;
+    patch.publishedAt = derivePublishedAtPatch(existing.publishedAt, nextStatus);
   }
 
   if (Object.keys(patch).length === 0) {
@@ -160,11 +240,29 @@ export async function DELETE(
 ) {
   const auth = await getApiAuthContext(req);
   const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
-  if (!auth.token || !hasEditorRole) return forbidden();
+  if (!auth.token || !hasEditorRole || !auth.userId) return forbidden();
 
   const { slug } = await params;
 
   try {
+    const article = await prisma.article.findUnique({
+      where: { slug },
+      select: { status: true, authorId: true },
+    });
+    if (!article) {
+      return notFound();
+    }
+
+    const status = normalizeArticleStatus(article.status);
+    if (!status) {
+      return new NextResponse("Invalid article status", { status: 500 });
+    }
+
+    const isOwner = article.authorId === auth.userId;
+    if (!canDeleteArticle(status, auth.role, isOwner)) {
+      return forbidden();
+    }
+
     await prisma.article.delete({ where: { slug } });
     return new NextResponse(null, { status: 204 });
   } catch {

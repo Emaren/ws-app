@@ -72,7 +72,9 @@ enum Role {
 
 enum ArticleStatus {
   DRAFT
+  REVIEW
   PUBLISHED
+  ARCHIVED
 }
 
 enum ReactionType {

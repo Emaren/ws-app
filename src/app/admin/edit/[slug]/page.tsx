@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { isEditorialRole, normalizeAppRole } from "@/lib/rbac";
+import { canEditArticleContent, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import { notFound, redirect } from "next/navigation";
 import Editor from "./Editor";
 
@@ -30,10 +31,17 @@ export default async function EditArticlePage(
       content: true,
       status: true,
       publishedAt: true, // Date | null
+      authorId: true,
     },
   });
 
   if (!article) notFound();
+
+  const lifecycleStatus = normalizeArticleStatus(article.status) ?? "DRAFT";
+  const isOwner = article.authorId === session.user.id;
+  if (!canEditArticleContent(lifecycleStatus, role, isOwner)) {
+    notFound();
+  }
 
   // Convert Date -> string for client component
   const uiArticle = {
