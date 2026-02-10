@@ -85,12 +85,20 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
     const clean = sanitizeHtml(html, SANITIZE_OPTIONS);
     return addSafeRelToTargetBlankLinks(clean);
   } catch {
-    // Defensive fallback for malformed legacy markup (e.g. href="[object Object]").
-    const normalized = html.replace(
-      /\s(?:href|src)\s*=\s*(['"])\[object Object\]\1/gi,
-      "",
-    );
-    const clean = sanitizeHtml(normalized, SANITIZE_OPTIONS);
-    return addSafeRelToTargetBlankLinks(clean);
+    try {
+      // Defensive fallback for malformed legacy URL attrs.
+      const normalized = html.replace(
+        /\s(?:href|src)\s*=\s*(['"])[^'"]*\1/gi,
+        "",
+      );
+      const clean = sanitizeHtml(normalized, SANITIZE_OPTIONS);
+      return addSafeRelToTargetBlankLinks(clean);
+    } catch {
+      // Last-resort fallback: plain text only, guaranteed no URL parsing.
+      return sanitizeHtml(html, {
+        allowedTags: [],
+        allowedAttributes: {},
+      });
+    }
   }
 }
