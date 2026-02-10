@@ -11,14 +11,19 @@ export interface ApiAuthContext {
 }
 
 export async function getApiAuthContext(req: NextRequest): Promise<ApiAuthContext> {
-  const authHeader = req.headers.get("authorization");
-  const cookieHeader = req.headers.get("cookie") ?? "";
+  const rawAuthHeader = req.headers.get("authorization");
+  const authHeader =
+    typeof rawAuthHeader === "string" ? rawAuthHeader.trim() : "";
+
+  const rawCookieHeader = req.headers.get("cookie");
+  const cookieHeader =
+    typeof rawCookieHeader === "string" ? rawCookieHeader : "";
   const hasSessionCookie =
     /(?:^|;\s*)(?:__Secure-)?next-auth\.session-token=/.test(cookieHeader) ||
     /(?:^|;\s*)(?:__Secure-)?authjs\.session-token=/.test(cookieHeader);
 
   let token: JWT | null = null;
-  if (authHeader || hasSessionCookie) {
+  if (authHeader.length > 0 || hasSessionCookie) {
     try {
       const { getToken } = await import("next-auth/jwt");
       token = await getToken({
