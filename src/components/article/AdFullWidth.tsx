@@ -1,7 +1,8 @@
 // src/components/article/AdFullWidth.tsx
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 type Tone = "neutral" | "zinc" | "slate" | "stone" | "amber" | "indigo";
 
@@ -49,6 +50,9 @@ export default function AdFullWidth({
   height = 248,
   imageSrc = "/tttr.png",
   fallbackImageSrc = "/tt.png",
+  articleSlug = null,
+  adSlot = "slot-3-bottom",
+  sourceContext = "article_bottom_ad",
 }: {
   label?: string;
   href?: string;
@@ -56,10 +60,26 @@ export default function AdFullWidth({
   height?: number;
   imageSrc?: string;
   fallbackImageSrc?: string;
+  articleSlug?: string | null;
+  adSlot?: string;
+  sourceContext?: string;
 }) {
   const toneCls = toneClasses(tone);
   const [imageStage, setImageStage] = useState<ImageStage>("primary");
   const [imageReady, setImageReady] = useState(false);
+  const handleClick = useCallback(() => {
+    trackAnalyticsEvent({
+      eventType: "AD_CLICK",
+      articleSlug,
+      adSlot,
+      sourceContext,
+      destinationUrl: href,
+      metadata: {
+        label,
+        placement: "full_width",
+      },
+    });
+  }, [adSlot, articleSlug, href, label, sourceContext]);
 
   const activeImageSrc =
     imageStage === "primary"
@@ -69,12 +89,13 @@ export default function AdFullWidth({
         : null;
 
   return (
-    <section className="bleed my-[var(--section-gap-sm)]" data-ad-slot="slot-3-bottom">
+    <section className="bleed my-[var(--section-gap-sm)]" data-ad-slot={adSlot}>
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer external"
         aria-label={`Visit ${label}`}
+        onClick={handleClick}
         className={[
           "group relative block w-full overflow-hidden rounded-2xl border",
           toneCls.border,

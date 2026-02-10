@@ -1,6 +1,7 @@
 // src/app/articles/[slug]/page.tsx
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
+import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
@@ -42,6 +43,10 @@ export default async function ArticlePage({
 
   return (
     <>
+      <ArticleViewTracker
+        articleSlug={article.slug}
+        sourceContext="article_page"
+      />
       <ArticleView
         article={article}
         variant="full"
@@ -59,7 +64,11 @@ export default async function ArticlePage({
       </div>
 
       <div className="ws-container overflow-x-clip">
-        <AdFullWidth label="TokenTap.ca" />
+        <AdFullWidth
+          label="TokenTap.ca"
+          articleSlug={article.slug}
+          sourceContext="article_bottom_ad"
+        />
       </div>
 
       <div className="ws-container overflow-x-clip">

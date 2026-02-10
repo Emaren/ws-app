@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 type Product = {
   title: string;
@@ -12,15 +13,52 @@ type Product = {
   badge?: string;
 };
 
-type Props = { left: Product; right: Product; note?: string };
+type Props = { left: Product; right: Product; note?: string; articleSlug?: string };
 
-function Card({ p }: { p: Product }) {
+function detectAffiliateNetwork(href: string): "AMAZON" | "LOCAL_DIRECT" | "TOKENTAP" | "OTHER" {
+  const target = href.toLowerCase();
+  if (target.includes("amazon.")) return "AMAZON";
+  if (target.includes("tokentap.ca")) return "TOKENTAP";
+  if (target.startsWith("mailto:")) return "LOCAL_DIRECT";
+  return "OTHER";
+}
+
+function Card({ p, articleSlug }: { p: Product; articleSlug?: string }) {
+  const onClick = React.useCallback(() => {
+    const network = detectAffiliateNetwork(p.href);
+
+    trackAnalyticsEvent({
+      eventType: "AFFILIATE_CLICK",
+      articleSlug: articleSlug ?? null,
+      destinationUrl: p.href,
+      sourceContext: "article_affiliate_pair",
+      metadata: {
+        network,
+        title: p.title,
+        badge: p.badge ?? null,
+      },
+    });
+
+    if (network === "LOCAL_DIRECT") {
+      trackAnalyticsEvent({
+        eventType: "INVENTORY_CTA",
+        articleSlug: articleSlug ?? null,
+        destinationUrl: p.href,
+        sourceContext: "article_affiliate_local_direct",
+        metadata: {
+          title: p.title,
+        },
+      });
+    }
+  }, [articleSlug, p.badge, p.href, p.title]);
+
   return (
     <a
       href={p.href}
       target="_blank"
       rel="nofollow sponsored noopener"
       aria-label={`Buy ${p.title} on Amazon`}
+      onClick={onClick}
       className="aff-card group w-full min-w-0 max-w-full overflow-hidden flex h-full flex-col rounded-2xl border border-neutral-800 bg-black/60 p-4 md:p-5 transition-colors hover:bg-black/70"
     >
       {p.badge && (
@@ -91,16 +129,16 @@ function Card({ p }: { p: Product }) {
   );
 }
 
-export default function AffiliatePair({ left, right, note }: Props) {
+export default function AffiliatePair({ left, right, note, articleSlug }: Props) {
   return (
     <section className="mt-12 md:mt-16 mb-12 md:mb-16">
       {/* Strict 2-col grid with its own class forced via CSS to avoid any overrides */}
       <div className="aff-grid mx-auto w-full max-w-[980px] px-2">
         <div className="min-w-0 overflow-hidden">
-          <Card p={left} />
+          <Card p={left} articleSlug={articleSlug} />
         </div>
         <div className="min-w-0 overflow-hidden">
-          <Card p={right} />
+          <Card p={right} articleSlug={articleSlug} />
         </div>
       </div>
 

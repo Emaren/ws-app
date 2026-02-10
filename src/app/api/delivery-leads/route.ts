@@ -1,10 +1,12 @@
 import type {
   DeliveryLeadSource,
   DeliveryLeadStatus,
+  NotificationChannel,
   Prisma,
 } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
+import { recordAnalyticsEvent } from "@/lib/analytics/server";
 import { prisma } from "@/lib/prisma";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
@@ -33,6 +35,7 @@ const DELIVERY_LEAD_STATUS_VALUES: readonly DeliveryLeadStatus[] = [
 
 type NormalizedLeadRequest = {
   source: DeliveryLeadSource;
+  sessionId: string | null;
   articleSlug: string | null;
   businessSlug: string | null;
   businessName: string | null;
@@ -56,6 +59,11 @@ type ResolvedLeadTarget = {
   inventoryItemId: string | null;
   inventoryItemName: string | null;
   unitPriceCents: number | null;
+};
+
+type RecipientUpsertResult = {
+  id: string | null;
+  optedInChannels: NotificationChannel[];
 };
 
 function asTrimmedString(value: unknown, maxLength = MAX_SHORT_TEXT): string | null {
@@ -184,6 +192,7 @@ function parseRequest(body: unknown): NormalizedLeadRequest | null {
   const payload = body as Record<string, unknown>;
 
   const source = normalizeSource(payload.source);
+  const sessionId = asTrimmedString(payload.sessionId, 96);
   const articleSlug = normalizeSlug(asTrimmedString(payload.articleSlug, 120));
   const businessSlug = normalizeSlug(asTrimmedString(payload.businessSlug, 120));
   const businessName = asTrimmedString(payload.businessName, 120);
@@ -208,6 +217,7 @@ function parseRequest(body: unknown): NormalizedLeadRequest | null {
 
   return {
     source,
+    sessionId,
     articleSlug,
     businessSlug,
     businessName,
@@ -412,9 +422,20 @@ async function resolveLeadTarget(
 async function upsertRecipientId(
   businessId: string,
   request: NormalizedLeadRequest,
-): Promise<string | null> {
+): Promise<RecipientUpsertResult> {
   if (!request.contactEmail && !request.contactPhone) {
-    return null;
+    return {
+      id: null,
+      optedInChannels: [],
+    };
+  }
+
+  const optedInChannels: NotificationChannel[] = [];
+  if (request.contactEmail) {
+    optedInChannels.push("EMAIL");
+  }
+  if (request.contactPhone) {
+    optedInChannels.push("SMS");
   }
 
   const recipientConditions: Prisma.NotificationRecipientWhereInput[] = [];
@@ -446,7 +467,10 @@ async function upsertRecipientId(
       },
       select: { id: true },
     });
-    return updated.id;
+    return {
+      id: updated.id,
+      optedInChannels,
+    };
   }
 
   const created = await prisma.notificationRecipient.create({
@@ -459,10 +483,13 @@ async function upsertRecipientId(
       emailOptIn: !!request.contactEmail,
       smsOptIn: !!request.contactPhone,
     },
-    select: { id: true },
+      select: { id: true },
   });
 
-  return created.id;
+  return {
+    id: created.id,
+    optedInChannels,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -589,7 +616,7 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getApiAuthContext(req);
     const resolvedTarget = await resolveLeadTarget(parsed);
-    const recipientId = await upsertRecipientId(resolvedTarget.businessId, parsed);
+    const recipient = await upsertRecipientId(resolvedTarget.businessId, parsed);
 
     const notes = buildLeadNotes(parsed, resolvedTarget);
     const unitPriceCents = resolvedTarget.unitPriceCents;
@@ -601,7 +628,7 @@ export async function POST(req: NextRequest) {
         businessId: resolvedTarget.businessId,
         inventoryItemId: resolvedTarget.inventoryItemId,
         offerId: resolvedTarget.offerId,
-        recipientId,
+        recipientId: recipient.id,
         userId: auth.userId ?? null,
         source: parsed.source,
         requestedQty: parsed.requestedQty,
@@ -616,6 +643,49 @@ export async function POST(req: NextRequest) {
         requestedAt: true,
       },
     });
+
+    void recordAnalyticsEvent({
+      eventType: "DELIVERY_CTA",
+      request: req,
+      userId: auth.userId ?? null,
+      sessionId: parsed.sessionId,
+      articleSlug: parsed.articleSlug,
+      businessId: resolvedTarget.businessId,
+      offerId: resolvedTarget.offerId,
+      inventoryItemId: resolvedTarget.inventoryItemId,
+      sourceContext: `delivery_lead:${parsed.source.toLowerCase()}`,
+      channel: parsed.contactPhone ? "SMS" : "EMAIL",
+      metadata: {
+        leadId: lead.id,
+        requestedQty: parsed.requestedQty,
+        businessName: resolvedTarget.businessName,
+        offerTitle: resolvedTarget.offerTitle,
+        inventoryItemName: resolvedTarget.inventoryItemName,
+      },
+    }).catch(() => {
+      // Analytics capture is non-blocking.
+    });
+
+    for (const channel of recipient.optedInChannels) {
+      void recordAnalyticsEvent({
+        eventType: "NOTIFICATION_OPT_IN",
+        request: req,
+        userId: auth.userId ?? null,
+        sessionId: parsed.sessionId,
+        articleSlug: parsed.articleSlug,
+        businessId: resolvedTarget.businessId,
+        offerId: resolvedTarget.offerId,
+        inventoryItemId: resolvedTarget.inventoryItemId,
+        sourceContext: "delivery_lead_opt_in",
+        channel,
+        metadata: {
+          recipientId: recipient.id,
+          leadId: lead.id,
+        },
+      }).catch(() => {
+        // Analytics capture is non-blocking.
+      });
+    }
 
     return NextResponse.json(
       {

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { unstable_noStore as noStore } from "next/cache";
 import { getLatestArticle } from "@/lib/getLatestArticle";
+import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
@@ -25,6 +26,10 @@ export default async function HomePage() {
 
   return (
     <main className={`${container} stack stack--lg`}>
+      <ArticleViewTracker
+        articleSlug={article.slug}
+        sourceContext="home_latest_article"
+      />
       <div className="pt-[var(--section-gap-sm)]">
         <ArticleView article={article} variant="full" />
       </div>
@@ -38,7 +43,11 @@ export default async function HomePage() {
       </div>
 
       <div className="ws-container overflow-x-clip">
-        <AdFullWidth label="TokenTap.ca" />
+        <AdFullWidth
+          label="TokenTap.ca"
+          articleSlug={article.slug}
+          sourceContext="home_bottom_ad"
+        />
       </div>
 
       <div className="ws-container overflow-x-clip">

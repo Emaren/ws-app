@@ -151,6 +151,7 @@ export default function ArticleView({
       <div className="ws-container">
         <div className="ws-article overflow-x-clip">
           <AffiliatePair
+            articleSlug={article.slug}
             left={{
               title: "NESQUICK CHOCOLATE POWDER 44.9OZ (2.81LBS)",
               href: "https://www.amazon.ca/dp/B09FTPGQ3B?tag=wheatandstone-20",

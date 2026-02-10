@@ -2,6 +2,10 @@
 "use client";
 
 import React from "react";
+import {
+  getAnalyticsSessionId,
+  trackAnalyticsEvent,
+} from "@/lib/analytics/client";
 
 type ShapeMode = "rect" | "rounded" | "ellipse" | "image";
 type DeliveryLeadSource =
@@ -183,6 +187,7 @@ export default function FloatAd({
     deliveryLeadContext?.inventoryItemName?.trim() ||
     deliveryLeadContext?.offerTitle?.trim() ||
     label;
+  const adSlot = isLeft ? "slot-2-left" : "slot-1-right";
   const deliveryEmailHref = React.useMemo(() => {
     const subject = `Delivery request: ${contextItemName}`;
     const bodyLines = [
@@ -273,6 +278,32 @@ export default function FloatAd({
   }
 
   function openDeliveryDialog() {
+    trackAnalyticsEvent({
+      eventType: "AD_CLICK",
+      articleSlug: deliveryLeadContext?.articleSlug,
+      businessSlug: deliveryLeadContext?.businessSlug,
+      offerId: deliveryLeadContext?.offerId,
+      inventoryItemId: deliveryLeadContext?.inventoryItemId,
+      sourceContext: "float_delivery_ad",
+      adSlot,
+      metadata: {
+        label,
+        side,
+      },
+    });
+    trackAnalyticsEvent({
+      eventType: "INVENTORY_CTA",
+      articleSlug: deliveryLeadContext?.articleSlug,
+      businessSlug: deliveryLeadContext?.businessSlug,
+      offerId: deliveryLeadContext?.offerId,
+      inventoryItemId: deliveryLeadContext?.inventoryItemId,
+      sourceContext: "delivery_modal_open",
+      adSlot,
+      metadata: {
+        label,
+        side,
+      },
+    });
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsDialogOpen(true);
@@ -337,6 +368,7 @@ export default function FloatAd({
           contactPhone: contactPhone || null,
           deliveryAddress,
           notes: formState.notes.trim() || null,
+          sessionId: getAnalyticsSessionId(),
         }),
       });
 
@@ -387,7 +419,7 @@ export default function FloatAd({
         aria-expanded={isDialogOpen}
         aria-label={`${label} - open delivery form`}
         data-floatkey={key}
-        data-ad-slot={isLeft ? "slot-2-left" : "slot-1-right"}
+        data-ad-slot={adSlot}
         data-cap={captionInside ? "in" : "below"}
         className={[
           "floatad block w-full p-0 text-left relative cursor-pointer ring-0 transition motion-reduce:transition-none",
@@ -578,6 +610,19 @@ export default function FloatAd({
                 <footer className="flex items-center justify-end gap-2 pt-2">
                   <a
                     href={deliveryEmailHref}
+                    onClick={() => {
+                      trackAnalyticsEvent({
+                        eventType: "DELIVERY_CTA",
+                        channel: "EMAIL",
+                        articleSlug: deliveryLeadContext?.articleSlug,
+                        businessSlug: deliveryLeadContext?.businessSlug,
+                        offerId: deliveryLeadContext?.offerId,
+                        inventoryItemId: deliveryLeadContext?.inventoryItemId,
+                        destinationUrl: deliveryEmailHref,
+                        sourceContext: "delivery_email_fallback",
+                        adSlot,
+                      });
+                    }}
                     className="mr-auto rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   >
                     Email instead

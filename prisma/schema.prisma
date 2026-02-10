@@ -22,6 +22,7 @@ model User {
   notificationRecipients NotificationRecipient[]
   deliveryLeads          DeliveryLead[]
   affiliateClicks        AffiliateClick[]
+  analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
 }
 
@@ -44,6 +45,7 @@ model Article {
   comments        Comment[]
   reactions       Reaction[]
   affiliateClicks AffiliateClick[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Comment {
@@ -92,6 +94,7 @@ model Business {
   notificationRecipients NotificationRecipient[]
   deliveryLeads          DeliveryLead[]
   affiliateClicks        AffiliateClick[]
+  analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
 
   @@index([ownerUserId])
@@ -146,6 +149,7 @@ model InventoryItem {
   pricingRules      PricingRule[]
   offers            Offer[]
   deliveryLeads     DeliveryLead[]
+  analyticsEvents   AnalyticsEvent[]
 
   @@unique([businessId, sku])
   @@index([businessId, isActive])
@@ -205,6 +209,7 @@ model Offer {
   pricingRule        PricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
   campaign           Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   deliveryLeads      DeliveryLead[]
+  analyticsEvents    AnalyticsEvent[]
 
   @@unique([businessId, couponCode])
   @@index([businessId, status])
@@ -230,6 +235,7 @@ model Campaign {
   business            Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   offers              Offer[]
   affiliateClicks     AffiliateClick[]
+  analyticsEvents     AnalyticsEvent[]
   rewardLedgerEntries RewardLedger[]
 
   @@index([businessId, status])
@@ -319,6 +325,41 @@ model AffiliateClick {
   @@index([campaignId])
   @@index([articleId])
   @@index([userId])
+}
+
+model AnalyticsEvent {
+  id              String             @id @default(cuid())
+  eventType       AnalyticsEventType
+  articleId       String?
+  businessId      String?
+  campaignId      String?
+  offerId         String?
+  inventoryItemId String?
+  userId          String?
+  sessionId       String?
+  sourceContext   String?
+  adSlot          String?
+  channel         NotificationChannel?
+  destinationUrl  String?
+  referrerUrl     String?
+  ipHash          String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+  article         Article?           @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  business        Business?          @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  campaign        Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  offer           Offer?             @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem?     @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  user            User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([articleId, createdAt])
+  @@index([businessId, createdAt])
+  @@index([campaignId, createdAt])
+  @@index([offerId, createdAt])
+  @@index([inventoryItemId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model RewardLedger {
@@ -429,6 +470,15 @@ enum AffiliateNetwork {
   LOCAL_DIRECT
   TOKENTAP
   OTHER
+}
+
+enum AnalyticsEventType {
+  ARTICLE_VIEW
+  AD_CLICK
+  AFFILIATE_CLICK
+  INVENTORY_CTA
+  DELIVERY_CTA
+  NOTIFICATION_OPT_IN
 }
 
 enum RewardToken {
