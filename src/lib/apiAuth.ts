@@ -11,15 +11,23 @@ export interface ApiAuthContext {
 }
 
 export async function getApiAuthContext(req: NextRequest): Promise<ApiAuthContext> {
+  const authHeader = req.headers.get("authorization");
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const hasSessionCookie =
+    /(?:^|;\s*)(?:__Secure-)?next-auth\.session-token=/.test(cookieHeader) ||
+    /(?:^|;\s*)(?:__Secure-)?authjs\.session-token=/.test(cookieHeader);
+
   let token: JWT | null = null;
-  try {
-    const { getToken } = await import("next-auth/jwt");
-    token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
-  } catch {
-    token = null;
+  if (authHeader || hasSessionCookie) {
+    try {
+      const { getToken } = await import("next-auth/jwt");
+      token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+      });
+    } catch {
+      token = null;
+    }
   }
 
   const rawRole = token && typeof token.role === "string" ? token.role : undefined;
