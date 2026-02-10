@@ -43,21 +43,21 @@ export default function ArticleHeaderArt({
     <section className="mt-4 md:mt-6 w-full overflow-hidden">
       {/* ===== md+ : badge + bottle ===== */}
       <div
-        className="hidden md:grid w-full items-start gap-6 overflow-hidden"
+        className="hidden md:grid w-full items-stretch gap-6 overflow-hidden"
         style={{ gridTemplateColumns: "220px minmax(0,1fr)" }}
       >
-        {/* Badge + lines (no bullets) */}
-        <div className="flex items-start justify-center overflow-hidden">
-          <div className="flex flex-col items-center justify-end h-full overflow-hidden">
+        {/* Badge + lines */}
+        <div className="flex h-full items-stretch justify-center overflow-hidden">
+          <div className="flex h-full w-full max-w-[220px] flex-col items-center justify-between overflow-hidden py-1">
             <img
               src="/WSNI.png"
               alt="Product score indicator"
               width={220}
               height={220}
               style={{
-                width: "90%",
+                width: "74%",
                 height: "auto",
-                maxWidth: 220,
+                maxWidth: 164,
                 filter: "drop-shadow(0 2px 8px rgba(0,0,0,.35))",
                 display: "block",
               }}
@@ -66,13 +66,19 @@ export default function ArticleHeaderArt({
               draggable={false}
             />
 
-            <ul className="mt-4 list-none p-0 m-0 text-[12px] leading-[1.1] tracking-tight text-center select-none space-y-1">
-              <li className="opacity-80">🏅 Trusted Classic</li>
-              <li className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium">
+            <ul
+              className="text-[12px] leading-[1.08] tracking-tight text-center select-none space-y-0.5"
+              style={{ listStyle: "none", margin: 0, padding: 0 }}
+            >
+              <li className="opacity-80" style={{ listStyle: "none" }}>🏅 Trusted Classic</li>
+              <li
+                className="opacity-75 text-emerald-600 dark:text-emerald-300 font-medium"
+                style={{ listStyle: "none" }}
+              >
                 🍫 Honest&nbsp;Indulgence
               </li>
-              <li className="opacity-75">🌿 Modern Nourishment</li>
-              <li className="opacity-75">🥛 Whole Dairy, Honestly Made</li>
+              <li className="opacity-75" style={{ listStyle: "none" }}>🌿 Modern Nourishment</li>
+              <li className="opacity-75" style={{ listStyle: "none" }}>🥛 Whole Dairy, Honestly Made</li>
             </ul>
           </div>
         </div>

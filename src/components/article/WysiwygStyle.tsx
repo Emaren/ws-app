@@ -67,11 +67,18 @@ const EXTRA_CSS = `
 .wysiwyg tbody tr:nth-child(odd){ background:color-mix(in oklab,currentColor 6%,transparent); }
 `;
 
+// In article view we only want WYSIWYG rules inside `.wysiwyg`.
+// The editor stylesheet also targets `body` for TinyMCE iframe usage.
+const VIEWER_BASE_CSS = WYSIWYG_CSS.replaceAll(
+  ":where(.wysiwyg, body)",
+  ".wysiwyg",
+);
+
 export default function WysiwygStyle() {
   return (
     <style
       id="wysiwyg-shared-css-article"
-      dangerouslySetInnerHTML={{ __html: `${WYSIWYG_CSS}\n${EXTRA_CSS}` }}
+      dangerouslySetInnerHTML={{ __html: `${VIEWER_BASE_CSS}\n${EXTRA_CSS}` }}
     />
   );
 }
