@@ -136,6 +136,13 @@ export default function ArticleBody({ article }: { article: Article }) {
                 scale={0.88} mdScale={0.88} lgScale={0.94}
                 hoverTint={true}
                 caption="Click for Delivery"
+                deliveryLeadContext={{
+                  source: "LOCAL_AD",
+                  articleSlug: article.slug,
+                  businessSlug: "homesteader-health",
+                  businessName: "Homesteader Health",
+                  inventoryItemName: "Homesteader Health Delivery",
+                }}
               />
               {parts?.afterBlocksHead && (
                 <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
@@ -164,6 +171,13 @@ export default function ArticleBody({ article }: { article: Article }) {
                 scale={1} lgScale={1}
                 hoverTint={true}
                 caption="Click for Delivery"
+                deliveryLeadContext={{
+                  source: "LOCAL_AD",
+                  articleSlug: article.slug,
+                  businessSlug: "beaverlodge-butcher-shop",
+                  businessName: "Beaverlodge Butcher Shop",
+                  inventoryItemName: "Beaverlodge Butcher Shop Delivery",
+                }}
               />
 
               <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
