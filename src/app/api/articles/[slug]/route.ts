@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // --- helpers ---
 function forbidden() {
   return new NextResponse("Forbidden", { status: 403 });
