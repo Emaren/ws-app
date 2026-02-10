@@ -1,26 +1,22 @@
-export type ThemeMode = "dark" | "light" | "sepia";
+export type ThemeMode = "gray" | "dark" | "light" | "sepia";
 
 export const THEME_STORAGE_KEY = "theme";
 const THEME_META_COLORS: Record<ThemeMode, string> = {
+  gray: "#202123",
   dark: "#0a0a0a",
   light: "#ffffff",
   sepia: "#f4ecd9",
 };
 
 export function normalizeTheme(value: string | null | undefined): ThemeMode | null {
-  if (value === "dark" || value === "light" || value === "sepia") {
+  if (value === "gray" || value === "dark" || value === "light" || value === "sepia") {
     return value;
   }
   return null;
 }
 
 export function getSystemDefaultTheme(): ThemeMode {
-  if (typeof window === "undefined") {
-    return "dark";
-  }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return "gray";
 }
 
 export function applyThemeToDocument(theme: ThemeMode): void {
@@ -29,7 +25,7 @@ export function applyThemeToDocument(theme: ThemeMode): void {
   }
 
   const html = document.documentElement;
-  html.classList.toggle("dark", theme === "dark");
+  html.classList.toggle("dark", theme === "dark" || theme === "gray");
   html.setAttribute("data-theme", theme);
 
   const metaThemeColor = document.querySelector(
@@ -62,9 +58,9 @@ export function persistTheme(theme: ThemeMode): void {
   } catch {}
 }
 
-export function readThemeFromDocument(): ThemeMode {
+export function readThemeFromDocument(): ThemeMode | null {
   if (typeof document === "undefined") {
-    return "dark";
+    return null;
   }
 
   const html = document.documentElement;
@@ -73,10 +69,18 @@ export function readThemeFromDocument(): ThemeMode {
     return themed;
   }
 
-  return html.classList.contains("dark") ? "dark" : "light";
+  if (html.classList.contains("dark")) {
+    return "dark";
+  }
+
+  return null;
 }
 
 export function cycleTheme(current: ThemeMode): ThemeMode {
+  if (current === "gray") {
+    return "dark";
+  }
+
   if (current === "dark") {
     return "light";
   }
@@ -85,5 +89,5 @@ export function cycleTheme(current: ThemeMode): ThemeMode {
     return "sepia";
   }
 
-  return "dark";
+  return "gray";
 }

@@ -137,7 +137,7 @@ export default function Header() {
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [theme, setTheme] = useState<ThemeMode>("gray");
 
   const headerRef = useRef<HTMLElement>(null);
   const menuBtnRef = useRef<HTMLDivElement>(null);

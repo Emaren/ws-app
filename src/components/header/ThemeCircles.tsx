@@ -8,6 +8,11 @@ const THEME_OPTIONS: Array<{
   chipClass: string;
 }> = [
   {
+    value: "gray",
+    label: "Gray",
+    chipClass: "bg-[#202123] border border-[#7d7d7d]",
+  },
+  {
     value: "dark",
     label: "Dark",
     chipClass: "bg-[#0a0a0a] border border-white/20",

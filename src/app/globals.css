@@ -3,8 +3,10 @@
 
 /* ---------------- Global theme tokens ---------------- */
 :root{
-  --background:#ffffff;
-  --foreground:#171717;
+  --background:#202123;
+  --foreground:#ececf1;
+  --autofill-text:#ececf1;
+  --autofill-bg:#202123;
 
   /* Layout tokens */
   --page-max:1200px;
@@ -21,28 +23,40 @@
   --radius:.75rem;
 }
 
+:root[data-theme="gray"]{
+  --background:#202123;
+  --foreground:#ececf1;
+  --autofill-text:#ececf1;
+  --autofill-bg:#202123;
+}
+
 :root[data-theme="light"]{
   --background:#ffffff;
   --foreground:#171717;
+  --autofill-text:#111111;
+  --autofill-bg:#ffffff;
 }
 
 :root[data-theme="dark"]{
   --background:#0a0a0a;
-  --foreground:#ededed;
+  --foreground:#f3f4f6;
+  --autofill-text:#ffffff;
+  --autofill-bg:#000000;
 }
 
 :root[data-theme="sepia"]{
   --background:#f4ecd9;
   --foreground:#2f2417;
+  --autofill-text:#2f2417;
+  --autofill-bg:#f4ecd9;
 }
 
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme]){ --background:#0a0a0a; --foreground:#ededed; }
-}
-
-:root{ color-scheme:light; }
+:root{ color-scheme:dark; }
+:root[data-theme="light"],
+:root[data-theme="sepia"]{ color-scheme:light; }
 :root.dark,
-:root[data-theme="dark"]{ color-scheme:dark; }
+:root[data-theme="dark"],
+:root[data-theme="gray"]{ color-scheme:dark; }
 
 /* ---------------- base & overflow safety ---------------- */
 *,
@@ -153,31 +167,16 @@ p,li{ text-wrap:pretty; }
 }
 
 /* ---------------- Theme-aware autofill ---------------- */
-@media (prefers-color-scheme:dark){
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  textarea:-webkit-autofill,
-  select:-webkit-autofill{
-    -webkit-text-fill-color:#fff !important;
-    -webkit-box-shadow:0 0 0 1000px #000 inset !important;
-    box-shadow:0 0 0 1000px #000 inset !important;
-    caret-color:#fff !important;
-    transition:background-color 9999s ease-in-out 0s;
-  }
-}
-@media (prefers-color-scheme:light){
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  textarea:-webkit-autofill,
-  select:-webkit-autofill{
-    -webkit-text-fill-color:#111 !important;
-    -webkit-box-shadow:0 0 0 1000px #fff inset !important;
-    box-shadow:0 0 0 1000px #fff inset !important;
-    caret-color:#111 !important;
-    transition:background-color 9999s ease-in-out 0s;
-  }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill{
+  -webkit-text-fill-color:var(--autofill-text) !important;
+  -webkit-box-shadow:0 0 0 1000px var(--autofill-bg) inset !important;
+  box-shadow:0 0 0 1000px var(--autofill-bg) inset !important;
+  caret-color:var(--autofill-text) !important;
+  transition:background-color 9999s ease-in-out 0s;
 }
 
 /* ===================================================== */
