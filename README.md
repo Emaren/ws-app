@@ -16,6 +16,7 @@ Frontend + in-process application API for WheatAndStone.ca.
 - Owner/admin billing reconciliation tooling
 - Session-backed wallet link proxy routes for signature-based linking
 - Owner/admin rewards reporting/export terminal proxied to ws-api
+- PWA foundation (manifest, service worker, offline shell, install prompt)
 - Direct Prisma database access
 
 Even though `ws-api` exists as a separate backend repo, `ws-app` is still the active source of truth for most content/auth operations today.
@@ -90,6 +91,8 @@ Optional:
 - `pnpm start`
 - `pnpm preview`
 - `pnpm verify`
+- `pnpm pwa:icons`
+- `pnpm perf:mobile`
 - `pnpm prisma:migrate:deploy`
 - `pnpm studio:dev`
 
@@ -100,6 +103,7 @@ Optional:
 - `docs/repo-health.md` script reliability and repo hygiene baseline
 - `docs/auth-integration.md` ws-api-backed auth login/logout/me/session flow
 - `docs/billing-reconciliation.md` subscription entitlement + Stripe reconciliation contract
+- `docs/mobile-performance.md` mobile Lighthouse checks + quality gates
 
 ## Known gaps (summary)
 

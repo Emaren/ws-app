@@ -4,6 +4,7 @@
 import { useEffect, type ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
 import Header from "../components/Header";
+import PwaClient from "../components/pwa/PwaClient";
 
 const container = "ws-container";
 
@@ -55,6 +56,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         <main className="w-full overflow-x-clip min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/7)] mb-[var(--section-gap-lg)]">
           {children}
         </main>
+
+        <PwaClient />
       </div>
     </SessionProvider>
   );
