@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/articles", { cache: "no-store" });
+      const res = await fetch("/api/articles?scope=all", { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       const data: Article[] = await res.json();
       setArticles(data ?? []);

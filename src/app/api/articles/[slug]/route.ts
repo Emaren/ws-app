@@ -1,12 +1,10 @@
 // src/app/api/articles/[slug]/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import {
   canDeleteArticle,
   canEditArticleContent,
-  canReadArticle,
   canTransitionArticleStatus,
   derivePublishedAtPatch,
   isPubliclyVisibleArticle,
@@ -53,12 +51,7 @@ export async function GET(
   }
 
   if (!isPubliclyVisibleArticle(status, article.publishedAt)) {
-    const auth = await getApiAuthContext(req);
-    const isOwner = Boolean(auth.userId && article.authorId === auth.userId);
-    const canRead = canReadArticle(status, auth.role, isOwner);
-    if (!canRead) {
-      return auth.token ? forbidden() : notFound();
-    }
+    return notFound();
   }
 
   // No caching in APIs by default; callers can decide.
@@ -119,6 +112,7 @@ export async function PATCH(
   }
 
   // ---- Auth-required editorial updates ----
+  const { getApiAuthContext } = await import("@/lib/apiAuth");
   const auth = await getApiAuthContext(req);
   const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
   if (!auth.token || !hasEditorRole || !auth.userId) return forbidden();
@@ -246,6 +240,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { getApiAuthContext } = await import("@/lib/apiAuth");
   const auth = await getApiAuthContext(req);
   const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
   if (!auth.token || !hasEditorRole || !auth.userId) return forbidden();

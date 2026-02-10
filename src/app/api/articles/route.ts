@@ -1,7 +1,6 @@
 // src/app/api/articles/route.ts
 import type { ArticleStatus, Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
-import { getApiAuthContext } from "@/lib/apiAuth";
 import {
   canSetCreateStatus,
   normalizeArticleStatus,
@@ -35,9 +34,6 @@ async function generateUniqueSlug(base: string) {
 
 // GET /api/articles -> published for visitors, role-aware for editorial users
 export async function GET(req: NextRequest) {
-  const auth = await getApiAuthContext(req);
-  const isEditorial = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
-  const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
   const legacyVisibleStatuses: ArticleStatus[] = ["DRAFT", "REVIEW"];
   const publicVisibilityWhere: Prisma.ArticleWhereInput = {
     OR: [
@@ -51,10 +47,19 @@ export async function GET(req: NextRequest) {
     ],
   };
 
-  const where =
-    !auth.token || !isEditorial
-      ? publicVisibilityWhere
-      : isStaff
+  const scope = req.nextUrl.searchParams.get("scope");
+  let where: Prisma.ArticleWhereInput = publicVisibilityWhere;
+
+  if (scope === "all") {
+    const { getApiAuthContext } = await import("@/lib/apiAuth");
+    const auth = await getApiAuthContext(req);
+    const isEditorial = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
+    const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
+    if (!auth.token || !isEditorial) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    where = isStaff
       ? {}
       : {
           OR: [
@@ -62,6 +67,7 @@ export async function GET(req: NextRequest) {
             { authorId: auth.userId ?? "__no-author__" },
           ],
         };
+  }
 
   const articles = await prisma.article.findMany({
     where,
@@ -86,6 +92,7 @@ export async function GET(req: NextRequest) {
 // POST /api/articles
 // Body: { title: string, content: string, excerpt?: string, coverUrl?: string, status?: "DRAFT"|"REVIEW"|"PUBLISHED"|"ARCHIVED" }
 export async function POST(req: NextRequest) {
+  const { getApiAuthContext } = await import("@/lib/apiAuth");
   const auth = await getApiAuthContext(req);
   const hasEditorRole = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.editorial);
 
