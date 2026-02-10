@@ -24,7 +24,6 @@ function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function DesktopActions({
   gridColumn,
-  dropRatio,
   session,
   theme,
   setTheme,
@@ -39,7 +38,6 @@ export default function DesktopActions({
   profileRef,
 }: {
   gridColumn: number;
-  dropRatio: number;
   session: SessionLike;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
@@ -63,16 +61,14 @@ export default function DesktopActions({
 
   return (
     <div
-      className="hidden md:flex items-center gap-3 whitespace-nowrap min-w-0 justify-end"
+      className="hidden md:flex items-center gap-2.5 lg:gap-3 whitespace-nowrap min-w-0 justify-end"
       style={{
         gridColumn,
-        transform: `translateY(calc(var(--logo-h, 96px) * ${dropRatio}))`,
       }}
     >
-      <ThemeCircles value={theme} onChange={setTheme} />
       {!session ? (
         // Guest: Register/Login on the first row, Premium under them
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/register")}
@@ -96,13 +92,15 @@ export default function DesktopActions({
           >
             Premium
           </button>
+
+          <ThemeCircles value={theme} onChange={setTheme} />
         </div>
       ) : (
         <>
           {isAdmin && (
             <button
               onClick={() => router.push("/admin")}
-              className="shrink-0 px-3 py-1 rounded bg-black text-white dark:bg-neutral-800 dark:text-black hover:opacity-90 cursor-pointer"
+              className="inline-flex h-10 items-center shrink-0 rounded-xl border border-black/10 bg-black/10 px-3 text-sm font-medium hover:bg-black/15 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer"
               aria-label="Open Admin Dashboard"
               title="Admin Dashboard"
             >
@@ -110,11 +108,11 @@ export default function DesktopActions({
             </button>
           )}
 
-          <div className="flex min-w-[220px] max-w-[36ch] flex-col items-end">
+          <div className="flex min-w-[200px] max-w-[34ch] flex-col items-end">
             <button
               onClick={connectWallet}
               disabled={walletBusy}
-              className={`shrink-0 px-3 py-1 rounded-md border transition cursor-pointer ${
+              className={`inline-flex h-10 items-center shrink-0 rounded-xl border px-3 text-sm font-medium transition cursor-pointer ${
                 walletConnected
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
                   : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
@@ -141,6 +139,8 @@ export default function DesktopActions({
           <span className="hidden max-w-[38ch] truncate text-sm xl:block">
             {identityLabel}
           </span>
+
+          <ThemeCircles value={theme} onChange={setTheme} />
 
           {/* Profile popover */}
           <div className="relative shrink-0" ref={profileRef as any}>

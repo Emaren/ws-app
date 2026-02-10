@@ -78,7 +78,6 @@ export default function Header() {
   const [theme, setTheme] = useState<ThemeMode>("dark");
 
   const headerRef = useRef<HTMLElement>(null);
-  const logoRef = useRef<HTMLImageElement>(null);
   const menuBtnRef = useRef<HTMLDivElement>(null);
   const menuPanelRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -96,23 +95,6 @@ export default function Header() {
     return () => {
       ro.disconnect();
       removeEventListener("resize", setHeaderVar);
-    };
-  }, []);
-
-  // Expose logo height
-  useEffect(() => {
-    const img = logoRef.current;
-    if (!img) return;
-    const setLogoVar = () =>
-      document.documentElement.style.setProperty("--logo-h", `${img.getBoundingClientRect().height}px`);
-    if (img.complete) setLogoVar();
-    else img.addEventListener("load", setLogoVar, { once: true });
-    const ro = new ResizeObserver(setLogoVar);
-    ro.observe(img);
-    addEventListener("resize", setLogoVar);
-    return () => {
-      ro.disconnect();
-      removeEventListener("resize", setLogoVar);
     };
   }, []);
 
@@ -313,7 +295,6 @@ export default function Header() {
   const isAdmin = isEditorialRole(session?.user?.role);
   const walletConnected = Boolean(linkedWalletAddress);
   const walletShortAddress = shortWallet(linkedWalletAddress);
-  const dropRatio = session ? 0.4 : 0.15;
   const identityLabel = session?.user?.email
     ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
     : roleBadgePrefix(session?.user?.role);
@@ -332,21 +313,16 @@ export default function Header() {
       className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"
       role="banner"
     >
-      <div
-        className="ws-container pt-1 pb-0.5 md:pt-2 md:pb-2 grid items-center gap-3 min-w-0"
-        style={{ gridTemplateColumns: "auto 1fr auto" }}
-      >
+      <div className="ws-container grid min-w-0 grid-cols-[auto_1fr_auto] items-end gap-3 pt-2 pb-1 md:items-center md:gap-4 md:pt-3 md:pb-2">
         {/* Logo */}
-        <a href="/" aria-label="Wheat & Stone home" className="flex items-start shrink-0 cursor-pointer">
+        <a href="/" aria-label="Wheat & Stone home" className="flex items-center shrink-0 cursor-pointer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            ref={logoRef}
             src="/tlogo.png"
             alt="Wheat & Stone"
             width={560}
             height={168}
-            // slightly larger word-mark on small screens
-            style={{ height: "clamp(72px, 10.8vw, 150px)", width: "auto" }}
+            style={{ height: "clamp(68px, 9.5vw, 128px)", width: "auto" }}
             className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
@@ -356,7 +332,6 @@ export default function Header() {
         {/* Desktop actions */}
         <DesktopActions
           gridColumn={3}
-          dropRatio={dropRatio}
           session={session}
           theme={theme}
           setTheme={updateTheme}
@@ -374,7 +349,7 @@ export default function Header() {
         {/* Mobile hamburger — flush right in its own rail */}
         <div
           className="md:hidden justify-self-end self-center"
-          style={{ gridColumn: 3, transform: "translateY(2px)" }}
+          style={{ gridColumn: 3 }}
           ref={menuBtnRef}
         >
           <button
@@ -411,7 +386,7 @@ export default function Header() {
 
       {/* Mobile quick actions for better discoverability */}
       <div className="ws-container md:hidden pb-2">
-        <div className="flex gap-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 overflow-x-auto whitespace-nowrap py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <ThemeCircles value={theme} onChange={updateTheme} compact />
           {session ? (
             <>
