@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import RichField from "@/components/editor/RichField";
+import RichEditor from "@/components/editor/RichEditor";
 
 export default function NewArticle() {
   const router = useRouter();
@@ -65,7 +65,7 @@ export default function NewArticle() {
 
         {/* Rich WYSIWYG field */}
         <div className="overflow-hidden rounded-xl border">
-          <RichField value={content} onChange={setContent} height={440} />
+          <RichEditor value={content} onChange={setContent} />
         </div>
 
         <button

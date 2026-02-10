@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleStatus } from "@prisma/client";
-import RichField from "@/components/editor/RichField";
+import RichEditor from "@/components/editor/RichEditor";
 
 type EditableArticle = {
   id: string;
@@ -231,8 +231,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       </div>
 
       <div className="border rounded-xl overflow-hidden">
-        {/* Ensure RichField’s TinyMCE init uses license_key: 'gpl' (in its own file) */}
-        <RichField value={content} onChange={setContent} height={460} />
+        <RichEditor value={content} onChange={setContent} />
       </div>
 
       <div className="flex items-center gap-2">

@@ -78,6 +78,7 @@ body{
   input[type="reset"],
   input[type="image"],
   label,
+  [tabindex]:not([tabindex="-1"]),
   [aria-controls],
   [data-clickable="true"]
 ):not([aria-disabled="true"], :disabled){
