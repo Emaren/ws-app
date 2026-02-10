@@ -18,8 +18,11 @@ export async function POST(req: Request) {
     const priceId = process.env.STRIPE_PRICE_ID_MONTHLY;
     if (!priceId) throw new Error("Missing STRIPE_PRICE_ID_MONTHLY");
 
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_ORIGIN || new URL(req.url).origin;
+    const configuredOrigin =
+      process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim() ||
+      process.env.NEXTAUTH_URL?.trim() ||
+      "https://wheatandstone.ca";
+    const origin = configuredOrigin.replace(/\/+$/, "");
 
     const successUrl =
       process.env.STRIPE_SUCCESS_URL ??
