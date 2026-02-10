@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
+import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import {
   forwardWsApiOpsRequest,
   isAllowedOpsResource,
@@ -50,7 +51,7 @@ export async function GET(
     return tokenOrResponse;
   }
 
-  const query = req.nextUrl.search;
+  const query = safeRequestUrl(req).search;
   return forwardWsApiOpsRequest({
     path: `/ops/${resource}/${encodeURIComponent(id)}${query}`,
     method: "GET",
@@ -105,4 +106,3 @@ export async function DELETE(
     accessToken: tokenOrResponse,
   });
 }
-

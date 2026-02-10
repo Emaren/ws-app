@@ -9,6 +9,7 @@ import { getApiAuthContext } from "@/lib/apiAuth";
 import { recordAnalyticsEvent } from "@/lib/analytics/server";
 import { prisma } from "@/lib/prisma";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
+import { safeSearchParams } from "@/lib/safeRequestUrl";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -498,11 +499,12 @@ export async function GET(req: NextRequest) {
     return forbiddenResponse;
   }
 
-  const businessId = asTrimmedString(req.nextUrl.searchParams.get("businessId"), 64);
-  const statusRaw = req.nextUrl.searchParams.get("status");
+  const searchParams = safeSearchParams(req);
+  const businessId = asTrimmedString(searchParams.get("businessId"), 64);
+  const statusRaw = searchParams.get("status");
   const status = normalizeLeadStatus(statusRaw);
-  const query = asTrimmedString(req.nextUrl.searchParams.get("q"), 160);
-  const limit = parseLimit(req.nextUrl.searchParams.get("limit"));
+  const query = asTrimmedString(searchParams.get("q"), 160);
+  const limit = parseLimit(searchParams.get("limit"));
 
   if (statusRaw && !status) {
     return NextResponse.json({ message: "Invalid lead status" }, { status: 400 });

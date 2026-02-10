@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import { forwardWsApiRewardsRequest } from "@/lib/wsApiRewardsProxy";
 import { requireRewardsAccessToken } from "../_shared";
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
     return accessTokenOrResponse;
   }
 
-  const query = req.nextUrl.search;
+  const query = safeRequestUrl(req).search;
   return forwardWsApiRewardsRequest({
     path: `/rewards/ledger${query}`,
     method: "GET",

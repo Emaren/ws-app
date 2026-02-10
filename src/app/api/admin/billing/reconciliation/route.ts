@@ -9,6 +9,7 @@ import {
   createStripeEntitlementSnapshot,
   syncEntitlementFromStripeSubscription,
 } from "@/lib/billing/entitlements";
+import { safeSearchParams } from "@/lib/safeRequestUrl";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +170,7 @@ function presentRecord(
 }
 
 async function listRecords(req: NextRequest) {
-  const limitRaw = Number.parseInt(req.nextUrl.searchParams.get("limit") ?? "60", 10);
+  const limitRaw = Number.parseInt(safeSearchParams(req).get("limit") ?? "60", 10);
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 250) : 60;
 
   const entitlements = await prisma.subscriptionEntitlement.findMany({
