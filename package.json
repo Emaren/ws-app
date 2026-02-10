@@ -20,6 +20,7 @@
     "test": "node --test",
     "verify": "pnpm run lint && pnpm run test && pnpm run build",
     "ci:migrations": "scripts/ci-prisma-migrations.sh",
+    "smoke:http": "bash scripts/smoke-http.sh",
     "perf:mobile": "scripts/mobile-perf-check.sh",
     "build": "next build",
     "//5": "---- Prisma helpers ----",

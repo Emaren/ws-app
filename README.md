@@ -94,6 +94,7 @@ Optional:
 - `pnpm preview`
 - `pnpm verify`
 - `pnpm ci:migrations`
+- `pnpm smoke:http`
 - `pnpm pwa:icons`
 - `pnpm perf:mobile`
 - `pnpm prisma:migrate:deploy`
@@ -120,6 +121,7 @@ The workflow always publishes a gate summary table and fails the run if any gate
 - `docs/auth-integration.md` ws-api-backed auth login/logout/me/session flow
 - `docs/billing-reconciliation.md` subscription entitlement + Stripe reconciliation contract
 - `docs/mobile-performance.md` mobile Lighthouse checks + quality gates
+- `docs/deploy-runbook.md` production deploy/smoke/parity workflow
 
 ## Known gaps (summary)
 
