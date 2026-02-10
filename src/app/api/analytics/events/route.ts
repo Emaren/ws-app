@@ -10,6 +10,10 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+export async function GET() {
+  return NextResponse.json({ message: "Method Not Allowed" }, { status: 405 });
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
