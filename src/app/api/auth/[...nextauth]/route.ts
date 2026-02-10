@@ -1,5 +1,6 @@
 // src/app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/authOptions";
 
 // Make sure this API route is never statically generated.
@@ -10,4 +11,24 @@ export const fetchCache = "force-no-store";
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+function hasValidRequestUrl(req: unknown): req is Request {
+  return (
+    !!req &&
+    typeof req === "object" &&
+    typeof (req as { url?: unknown }).url === "string"
+  );
+}
+
+export async function GET(req: Request, ctx: unknown) {
+  if (!hasValidRequestUrl(req)) {
+    return new NextResponse(null, { status: 204 });
+  }
+  return (handler as any)(req, ctx);
+}
+
+export async function POST(req: Request, ctx: unknown) {
+  if (!hasValidRequestUrl(req)) {
+    return new NextResponse(null, { status: 204 });
+  }
+  return (handler as any)(req, ctx);
+}
