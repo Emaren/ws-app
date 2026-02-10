@@ -93,10 +93,24 @@ Optional:
 - `pnpm start`
 - `pnpm preview`
 - `pnpm verify`
+- `pnpm ci:migrations`
 - `pnpm pwa:icons`
 - `pnpm perf:mobile`
 - `pnpm prisma:migrate:deploy`
 - `pnpm studio:dev`
+
+## CI gates
+
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+Gate order:
+
+1. `pnpm ci:migrations`
+2. `pnpm lint`
+3. `pnpm test`
+4. `pnpm build`
+
+The workflow always publishes a gate summary table and fails the run if any gate is not `PASS`.
 
 ## Baseline documentation
 
@@ -109,6 +123,6 @@ Optional:
 
 ## Known gaps (summary)
 
-- Missing repo-level `lint`, `test`, and `typecheck` scripts
-- No dedicated frontend unit tests for article lifecycle helpers yet
+- Lint currently maps to TypeScript checks only (eslint not yet configured)
+- Frontend unit coverage is still minimal around article lifecycle helpers
 - Prisma role enum/migrations are not yet aligned to the full `OWNER/ADMIN/EDITOR/CONTRIBUTOR/USER` model

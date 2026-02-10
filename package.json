@@ -19,6 +19,7 @@
     "lint": "pnpm run typecheck",
     "test": "node --test",
     "verify": "pnpm run lint && pnpm run test && pnpm run build",
+    "ci:migrations": "scripts/ci-prisma-migrations.sh",
     "perf:mobile": "scripts/mobile-perf-check.sh",
     "build": "next build",
     "//5": "---- Prisma helpers ----",

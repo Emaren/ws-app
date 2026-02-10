@@ -14,6 +14,7 @@ This file defines the minimum reliable checks and hygiene standards for `ws-app`
 - `pnpm test`
 - `pnpm build`
 - `pnpm verify`
+- `pnpm ci:migrations`
 
 ## Local verification flow
 
@@ -24,6 +25,18 @@ pnpm verify
 ```
 
 `verify` runs typecheck, test, and production build in sequence.
+
+Migration gate check:
+
+```bash
+pnpm ci:migrations
+```
+
+## CI workflow
+
+- Workflow: `.github/workflows/ci.yml`
+- Gate order: migrations -> lint -> test -> build
+- Reporting: writes a gate status table to the GitHub Actions step summary and fails if any gate is not `PASS`.
 
 ## Environment hygiene
 

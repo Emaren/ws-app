@@ -1,0 +1,127 @@
+name: ws-app CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ws-app-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint-test-build-migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wheatandstone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d wheatandstone"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/wheatandstone?schema=public
+      NEXTAUTH_SECRET: ci-nextauth-secret
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_ORIGIN: http://127.0.0.1:3000
+      WS_API_BASE_URL: http://127.0.0.1:3012
+      NODE_ENV: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migration gate
+        id: migrations
+        continue-on-error: true
+        run: pnpm run ci:migrations
+
+      - name: Lint gate
+        id: lint
+        continue-on-error: true
+        run: pnpm run lint
+
+      - name: Test gate
+        id: test
+        continue-on-error: true
+        run: pnpm run test
+
+      - name: Build gate
+        id: build
+        continue-on-error: true
+        run: pnpm run build
+
+      - name: Gate summary
+        if: always()
+        env:
+          MIGRATIONS_OUTCOME: ${{ steps.migrations.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          failures=0
+
+          result_label() {
+            case "$1" in
+              success) echo "PASS" ;;
+              failure) echo "FAIL" ;;
+              cancelled) echo "CANCELLED" ;;
+              skipped) echo "SKIPPED" ;;
+              "") echo "NOT_RUN" ;;
+              *) echo "$1" ;;
+            esac
+          }
+
+          gate_line() {
+            gate="$1"
+            outcome="$2"
+            label="$(result_label "$outcome")"
+            if [[ "$label" != "PASS" ]]; then
+              failures=1
+            fi
+            echo "| ${gate} | ${label} |"
+          }
+
+          {
+            echo "## ws-app CI Gate Summary"
+            echo
+            echo "| Gate | Result |"
+            echo "| --- | --- |"
+            gate_line "migrations" "$MIGRATIONS_OUTCOME"
+            gate_line "lint" "$LINT_OUTCOME"
+            gate_line "test" "$TEST_OUTCOME"
+            gate_line "build" "$BUILD_OUTCOME"
+            echo
+            echo "- commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$failures" -ne 0 ]]; then
+            echo "::error::One or more ws-app CI gates failed."
+            exit 1
+          fi
