@@ -1,4 +1,5 @@
 import "server-only";
+import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
 
 interface WsApiErrorPayload {
   message?: string;
@@ -57,22 +58,6 @@ export interface WsApiRegisterResult {
 }
 
 const REQUEST_TIMEOUT_MS = 8000;
-
-function getWsApiBaseUrl(): string {
-  const candidates = [
-    process.env.WS_API_BASE_URL,
-    process.env.WS_API_URL,
-    process.env.NEXT_PUBLIC_WS_API_BASE_URL,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && candidate.trim().length > 0) {
-      return candidate.trim().replace(/\/+$/, "");
-    }
-  }
-
-  return "http://127.0.0.1:3012";
-}
 
 function parseWsApiErrorMessage(payload: unknown, fallbackMessage: string): string {
   if (typeof payload === "object" && payload !== null) {

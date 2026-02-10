@@ -1,25 +1,10 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const OPS_RESOURCE_ALLOWLIST = new Set(["businesses", "inventory-items", "offers"]);
-
-function getWsApiBaseUrl(): string {
-  const candidates = [
-    process.env.WS_API_BASE_URL,
-    process.env.WS_API_URL,
-    process.env.NEXT_PUBLIC_WS_API_BASE_URL,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && candidate.trim().length > 0) {
-      return candidate.trim().replace(/\/+$/, "");
-    }
-  }
-
-  return "http://127.0.0.1:3012";
-}
 
 export function isAllowedOpsResource(resource: string): boolean {
   return OPS_RESOURCE_ALLOWLIST.has(resource);
@@ -83,4 +68,3 @@ export async function forwardWsApiOpsRequest(input: {
     clearTimeout(timer);
   }
 }
-
