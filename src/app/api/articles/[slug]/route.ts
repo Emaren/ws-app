@@ -1,8 +1,7 @@
 // src/app/api/articles/[slug]/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
+import { getToken } from "next-auth/jwt";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,7 +42,7 @@ export async function GET(
 
 // --- PATCH: reactions (public) OR editorial updates (auth) ---
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
@@ -82,10 +81,12 @@ export async function PATCH(
   }
 
   // ---- Auth-required editorial updates ----
-  const session = await getServerSession(authOptions);
-  // @ts-ignore next-auth augmentation provides role
-  const role = session?.user?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
-  if (!session?.user || !role) return forbidden();
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  const role = token?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
+  if (!token || !role) return forbidden();
 
   // Accept partials; all fields optional
   const {
@@ -150,13 +151,15 @@ export async function PATCH(
 
 // --- DELETE: remove an article (auth) ---
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  // @ts-ignore next-auth augmentation provides role
-  const role = session?.user?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
-  if (!session?.user || !role) return forbidden();
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  const role = token?.role as "ADMIN" | "CONTRIBUTOR" | undefined;
+  if (!token || !role) return forbidden();
 
   const { slug } = await params;
 
