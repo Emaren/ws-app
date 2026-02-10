@@ -45,9 +45,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // Runs during JWT creation/update
     async jwt({ token, user }) {
-      if (user?.email) {
+      const email = user?.email ?? token.email;
+      if (email) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email },
+          where: { email },
           select: { id: true, role: true },
         });
 
