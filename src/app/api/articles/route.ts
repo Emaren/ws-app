@@ -22,6 +22,27 @@ function slugify(input: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function getSearchParam(req: NextRequest, key: string): string | null {
+  const rawUrl = (req as { url?: unknown }).url;
+  const normalizedUrl =
+    typeof rawUrl === "string"
+      ? rawUrl
+      : rawUrl instanceof URL
+        ? rawUrl.toString()
+        : rawUrl &&
+            typeof rawUrl === "object" &&
+            "href" in rawUrl &&
+            typeof (rawUrl as { href?: unknown }).href === "string"
+          ? (rawUrl as { href: string }).href
+          : "http://localhost";
+
+  try {
+    return new URL(normalizedUrl).searchParams.get(key);
+  } catch {
+    return null;
+  }
+}
+
 // Ensure slug is unique by appending -2, -3, ...
 async function generateUniqueSlug(base: string) {
   let slug = base || "article";
@@ -47,7 +68,7 @@ export async function GET(req: NextRequest) {
     ],
   };
 
-  const scope = req.nextUrl.searchParams.get("scope");
+  const scope = getSearchParam(req, "scope");
   let where: Prisma.ArticleWhereInput = publicVisibilityWhere;
 
   if (scope === "all") {
