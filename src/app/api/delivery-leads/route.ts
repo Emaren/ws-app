@@ -1,7 +1,12 @@
-import type { DeliveryLeadSource, Prisma } from "@prisma/client";
+import type {
+  DeliveryLeadSource,
+  DeliveryLeadStatus,
+  Prisma,
+} from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,6 +21,14 @@ const DELIVERY_LEAD_SOURCE_VALUES: readonly DeliveryLeadSource[] = [
   "INVENTORY_ALERT",
   "CAMPAIGN_CLICK",
   "AFFILIATE",
+];
+const DELIVERY_LEAD_STATUS_VALUES: readonly DeliveryLeadStatus[] = [
+  "NEW",
+  "CONTACTED",
+  "RESERVED",
+  "FULFILLED",
+  "CANCELLED",
+  "EXPIRED",
 ];
 
 type NormalizedLeadRequest = {
@@ -93,6 +106,35 @@ function normalizeQty(value: unknown): number {
   }
 
   return 1;
+}
+
+function normalizeLeadStatus(value: string | null): DeliveryLeadStatus | null {
+  if (!value) return null;
+
+  const upper = value.trim().toUpperCase();
+  if ((DELIVERY_LEAD_STATUS_VALUES as readonly string[]).includes(upper)) {
+    return upper as DeliveryLeadStatus;
+  }
+
+  return null;
+}
+
+function parseLimit(value: string | null): number {
+  if (!value) return 120;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 120;
+  return Math.min(parsed, 250);
+}
+
+async function requireStaffLeadAccess(req: NextRequest): Promise<NextResponse | null> {
+  const auth = await getApiAuthContext(req);
+  const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
+
+  if (!auth.token || !isStaff) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
+  return null;
 }
 
 function normalizeSource(value: unknown): DeliveryLeadSource {
@@ -421,6 +463,113 @@ async function upsertRecipientId(
   });
 
   return created.id;
+}
+
+export async function GET(req: NextRequest) {
+  const forbiddenResponse = await requireStaffLeadAccess(req);
+  if (forbiddenResponse) {
+    return forbiddenResponse;
+  }
+
+  const businessId = asTrimmedString(req.nextUrl.searchParams.get("businessId"), 64);
+  const statusRaw = req.nextUrl.searchParams.get("status");
+  const status = normalizeLeadStatus(statusRaw);
+  const query = asTrimmedString(req.nextUrl.searchParams.get("q"), 160);
+  const limit = parseLimit(req.nextUrl.searchParams.get("limit"));
+
+  if (statusRaw && !status) {
+    return NextResponse.json({ message: "Invalid lead status" }, { status: 400 });
+  }
+
+  const where: Prisma.DeliveryLeadWhereInput = {};
+
+  if (businessId) {
+    where.businessId = businessId;
+  }
+  if (status) {
+    where.status = status;
+  }
+  if (query) {
+    where.OR = [
+      { deliveryAddress: { contains: query, mode: "insensitive" } },
+      { notes: { contains: query, mode: "insensitive" } },
+      { recipient: { is: { name: { contains: query, mode: "insensitive" } } } },
+      { recipient: { is: { email: { contains: query, mode: "insensitive" } } } },
+      { recipient: { is: { phone: { contains: query, mode: "insensitive" } } } },
+      { inventoryItem: { is: { name: { contains: query, mode: "insensitive" } } } },
+      { offer: { is: { title: { contains: query, mode: "insensitive" } } } },
+      { business: { is: { name: { contains: query, mode: "insensitive" } } } },
+      { business: { is: { slug: { contains: query, mode: "insensitive" } } } },
+    ];
+  }
+
+  const [leads, businesses] = await Promise.all([
+    prisma.deliveryLead.findMany({
+      where,
+      orderBy: [{ requestedAt: "desc" }, { createdAt: "desc" }],
+      take: limit,
+      select: {
+        id: true,
+        businessId: true,
+        status: true,
+        source: true,
+        requestedQty: true,
+        unitPriceCents: true,
+        totalCents: true,
+        requestedAt: true,
+        fulfillBy: true,
+        contactedAt: true,
+        fulfilledAt: true,
+        cancelledAt: true,
+        deliveryAddress: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+        business: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            status: true,
+          },
+        },
+        recipient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            preferredChannel: true,
+          },
+        },
+        inventoryItem: {
+          select: {
+            id: true,
+            name: true,
+            priceCents: true,
+          },
+        },
+        offer: {
+          select: {
+            id: true,
+            title: true,
+            discountPriceCents: true,
+          },
+        },
+      },
+    }),
+    prisma.business.findMany({
+      orderBy: [{ isVerified: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        status: true,
+      },
+    }),
+  ]);
+
+  return NextResponse.json({ leads, businesses });
 }
 
 export async function POST(req: NextRequest) {
