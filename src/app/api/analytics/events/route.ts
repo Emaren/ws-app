@@ -1,5 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { getApiAuthContext } from "@/lib/apiAuth";
+import { NextResponse } from "next/server";
 import { recordAnalyticsEvent } from "@/lib/analytics/server";
 import {
   ANALYTICS_CHANNELS,
@@ -72,7 +71,7 @@ function parsePayload(body: unknown): AnalyticsEventPayload | null {
   };
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const payload = parsePayload(await req.json().catch(() => null));
 
   if (!payload) {
@@ -80,12 +79,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const auth = await getApiAuthContext(req);
-
     await recordAnalyticsEvent({
       ...payload,
-      userId: auth.userId ?? null,
-      request: req,
+      userId: null,
+      request: null,
+      userAgent: trimTo(req.headers.get("user-agent"), 600),
       sourceContext: payload.sourceContext ?? payload.pagePath ?? null,
     });
   } catch {
