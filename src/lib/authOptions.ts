@@ -1,15 +1,107 @@
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcrypt";
+import { prisma } from "@/lib/prisma";
 import { normalizeAppRole } from "@/lib/rbac";
 import {
   WsApiHttpError,
   wsApiGetSession,
   wsApiLogin,
   wsApiLogout,
+  wsApiRegister,
 } from "@/lib/wsApiAuth";
 
 const SESSION_SYNC_INTERVAL_MS = 60_000;
 const SESSION_RETRY_INTERVAL_MS = 15_000;
+const BCRYPT_HASH_PREFIX = /^\$2[aby]\$/;
+
+async function tryLocalPrismaFallback(
+  emailInput: string,
+  passwordInput: string,
+): Promise<{
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  wsApiAccessToken?: string;
+  wsApiSessionId?: string;
+  wsApiSessionExpiresAt?: string;
+} | null> {
+  const email = emailInput.trim().toLowerCase();
+  const password = passwordInput;
+  if (!email || !password) {
+    return null;
+  }
+
+  const localUser = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      password: true,
+    },
+  });
+
+  if (!localUser) {
+    return null;
+  }
+
+  const storedPassword = localUser.password ?? "";
+  let valid = false;
+  let shouldUpgradeHash = false;
+
+  if (BCRYPT_HASH_PREFIX.test(storedPassword)) {
+    valid = await bcrypt.compare(password, storedPassword);
+  } else if (storedPassword.length > 0) {
+    valid = storedPassword === password;
+    shouldUpgradeHash = valid;
+  }
+
+  if (!valid) {
+    return null;
+  }
+
+  if (shouldUpgradeHash) {
+    const upgradedHash = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: localUser.id },
+      data: { password: upgradedHash },
+    });
+  }
+
+  const normalizedRole = normalizeAppRole(localUser.role) ?? "USER";
+
+  try {
+    try {
+      await wsApiRegister(email, password, localUser.name);
+    } catch (error) {
+      if (!(error instanceof WsApiHttpError && error.statusCode === 409)) {
+        throw error;
+      }
+    }
+
+    const wsApiLoginResult = await wsApiLogin(email, password);
+    return {
+      id: wsApiLoginResult.user.id,
+      email: wsApiLoginResult.user.email,
+      name: wsApiLoginResult.user.name,
+      role: normalizeAppRole(wsApiLoginResult.user.role) ?? normalizedRole,
+      wsApiAccessToken: wsApiLoginResult.accessToken,
+      wsApiSessionId: wsApiLoginResult.session.id,
+      wsApiSessionExpiresAt: wsApiLoginResult.session.expiresAt,
+    };
+  } catch (error) {
+    console.warn("auth prisma fallback using local-only session", error);
+    return {
+      id: localUser.id,
+      email: localUser.email,
+      name: localUser.name,
+      role: normalizedRole,
+    };
+  }
+}
 
 function clearJwtAuthState(token: Record<string, unknown>): void {
   delete token.id;
@@ -51,6 +143,14 @@ export const authOptions: NextAuthOptions = {
             wsApiSessionExpiresAt: login.session.expiresAt,
           };
         } catch (error) {
+          const fallback = await tryLocalPrismaFallback(
+            credentials.email,
+            credentials.password,
+          );
+          if (fallback) {
+            return fallback;
+          }
+
           if (error instanceof WsApiHttpError && error.statusCode === 401) {
             return null;
           }

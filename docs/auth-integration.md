@@ -26,5 +26,8 @@ Updated: 2026-02-10
 
 - Backend auth state (session validity + role) is synchronized from `ws-api`.
 - NextAuth remains the web session wrapper for the frontend.
+- If `ws-api` login fails, `authorize` falls back to local Prisma user credentials.
+- Legacy/plaintext Prisma passwords are auto-upgraded to bcrypt on successful fallback login.
+- Fallback attempts to provision/login the same user in `ws-api`; if that fails, a local-only web session is still issued.
 - Frontend/admin route and article API RBAC use the shared role set:
   `OWNER`, `ADMIN`, `EDITOR`, `CONTRIBUTOR`, `USER` (legacy `STONEHOLDER` maps to `USER`).
