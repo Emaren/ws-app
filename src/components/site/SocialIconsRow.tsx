@@ -29,7 +29,7 @@ type Props = {
     return (
       <section className="ws-container">
         <div className="ws-article">
-          <div className="flex items-center justify-center gap- md:gap-6 py-3">
+          <div className="flex items-center justify-center gap-4 md:gap-6 py-3">
             {/* Facebook */}
             <IconWrap href={facebookUrl} label="Facebook">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

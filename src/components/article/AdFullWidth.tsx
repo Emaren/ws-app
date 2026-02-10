@@ -44,22 +44,38 @@ export default function AdFullWidth({
         ].join(" ")}
         style={{ height: `max(180px, ${height}px)` }}
       >
-        {!imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src="/tttr.png"
-            alt={label}
-            loading="lazy"
-            decoding="async"
-            sizes="100vw"
-            className="block w-full h-auto max-w-none object-contain select-none pointer-events-none"
-            style={{ maxHeight: Math.round(height * 0.46) }}
-            onError={() => setImgError(true)}
-            draggable={false}
-          />
-        ) : (
-          <span className={["text-lg font-semibold", toneCls.text].join(" ")}>{label}</span>
-        )}
+        <div className="relative w-full h-full">
+          {!imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/tttr.png"
+              alt={label}
+              loading="lazy"
+              decoding="async"
+              sizes="100vw"
+              className="block w-full h-full object-contain select-none pointer-events-none p-3 md:p-5"
+              onError={() => setImgError(true)}
+              draggable={false}
+            />
+          ) : (
+            <span className={["absolute inset-0 grid place-items-center text-lg font-semibold", toneCls.text].join(" ")}>
+              {label}
+            </span>
+          )}
+
+          <div className="absolute inset-x-3 top-3 md:inset-x-5 md:top-4 flex items-center justify-between pointer-events-none">
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-black/60 text-amber-300 border border-amber-400/30">
+              Local Partner
+            </span>
+            <span className="hidden sm:inline text-xs text-neutral-300">Trade smarter in 30 seconds</span>
+          </div>
+
+          <div className="absolute inset-x-3 bottom-3 md:inset-x-5 md:bottom-4 flex justify-end pointer-events-none">
+            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-400 text-black">
+              Visit TokenTap.ca
+            </span>
+          </div>
+        </div>
       </a>
     </div>
   );
