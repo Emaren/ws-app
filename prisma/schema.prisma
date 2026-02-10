@@ -8,36 +8,42 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
-  name      String
-  role      Role       @default(STONEHOLDER)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  articles  Article[]
-  comments  Comment[]
-  reactions Reaction[]
+  id                     String                  @id @default(cuid())
+  email                  String                  @unique
+  password               String
+  name                   String
+  role                   Role                    @default(STONEHOLDER)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  articles               Article[]
+  comments               Comment[]
+  reactions              Reaction[]
+  businessesOwned        Business[]
+  notificationRecipients NotificationRecipient[]
+  deliveryLeads          DeliveryLead[]
+  affiliateClicks        AffiliateClick[]
+  rewardLedgerEntries    RewardLedger[]
 }
 
 model Article {
-  id          String        @id @default(cuid())
-  slug        String        @unique
-  title       String
-  excerpt     String?
-  coverUrl    String?
-  content     String
-  publishedAt DateTime?
-  status      ArticleStatus @default(DRAFT)
-  authorId    String?
-  likeCount   Int           @default(0)
-  wowCount    Int           @default(0)
-  hmmCount    Int           @default(0)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  author      User?         @relation(fields: [authorId], references: [id])
-  comments    Comment[]
-  reactions   Reaction[]
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  title           String
+  excerpt         String?
+  coverUrl        String?
+  content         String
+  publishedAt     DateTime?
+  status          ArticleStatus    @default(DRAFT)
+  authorId        String?
+  likeCount       Int              @default(0)
+  wowCount        Int              @default(0)
+  hmmCount        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  author          User?            @relation(fields: [authorId], references: [id])
+  comments        Comment[]
+  reactions       Reaction[]
+  affiliateClicks AffiliateClick[]
 }
 
 model Comment {
@@ -64,6 +70,278 @@ model Reaction {
   @@unique([articleId, userId, type])
 }
 
+model Business {
+  id                     String                  @id @default(cuid())
+  slug                   String                  @unique
+  name                   String
+  legalName              String?
+  ownerUserId            String?
+  contactEmail           String?
+  contactPhone           String?
+  timezone               String                  @default("America/Edmonton")
+  status                 BusinessStatus          @default(ACTIVE)
+  isVerified             Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  owner                  User?                   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  storeProfile           StoreProfile?
+  inventoryItems         InventoryItem[]
+  pricingRules           PricingRule[]
+  offers                 Offer[]
+  campaigns              Campaign[]
+  notificationRecipients NotificationRecipient[]
+  deliveryLeads          DeliveryLead[]
+  affiliateClicks        AffiliateClick[]
+  rewardLedgerEntries    RewardLedger[]
+
+  @@index([ownerUserId])
+  @@index([status])
+}
+
+model StoreProfile {
+  id                String   @id @default(cuid())
+  businessId        String   @unique
+  displayName       String?
+  description       String?
+  logoUrl           String?
+  heroImageUrl      String?
+  websiteUrl        String?
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  region            String?
+  postalCode        String?
+  country           String?
+  latitude          Decimal? @db.Decimal(10, 7)
+  longitude         Decimal? @db.Decimal(10, 7)
+  deliveryRadiusKm  Int?
+  pickupEnabled     Boolean  @default(true)
+  deliveryEnabled   Boolean  @default(false)
+  notificationEmail String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model InventoryItem {
+  id                String         @id @default(cuid())
+  businessId        String
+  sku               String?
+  name              String
+  description       String?
+  category          String?
+  unitLabel         String?
+  imageUrl          String?
+  priceCents        Int
+  compareAtCents    Int?
+  costCents         Int?
+  quantityOnHand    Int            @default(0)
+  reservedQuantity  Int            @default(0)
+  lowStockThreshold Int?
+  expiresAt         DateTime?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  business          Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  pricingRules      PricingRule[]
+  offers            Offer[]
+  deliveryLeads     DeliveryLead[]
+
+  @@unique([businessId, sku])
+  @@index([businessId, isActive])
+  @@index([expiresAt])
+}
+
+model PricingRule {
+  id              String          @id @default(cuid())
+  businessId      String
+  inventoryItemId String?
+  name            String
+  description     String?
+  ruleType        PricingRuleType @default(PERCENT_OFF)
+  priority        Int             @default(100)
+  percentOff      Decimal?        @db.Decimal(5, 2)
+  amountOffCents  Int?
+  fixedPriceCents Int?
+  minQuantity     Int?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  maxRedemptions  Int?
+  redemptionsUsed Int             @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  business        Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  offers          Offer[]
+
+  @@index([businessId, isActive])
+  @@index([inventoryItemId])
+  @@index([startsAt, endsAt])
+}
+
+model Offer {
+  id                 String         @id @default(cuid())
+  businessId         String
+  inventoryItemId    String?
+  pricingRuleId      String?
+  campaignId         String?
+  title              String
+  description        String?
+  status             OfferStatus    @default(DRAFT)
+  badgeText          String?
+  couponCode         String?
+  discountPriceCents Int?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  unitsTotal         Int?
+  unitsClaimed       Int            @default(0)
+  ctaUrl             String?
+  featured           Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  business           Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inventoryItem      InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  pricingRule        PricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  campaign           Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  deliveryLeads      DeliveryLead[]
+
+  @@unique([businessId, couponCode])
+  @@index([businessId, status])
+  @@index([startsAt, endsAt])
+  @@index([featured])
+}
+
+model Campaign {
+  id                  String           @id @default(cuid())
+  businessId          String
+  name                String
+  description         String?
+  type                CampaignType     @default(PROMOTION)
+  status              CampaignStatus   @default(DRAFT)
+  startsAt            DateTime?
+  endsAt              DateTime?
+  geofenceLatitude    Decimal?         @db.Decimal(10, 7)
+  geofenceLongitude   Decimal?         @db.Decimal(10, 7)
+  geofenceRadiusM     Int?
+  budgetCents         Int?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  business            Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  offers              Offer[]
+  affiliateClicks     AffiliateClick[]
+  rewardLedgerEntries RewardLedger[]
+
+  @@index([businessId, status])
+  @@index([type])
+  @@index([startsAt, endsAt])
+}
+
+model NotificationRecipient {
+  id               String              @id @default(cuid())
+  businessId       String
+  userId           String?
+  name             String?
+  email            String?
+  phone            String?
+  pushToken        String?
+  preferredChannel NotificationChannel @default(EMAIL)
+  emailOptIn       Boolean             @default(true)
+  smsOptIn         Boolean             @default(false)
+  pushOptIn        Boolean             @default(false)
+  tags             Json?
+  lastNotifiedAt   DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  business         Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user             User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deliveryLeads    DeliveryLead[]
+
+  @@unique([businessId, email])
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@index([userId])
+}
+
+model DeliveryLead {
+  id              String                 @id @default(cuid())
+  businessId      String
+  inventoryItemId String?
+  offerId         String?
+  recipientId     String?
+  userId          String?
+  source          DeliveryLeadSource     @default(ARTICLE_CTA)
+  status          DeliveryLeadStatus     @default(NEW)
+  requestedQty    Int                    @default(1)
+  unitPriceCents  Int?
+  totalCents      Int?
+  requestedAt     DateTime               @default(now())
+  fulfillBy       DateTime?
+  contactedAt     DateTime?
+  fulfilledAt     DateTime?
+  cancelledAt     DateTime?
+  deliveryAddress String?
+  notes           String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  business        Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem?         @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  offer           Offer?                 @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  recipient       NotificationRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  user            User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status])
+  @@index([requestedAt])
+  @@index([offerId])
+  @@index([recipientId])
+}
+
+model AffiliateClick {
+  id             String           @id @default(cuid())
+  businessId     String?
+  campaignId     String?
+  articleId      String?
+  userId         String?
+  network        AffiliateNetwork @default(AMAZON)
+  sourceContext  String?
+  destinationUrl String
+  referrerUrl    String?
+  ipHash         String?
+  userAgent      String?
+  createdAt      DateTime         @default(now())
+  business       Business?        @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  campaign       Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  article        Article?         @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  user           User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([network, createdAt])
+  @@index([businessId])
+  @@index([campaignId])
+  @@index([articleId])
+  @@index([userId])
+}
+
+model RewardLedger {
+  id          String          @id @default(cuid())
+  businessId  String?
+  campaignId  String?
+  userId      String?
+  token       RewardToken
+  direction   RewardDirection @default(CREDIT)
+  amount      Decimal         @db.Decimal(20, 8)
+  reason      String
+  metadata    Json?
+  externalRef String?         @unique
+  createdAt   DateTime        @default(now())
+  business    Business?       @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  campaign    Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, token, createdAt])
+  @@index([businessId, token, createdAt])
+  @@index([campaignId, createdAt])
+}
+
 enum Role {
   ADMIN
   CONTRIBUTOR
@@ -81,4 +359,84 @@ enum ReactionType {
   LIKE
   WOW
   HMM
+}
+
+enum BusinessStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum PricingRuleType {
+  PERCENT_OFF
+  AMOUNT_OFF
+  FIXED_PRICE
+  BOGO
+  CLEARANCE
+}
+
+enum OfferStatus {
+  DRAFT
+  LIVE
+  PAUSED
+  EXPIRED
+  ARCHIVED
+}
+
+enum CampaignType {
+  PROMOTION
+  GEO_DROP
+  INVENTORY_FLASH
+  LOYALTY
+  AFFILIATE
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum DeliveryLeadStatus {
+  NEW
+  CONTACTED
+  RESERVED
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum DeliveryLeadSource {
+  ARTICLE_CTA
+  LOCAL_AD
+  INVENTORY_ALERT
+  CAMPAIGN_CLICK
+  AFFILIATE
+}
+
+enum AffiliateNetwork {
+  AMAZON
+  LOCAL_DIRECT
+  TOKENTAP
+  OTHER
+}
+
+enum RewardToken {
+  WHEAT
+  STONE
+}
+
+enum RewardDirection {
+  CREDIT
+  DEBIT
 }
