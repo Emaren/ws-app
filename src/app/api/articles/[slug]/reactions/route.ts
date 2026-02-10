@@ -26,8 +26,29 @@ function notFound(message = "Not found") {
   return new NextResponse(message, { status: 404 });
 }
 
+function getSearchParam(req: NextRequest, key: string): string | null {
+  const rawUrl = (req as { url?: unknown }).url;
+  const normalizedUrl =
+    typeof rawUrl === "string"
+      ? rawUrl
+      : rawUrl instanceof URL
+        ? rawUrl.toString()
+        : rawUrl &&
+            typeof rawUrl === "object" &&
+            "href" in rawUrl &&
+            typeof (rawUrl as { href?: unknown }).href === "string"
+          ? (rawUrl as { href: string }).href
+          : "http://localhost";
+
+  try {
+    return new URL(normalizedUrl).searchParams.get(key);
+  } catch {
+    return null;
+  }
+}
+
 function parseScope(req: NextRequest): "article" | "product" {
-  const raw = (req.nextUrl.searchParams.get("scope") || "article").toLowerCase();
+  const raw = (getSearchParam(req, "scope") || "article").toLowerCase();
   return raw === "product" ? "product" : "article";
 }
 
