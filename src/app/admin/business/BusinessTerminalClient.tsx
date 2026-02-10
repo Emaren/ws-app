@@ -41,6 +41,39 @@ type OfferRecord = {
   updatedAt: string;
 };
 
+type DynamicPricingSource =
+  | "MANUAL_OVERRIDE"
+  | "OFFER"
+  | "PRICING_RULE"
+  | "EXPIRY_CLEARANCE"
+  | "STOCK_THRESHOLD"
+  | "BASE";
+
+type DynamicPricingAdjustment = {
+  source: DynamicPricingSource;
+  sourceId: string | null;
+  label: string;
+  unitPriceCents: number;
+  selected: boolean;
+};
+
+type DynamicPricingQuote = {
+  businessId: string;
+  inventoryItemId: string;
+  asOf: string;
+  quantity: number;
+  availableUnits: number;
+  purchasable: boolean;
+  blockedReason: string | null;
+  expiresAt: string | null;
+  baseUnitPriceCents: number;
+  finalUnitPriceCents: number | null;
+  finalTotalCents: number | null;
+  selectedSource: DynamicPricingSource | null;
+  selectedSourceId: string | null;
+  adjustments: DynamicPricingAdjustment[];
+};
+
 type InventoryFormState = {
   id: string | null;
   businessId: string;
@@ -68,6 +101,14 @@ type OfferFormState = {
   unitsClaimed: string;
   featured: boolean;
   ctaUrl: string;
+};
+
+type PricingPreviewFormState = {
+  businessId: string;
+  inventoryItemId: string;
+  quantity: string;
+  asOf: string;
+  manualOverrideCents: string;
 };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -135,6 +176,106 @@ function requiredInt(raw: string, label: string): number {
   return parsed;
 }
 
+function parseIsoMs(iso: string | null): number | null {
+  if (!iso) return null;
+  const parsed = Date.parse(iso);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function formatWindow(startsAt: string | null, endsAt: string | null): string {
+  if (!startsAt && !endsAt) return "No window";
+  const startLabel = startsAt ? new Date(startsAt).toLocaleString() : "now";
+  const endLabel = endsAt ? new Date(endsAt).toLocaleString() : "open";
+  return `${startLabel} -> ${endLabel}`;
+}
+
+function remainingUnitsCount(unitsTotal: number | null, unitsClaimed: number): number | null {
+  if (unitsTotal === null) return null;
+  return Math.max(unitsTotal - unitsClaimed, 0);
+}
+
+function remainingUnits(unitsTotal: number | null, unitsClaimed: number): string {
+  const units = remainingUnitsCount(unitsTotal, unitsClaimed);
+  return units === null ? "n/a" : String(units);
+}
+
+function claimPercent(unitsTotal: number | null, unitsClaimed: number): number | null {
+  if (unitsTotal === null || unitsTotal <= 0) return null;
+  const bounded = Math.max(0, Math.min(unitsClaimed, unitsTotal));
+  return Math.round((bounded / unitsTotal) * 100);
+}
+
+function isWithinWindow(nowMs: number, startsAt: string | null, endsAt: string | null): boolean {
+  const startMs = parseIsoMs(startsAt);
+  if (startMs !== null && nowMs < startMs) return false;
+
+  const endMs = parseIsoMs(endsAt);
+  if (endMs !== null && nowMs > endMs) return false;
+
+  return true;
+}
+
+function isOfferLiveNow(offer: OfferRecord, nowMs: number): boolean {
+  if (offer.status !== "LIVE") return false;
+  if (!isWithinWindow(nowMs, offer.startsAt, offer.endsAt)) return false;
+  if (offer.unitsTotal !== null && offer.unitsClaimed >= offer.unitsTotal) return false;
+  return true;
+}
+
+function formatDuration(totalSecondsInput: number): string {
+  const totalSeconds = Math.max(0, Math.trunc(totalSecondsInput));
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+}
+
+function countdownLabel(startsAt: string | null, endsAt: string | null, nowMs: number): string {
+  const startMs = parseIsoMs(startsAt);
+  const endMs = parseIsoMs(endsAt);
+
+  if (startMs !== null && nowMs < startMs) {
+    const seconds = Math.ceil((startMs - nowMs) / 1_000);
+    return `Starts in ${formatDuration(seconds)}`;
+  }
+
+  if (endMs !== null) {
+    if (nowMs > endMs) {
+      return "Expired";
+    }
+    const seconds = Math.ceil((endMs - nowMs) / 1_000);
+    return `Ends in ${formatDuration(seconds)}`;
+  }
+
+  return "Open-ended";
+}
+
+function expiryCountdown(expiresAt: string | null, nowMs: number): string {
+  const expiresMs = parseIsoMs(expiresAt);
+  if (expiresMs === null) {
+    return "No expiry";
+  }
+  if (nowMs >= expiresMs) {
+    return "Expired";
+  }
+
+  const seconds = Math.ceil((expiresMs - nowMs) / 1_000);
+  return `Expires in ${formatDuration(seconds)}`;
+}
+
 function createInventoryForm(businessId: string): InventoryFormState {
   return {
     id: null,
@@ -168,16 +309,17 @@ function createOfferForm(businessId: string): OfferFormState {
   };
 }
 
-function formatWindow(startsAt: string | null, endsAt: string | null): string {
-  if (!startsAt && !endsAt) return "No window";
-  const startLabel = startsAt ? new Date(startsAt).toLocaleDateString() : "now";
-  const endLabel = endsAt ? new Date(endsAt).toLocaleDateString() : "open";
-  return `${startLabel} -> ${endLabel}`;
-}
-
-function remainingUnits(unitsTotal: number | null, unitsClaimed: number): string {
-  if (unitsTotal === null) return "n/a";
-  return String(Math.max(unitsTotal - unitsClaimed, 0));
+function createPricingPreviewForm(
+  businessId: string,
+  inventoryItemId = "",
+): PricingPreviewFormState {
+  return {
+    businessId,
+    inventoryItemId,
+    quantity: "1",
+    asOf: "",
+    manualOverrideCents: "",
+  };
 }
 
 export default function BusinessTerminalClient() {
@@ -185,14 +327,24 @@ export default function BusinessTerminalClient() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItemRecord[]>([]);
   const [offers, setOffers] = useState<OfferRecord[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [pricingPreviewBusy, setPricingPreviewBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [inventoryForm, setInventoryForm] = useState<InventoryFormState>(
     createInventoryForm(""),
   );
   const [offerForm, setOfferForm] = useState<OfferFormState>(createOfferForm(""));
+  const [pricingPreviewForm, setPricingPreviewForm] =
+    useState<PricingPreviewFormState>(createPricingPreviewForm(""));
+  const [pricingPreview, setPricingPreview] = useState<DynamicPricingQuote | null>(null);
+
+  const inventoryById = useMemo(
+    () => new Map(inventoryItems.map((item) => [item.id, item])),
+    [inventoryItems],
+  );
 
   const scopedInventory = useMemo(() => {
     if (!selectedBusinessId) return [];
@@ -203,6 +355,49 @@ export default function BusinessTerminalClient() {
     if (!selectedBusinessId) return [];
     return offers.filter((offer) => offer.businessId === selectedBusinessId);
   }, [offers, selectedBusinessId]);
+
+  const storePricingSnapshots = useMemo(() => {
+    return businesses.map((business) => {
+      const liveOffers = offers.filter(
+        (offer) => offer.businessId === business.id && isOfferLiveNow(offer, nowMs),
+      );
+      const featuredLiveOffers = liveOffers.filter((offer) => offer.featured).length;
+
+      let bestLiveOffer: OfferRecord | null = null;
+      for (const offer of liveOffers) {
+        if (offer.discountPriceCents === null) continue;
+        if (!bestLiveOffer) {
+          bestLiveOffer = offer;
+          continue;
+        }
+        const bestPrice = bestLiveOffer.discountPriceCents;
+        if (bestPrice === null || offer.discountPriceCents < bestPrice) {
+          bestLiveOffer = offer;
+        }
+      }
+
+      let nextEndingAt: string | null = null;
+      let nextEndingTitle: string | null = null;
+      for (const offer of liveOffers) {
+        const endMs = parseIsoMs(offer.endsAt);
+        if (endMs === null || endMs <= nowMs) continue;
+        const currentNextEndMs = parseIsoMs(nextEndingAt);
+        if (currentNextEndMs === null || endMs < currentNextEndMs) {
+          nextEndingAt = offer.endsAt;
+          nextEndingTitle = offer.title;
+        }
+      }
+
+      return {
+        business,
+        liveOffers,
+        featuredLiveOffers,
+        bestLiveOffer,
+        nextEndingAt,
+        nextEndingTitle,
+      };
+    });
+  }, [businesses, offers, nowMs]);
 
   async function loadData(preferredBusinessId?: string) {
     setLoading(true);
@@ -223,11 +418,28 @@ export default function BusinessTerminalClient() {
           ? preferredBusinessId
           : businessData[0]?.id ?? "";
 
+      const firstInventoryForBusiness =
+        inventoryData.find((item) => item.businessId === nextBusinessId)?.id ?? "";
+
       setSelectedBusinessId(nextBusinessId);
       setInventoryForm((prev) =>
         prev.id ? prev : createInventoryForm(nextBusinessId),
       );
       setOfferForm((prev) => (prev.id ? prev : createOfferForm(nextBusinessId)));
+      setPricingPreviewForm((prev) => {
+        const sameBusiness = prev.businessId === nextBusinessId;
+        const hasValidInventory =
+          sameBusiness &&
+          inventoryData.some(
+            (item) =>
+              item.businessId === nextBusinessId && item.id === prev.inventoryItemId,
+          );
+        if (hasValidInventory) {
+          return prev;
+        }
+        return createPricingPreviewForm(nextBusinessId, firstInventoryForBusiness);
+      });
+      setPricingPreview(null);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     } finally {
@@ -240,14 +452,38 @@ export default function BusinessTerminalClient() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedBusinessId) return;
+
+    const firstInventoryForBusiness =
+      inventoryItems.find((item) => item.businessId === selectedBusinessId)?.id ?? "";
+
     setInventoryForm((prev) =>
       prev.id ? prev : { ...prev, businessId: selectedBusinessId },
     );
     setOfferForm((prev) =>
       prev.id ? prev : { ...prev, businessId: selectedBusinessId },
     );
-  }, [selectedBusinessId]);
+    setPricingPreviewForm((prev) => {
+      const hasValidInventory = inventoryItems.some(
+        (item) => item.businessId === selectedBusinessId && item.id === prev.inventoryItemId,
+      );
+      if (prev.businessId === selectedBusinessId && hasValidInventory) {
+        return prev;
+      }
+      return createPricingPreviewForm(selectedBusinessId, firstInventoryForBusiness);
+    });
+    setPricingPreview(null);
+  }, [selectedBusinessId, inventoryItems]);
 
   async function submitInventory(event: React.FormEvent) {
     event.preventDefault();
@@ -478,6 +714,66 @@ export default function BusinessTerminalClient() {
     }
   }
 
+  async function submitPricingPreview(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+
+    try {
+      if (!pricingPreviewForm.businessId) {
+        throw new Error("Select a business first");
+      }
+      if (!pricingPreviewForm.inventoryItemId) {
+        throw new Error("Select an inventory item to preview");
+      }
+
+      const quantity = requiredInt(pricingPreviewForm.quantity, "Quantity");
+      if (quantity < 1) {
+        throw new Error("Quantity must be at least 1");
+      }
+
+      const asOf =
+        toIsoDate(pricingPreviewForm.asOf, "As-of") ?? new Date(nowMs).toISOString();
+      const manualOverrideCents = optionalInt(
+        pricingPreviewForm.manualOverrideCents,
+        "Manual override",
+      );
+      if (manualOverrideCents !== null && manualOverrideCents < 0) {
+        throw new Error("Manual override must be zero or positive");
+      }
+
+      const payload: Record<string, unknown> = {
+        businessId: pricingPreviewForm.businessId,
+        inventoryItemId: pricingPreviewForm.inventoryItemId,
+        quantity,
+        asOf,
+      };
+      if (manualOverrideCents !== null) {
+        payload.manualOverrideCents = manualOverrideCents;
+      }
+
+      setPricingPreviewBusy(true);
+      const quote = await requestJson<DynamicPricingQuote>("/api/ops/pricing/quote", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setPricingPreview(quote);
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : String(previewError));
+    } finally {
+      setPricingPreviewBusy(false);
+    }
+  }
+
+  function previewInventoryItem(item: InventoryItemRecord) {
+    setSelectedBusinessId(item.businessId);
+    setPricingPreviewForm((prev) => ({
+      ...prev,
+      businessId: item.businessId,
+      inventoryItemId: item.id,
+    }));
+    setPricingPreview(null);
+  }
+
   return (
     <section className="space-y-4">
       <div className="admin-card p-4 md:p-6">
@@ -487,7 +783,7 @@ export default function BusinessTerminalClient() {
               Inventory and Offer Management
             </h2>
             <p className="mt-1 text-sm opacity-75">
-              Manage stock, discount windows, remaining units, and availability.
+              Manage stock, discount windows, pricing previews, remaining units, and availability.
             </p>
           </div>
 
@@ -510,7 +806,7 @@ export default function BusinessTerminalClient() {
             <button
               onClick={() => void loadData(selectedBusinessId)}
               className="rounded-xl border px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
-              disabled={loading || busyAction !== null}
+              disabled={loading || busyAction !== null || pricingPreviewBusy}
             >
               {loading ? "Loading..." : "Reload"}
             </button>
@@ -527,6 +823,227 @@ export default function BusinessTerminalClient() {
             {notice}
           </p>
         ) : null}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="admin-card space-y-3 p-4 md:p-5">
+          <h3 className="text-base font-semibold">Store Pricing Snapshot</h3>
+          {storePricingSnapshots.length === 0 ? (
+            <p className="text-sm opacity-70">No stores found.</p>
+          ) : null}
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {storePricingSnapshots.map((snapshot) => {
+              const bestLiveInventory = snapshot.bestLiveOffer?.inventoryItemId
+                ? inventoryById.get(snapshot.bestLiveOffer.inventoryItemId)
+                : null;
+              const bestCompare =
+                bestLiveInventory?.compareAtCents ?? bestLiveInventory?.priceCents ?? null;
+
+              return (
+                <li
+                  key={snapshot.business.id}
+                  className={`admin-surface rounded-xl p-3 ${
+                    snapshot.business.id === selectedBusinessId
+                      ? "ring-1 ring-amber-300/60"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium">{snapshot.business.name}</p>
+                    <span className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] opacity-80">
+                      {snapshot.business.status}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-xs opacity-70">
+                    Live offers: {snapshot.liveOffers.length} · Featured: {snapshot.featuredLiveOffers}
+                  </p>
+
+                  {snapshot.bestLiveOffer ? (
+                    <p className="mt-1 text-xs opacity-80">
+                      Best live: {centsToDollars(snapshot.bestLiveOffer.discountPriceCents)}
+                      {bestCompare !== null ? ` (base ${centsToDollars(bestCompare)})` : ""}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs opacity-60">No live discount currently.</p>
+                  )}
+
+                  {snapshot.nextEndingAt ? (
+                    <p className="mt-1 text-xs opacity-80">
+                      {snapshot.nextEndingTitle}: {countdownLabel(null, snapshot.nextEndingAt, nowMs)}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs opacity-60">No timed expiry currently.</p>
+                  )}
+
+                  <button
+                    onClick={() => setSelectedBusinessId(snapshot.business.id)}
+                    className="mt-3 w-full rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
+                    type="button"
+                  >
+                    {snapshot.business.id === selectedBusinessId ? "Selected" : "Manage"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <form
+          onSubmit={submitPricingPreview}
+          className="admin-card space-y-4 p-4 md:p-5"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base font-semibold">Dynamic Pricing Preview</h3>
+            <button
+              type="button"
+              onClick={() =>
+                setPricingPreviewForm((prev) => ({
+                  ...prev,
+                  asOf: toLocalDateTimeInput(new Date(nowMs).toISOString()),
+                }))
+              }
+              className="rounded-xl border px-3 py-1.5 text-xs transition hover:bg-white/5"
+            >
+              Use Current Time
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 text-sm sm:col-span-2">
+              <span>Inventory item</span>
+              <select
+                value={pricingPreviewForm.inventoryItemId}
+                onChange={(event) =>
+                  setPricingPreviewForm((prev) => ({
+                    ...prev,
+                    businessId: selectedBusinessId,
+                    inventoryItemId: event.target.value,
+                  }))
+                }
+                className="admin-surface w-full rounded-xl px-3 py-2"
+                disabled={scopedInventory.length === 0}
+              >
+                {scopedInventory.length === 0 ? (
+                  <option value="">No inventory available</option>
+                ) : null}
+                {scopedInventory.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span>Quantity</span>
+              <input
+                inputMode="numeric"
+                value={pricingPreviewForm.quantity}
+                onChange={(event) =>
+                  setPricingPreviewForm((prev) => ({
+                    ...prev,
+                    quantity: event.target.value,
+                  }))
+                }
+                className="admin-surface w-full rounded-xl px-3 py-2"
+                placeholder="1"
+                required
+              />
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span>Manual override (cents)</span>
+              <input
+                inputMode="numeric"
+                value={pricingPreviewForm.manualOverrideCents}
+                onChange={(event) =>
+                  setPricingPreviewForm((prev) => ({
+                    ...prev,
+                    manualOverrideCents: event.target.value,
+                  }))
+                }
+                className="admin-surface w-full rounded-xl px-3 py-2"
+                placeholder="optional"
+              />
+            </label>
+
+            <label className="space-y-1 text-sm sm:col-span-2">
+              <span>As-of date/time</span>
+              <input
+                type="datetime-local"
+                value={pricingPreviewForm.asOf}
+                onChange={(event) =>
+                  setPricingPreviewForm((prev) => ({
+                    ...prev,
+                    asOf: event.target.value,
+                  }))
+                }
+                className="admin-surface w-full rounded-xl px-3 py-2"
+              />
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={pricingPreviewBusy || loading || scopedInventory.length === 0}
+            className="w-full rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
+          >
+            {pricingPreviewBusy ? "Previewing..." : "Preview Dynamic Price"}
+          </button>
+
+          {pricingPreview ? (
+            <div className="space-y-3 rounded-xl border border-white/15 p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    pricingPreview.purchasable
+                      ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                      : "border border-red-500/40 bg-red-500/10 text-red-200"
+                  }`}
+                >
+                  {pricingPreview.purchasable ? "Purchasable" : `Blocked: ${pricingPreview.blockedReason ?? "UNKNOWN"}`}
+                </span>
+                <span className="rounded-full border border-white/15 px-2 py-0.5 text-xs opacity-80">
+                  Source: {pricingPreview.selectedSource ?? "-"}
+                </span>
+              </div>
+
+              <p className="text-xs opacity-80">
+                Base {centsToDollars(pricingPreview.baseUnitPriceCents)}
+                {" -> "}
+                Unit {centsToDollars(pricingPreview.finalUnitPriceCents)}
+                {" -> "}
+                Total {centsToDollars(pricingPreview.finalTotalCents)}
+              </p>
+
+              <p className="text-xs opacity-80">
+                Available units: {pricingPreview.availableUnits} · Expiry: {" "}
+                {expiryCountdown(pricingPreview.expiresAt, nowMs)}
+              </p>
+
+              <ul className="space-y-1">
+                {pricingPreview.adjustments.map((adjustment, index) => (
+                  <li
+                    key={`${adjustment.source}-${adjustment.sourceId ?? "none"}-${index}`}
+                    className={`flex items-center justify-between rounded-lg border px-2 py-1 text-xs ${
+                      adjustment.selected
+                        ? "border-amber-300/60 bg-amber-200/10"
+                        : "border-white/10"
+                    }`}
+                  >
+                    <span className="opacity-85">{adjustment.label}</span>
+                    <span>{centsToDollars(adjustment.unitPriceCents)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-xs opacity-60">
+              Pick an item and preview the computed unit price before you publish changes.
+            </p>
+          )}
+        </form>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -662,7 +1179,7 @@ export default function BusinessTerminalClient() {
 
           <button
             type="submit"
-            disabled={busyAction !== null || loading}
+            disabled={busyAction !== null || loading || pricingPreviewBusy}
             className="w-full rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
           >
             {busyAction === "inventory-submit"
@@ -841,7 +1358,7 @@ export default function BusinessTerminalClient() {
 
           <button
             type="submit"
-            disabled={busyAction !== null || loading}
+            disabled={busyAction !== null || loading || pricingPreviewBusy}
             className="w-full rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
           >
             {busyAction === "offer-submit"
@@ -860,53 +1377,68 @@ export default function BusinessTerminalClient() {
             <p className="text-sm opacity-70">No inventory items for this business yet.</p>
           ) : null}
           <ul className="space-y-3">
-            {scopedInventory.map((item) => (
-              <li key={item.id} className="admin-surface rounded-xl p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{item.name}</p>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${
-                      item.isActive
-                        ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                        : "border border-amber-500/40 bg-amber-500/10 text-amber-200"
-                    }`}
-                  >
-                    {item.isActive ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs opacity-70">
-                  SKU: {item.sku ?? "-"} · Price: {centsToDollars(item.priceCents)} ·
-                  Stock: {item.quantityOnHand}
-                </p>
-                <p className="mt-1 text-xs opacity-70">
-                  Compare-at: {centsToDollars(item.compareAtCents)} · Low-stock:{" "}
-                  {item.lowStockThreshold ?? "-"} · Expires:{" "}
-                  {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "-"}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => editInventory(item)}
-                    className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => void toggleInventory(item)}
-                    disabled={busyAction === `inventory-toggle-${item.id}`}
-                    className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5 disabled:opacity-60"
-                  >
-                    {item.isActive ? "Disable" : "Enable"}
-                  </button>
-                  <button
-                    onClick={() => void deleteInventory(item)}
-                    disabled={busyAction === `inventory-delete-${item.id}`}
-                    className="col-span-2 rounded-lg border border-red-500/60 px-2 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
+            {scopedInventory.map((item) => {
+              const availableUnits = Math.max(item.quantityOnHand - item.reservedQuantity, 0);
+              const expiresMs = parseIsoMs(item.expiresAt);
+              const isExpired = expiresMs !== null && nowMs >= expiresMs;
+
+              return (
+                <li key={item.id} className="admin-surface rounded-xl p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{item.name}</p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${
+                        item.isActive && !isExpired
+                          ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                          : "border border-amber-500/40 bg-amber-500/10 text-amber-200"
+                      }`}
+                    >
+                      {item.isActive && !isExpired ? "Enabled" : "Limited"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs opacity-70">
+                    SKU: {item.sku ?? "-"} · Price: {centsToDollars(item.priceCents)} ·
+                    Available: {availableUnits}
+                  </p>
+                  <p className="mt-1 text-xs opacity-70">
+                    Compare-at: {centsToDollars(item.compareAtCents)} · Low-stock: {" "}
+                    {item.lowStockThreshold ?? "-"} · {expiryCountdown(item.expiresAt, nowMs)}
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => editInventory(item)}
+                      className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => previewInventoryItem(item)}
+                      className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
+                      type="button"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => void toggleInventory(item)}
+                      disabled={busyAction === `inventory-toggle-${item.id}`}
+                      className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5 disabled:opacity-60"
+                      type="button"
+                    >
+                      {item.isActive ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                      onClick={() => void deleteInventory(item)}
+                      disabled={busyAction === `inventory-delete-${item.id}`}
+                      className="col-span-3 rounded-lg border border-red-500/60 px-2 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -916,56 +1448,89 @@ export default function BusinessTerminalClient() {
             <p className="text-sm opacity-70">No offers for this business yet.</p>
           ) : null}
           <ul className="space-y-3">
-            {scopedOffers.map((offer) => (
-              <li key={offer.id} className="admin-surface rounded-xl p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{offer.title}</p>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${
-                      offer.status === "LIVE"
-                        ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                        : "border border-amber-500/40 bg-amber-500/10 text-amber-200"
-                    }`}
-                  >
-                    {offer.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs opacity-70">
-                  Discount: {centsToDollars(offer.discountPriceCents)} · Window:{" "}
-                  {formatWindow(offer.startsAt, offer.endsAt)}
-                </p>
-                <p className="mt-1 text-xs opacity-70">
-                  Remaining units: {remainingUnits(offer.unitsTotal, offer.unitsClaimed)} ·
-                  Featured: {offer.featured ? "Yes" : "No"}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => editOffer(offer)}
-                    className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => void toggleOffer(offer)}
-                    disabled={busyAction === `offer-toggle-${offer.id}`}
-                    className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5 disabled:opacity-60"
-                  >
-                    {offer.status === "LIVE" ? "Disable" : "Enable"}
-                  </button>
-                  <button
-                    onClick={() => void deleteOffer(offer)}
-                    disabled={busyAction === `offer-delete-${offer.id}`}
-                    className="col-span-2 rounded-lg border border-red-500/60 px-2 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
+            {scopedOffers.map((offer) => {
+              const linkedInventory = offer.inventoryItemId
+                ? inventoryById.get(offer.inventoryItemId)
+                : null;
+              const unitsLeft = remainingUnitsCount(offer.unitsTotal, offer.unitsClaimed);
+              const claimedPercent = claimPercent(offer.unitsTotal, offer.unitsClaimed);
+              const timerLabel = countdownLabel(offer.startsAt, offer.endsAt, nowMs);
+
+              return (
+                <li key={offer.id} className="admin-surface rounded-xl p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{offer.title}</p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${
+                        isOfferLiveNow(offer, nowMs)
+                          ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                          : "border border-amber-500/40 bg-amber-500/10 text-amber-200"
+                      }`}
+                    >
+                      {offer.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs opacity-70">
+                    Discount: {centsToDollars(offer.discountPriceCents)}
+                    {linkedInventory
+                      ? ` · Base: ${centsToDollars(linkedInventory.priceCents)}`
+                      : ""} · Window: {formatWindow(offer.startsAt, offer.endsAt)}
+                  </p>
+                  <p className="mt-1 text-xs opacity-70">
+                    Timer: {timerLabel} · Remaining units: {remainingUnits(offer.unitsTotal, offer.unitsClaimed)} ·
+                    Featured: {offer.featured ? "Yes" : "No"}
+                  </p>
+
+                  {offer.unitsTotal !== null ? (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full bg-amber-300/70"
+                          style={{
+                            width: `${Math.max(
+                              0,
+                              Math.min(claimedPercent ?? 0, 100),
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-[11px] opacity-65">
+                        {unitsLeft ?? 0} of {offer.unitsTotal} units left
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => editOffer(offer)}
+                      className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => void toggleOffer(offer)}
+                      disabled={busyAction === `offer-toggle-${offer.id}`}
+                      className="rounded-lg border px-2 py-1.5 text-xs transition hover:bg-white/5 disabled:opacity-60"
+                      type="button"
+                    >
+                      {offer.status === "LIVE" ? "Disable" : "Enable"}
+                    </button>
+                    <button
+                      onClick={() => void deleteOffer(offer)}
+                      disabled={busyAction === `offer-delete-${offer.id}`}
+                      className="col-span-2 rounded-lg border border-red-500/60 px-2 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
     </section>
   );
 }
-
