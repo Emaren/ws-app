@@ -15,6 +15,7 @@
     "//4": "---- plain build (uses .env.production; default .next dir) ----",
     "prisma:generate:safe": "DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:5432/wheatandstone?schema=public} prisma generate",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
+    "pretypecheck": "rm -rf .next",
     "typecheck": "pnpm prisma:generate:safe && tsc --noEmit",
     "lint": "pnpm run typecheck",
     "test": "node --test",
