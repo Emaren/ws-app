@@ -1,5 +1,11 @@
 /* eslint-disable no-restricted-globals */
-const VERSION = "ws-pwa-v2";
+try {
+  importScripts("/sw-version.js");
+} catch {
+  // ignore
+}
+
+const VERSION = self.__WS_VERSION__ || "ws-pwa-dev";
 const OFFLINE_URL = "/offline";
 const SHELL_CACHE = `${VERSION}:shell`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;

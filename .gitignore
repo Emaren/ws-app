@@ -51,3 +51,5 @@ dist
 .cache
 *.log
 venv-logs/
+
+public/sw-version.js
