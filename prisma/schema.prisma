@@ -12,7 +12,7 @@ model User {
   email                  String                  @unique
   password               String
   name                   String
-  role                   Role                    @default(STONEHOLDER)
+  role                   Role                    @default(USER)
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   articles               Article[]
@@ -420,6 +420,9 @@ enum Role {
   ADMIN
   CONTRIBUTOR
   STONEHOLDER
+  USER
+  EDITOR
+  OWNER
 }
 
 enum ArticleStatus {
