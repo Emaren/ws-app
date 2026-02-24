@@ -1,78 +1,76 @@
 // src/components/article/WysiwygStyle.tsx
 import { WYSIWYG_CSS } from "@/components/editor/wysiwygStyle";
 
-/**
- * Shared WYSIWYG styles for article body.
- * NOTE: Image width rules (e.g., 50% desktop / 100% mobile) live in globals.css.
- * This file keeps only non-size, theme-adaptive polish.
- */
 const EXTRA_CSS = `
-/* Base rhythm */
-.wysiwyg{ line-height:1.7; color:inherit; }
-.wysiwyg p{ margin-block:0 1rem; }
+/* ------------------------------------------------------------ */
+/* Beaverlodge + checklist grid (stable, balanced sizing)       */
+/* ------------------------------------------------------------ */
 
-/* Headings */
-.wysiwyg :is(h2,h3,h4){
-  margin:2rem 0 .75rem; line-height:1.25; letter-spacing:-0.01em; font-weight:700;
-}
-.wysiwyg h2{ font-size:clamp(1.375rem,2.2vw,1.75rem); }
-.wysiwyg h3{ font-size:clamp(1.125rem,1.8vw,1.375rem); }
-.wysiwyg h4{ font-size:clamp(1rem,1.6vw,1.125rem); }
-
-/* Lists */
-.wysiwyg :is(ul,ol){ margin:0 0 1rem 1.25rem; padding-left:1.25rem; }
-.wysiwyg li{ margin:.25rem 0; }
-
-/* Links */
-.wysiwyg a{ text-decoration:underline; text-underline-offset:2px; }
-
-/* Images — non-size safety (perf hints included) */
-.wysiwyg :is(img,a>img,figure>img){
-  display:block; max-width:100%; height:auto; border-radius:.75rem;
-  content-visibility:auto; contain-intrinsic-size:800px 600px;
+.wysiwyg .ws-checkgrid{
+  display: grid;
+  grid-template-columns: 300px 1fr;   /* was 320px */
+  column-gap: 1.25rem;
+  align-items: start;
+  margin: .65rem 0 1rem;
 }
 
-/* Figures & captions */
-.wysiwyg figure{ margin:1.25rem 0; }
-.wysiwyg figcaption{
-  margin-top:.5rem; font-size:.9375rem; line-height:1.4;
-  color:color-mix(in oklab,currentColor 65%,transparent);
+.wysiwyg .ws-check-ad{
+  margin-top: -6px;
+  margin-left: -6px;
 }
 
-/* Blockquotes (theme-adaptive via currentColor) */
-.wysiwyg blockquote{
-  margin:1.25rem 0; padding:.9rem 1.1rem;
-  border-left:3px solid color-mix(in oklab,currentColor 35%,transparent);
-  background:color-mix(in oklab,currentColor 8%,transparent);
-  border-radius:.6rem;
+/* FloatAd ships with inline float + w-full; neutralize inside grid */
+.wysiwyg .ws-check-ad .floatad{
+  float: none !important;
+  width: 300px !important;           /* was 320px */
+  max-width: 300px !important;
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* Code */
-.wysiwyg code{
-  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-  font-size:.9375rem; background:color-mix(in oklab,currentColor 16%,transparent);
-  padding:.1rem .35rem; border-radius:.375rem;
+.wysiwyg .ws-check-ad .floatad img{
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-/* Tables */
-.wysiwyg table{
-  width:100%; border-collapse:collapse; margin:1rem 0 1.25rem;
-  font-size:.96rem; border-radius:.6rem; overflow:hidden;
+.wysiwyg .ws-checklist-wrap{ min-width: 0; }
+.wysiwyg .ws-checklist-wrap ul.ws-checklist{
+  margin: 0;
+  padding-left: 1.15rem;
+  list-style: disc;
+  list-style-position: outside;
+  font-size: 1.02rem;
+  line-height: 1.38;
 }
-.wysiwyg :is(th,td){
-  border:1px solid color-mix(in oklab,currentColor 22%,transparent);
-  padding:.5rem .75rem; text-align:left; vertical-align:top;
+.wysiwyg .ws-checklist-wrap ul.ws-checklist > li{ margin: .34rem 0; }
+.wysiwyg .ws-checklist-wrap ul.ws-checklist li > p{ margin: 0; display: inline; }
+.wysiwyg .ws-checklist-wrap ul.ws-checklist strong{ font-weight: 700; }
+
+/* Mobile: stack cleanly */
+@media (max-width: 680px){
+  .wysiwyg .ws-checkgrid{
+    grid-template-columns: 1fr;
+    row-gap: .75rem;
+  }
+  .wysiwyg .ws-check-ad{
+    margin: 0;
+    justify-self: center;
+  }
+  .wysiwyg .ws-check-ad .floatad{
+    width: min(300px, 100%) !important;
+    max-width: 100% !important;
+  }
 }
-.wysiwyg thead th{ background:color-mix(in oklab,currentColor 8%,transparent); font-weight:600; }
-.wysiwyg tbody tr:nth-child(odd){ background:color-mix(in oklab,currentColor 6%,transparent); }
 `;
 
-// In article view we only want WYSIWYG rules inside `.wysiwyg`.
-// The editor stylesheet also targets `body` for TinyMCE iframe usage.
-const VIEWER_BASE_CSS = WYSIWYG_CSS.replaceAll(
-  ":where(.wysiwyg, body)",
-  ".wysiwyg",
-);
+// Viewer-only: clamp editor CSS to `.wysiwyg`
+const VIEWER_BASE_CSS = WYSIWYG_CSS.replaceAll(":where(.wysiwyg, body)", ".wysiwyg");
 
 export default function WysiwygStyle() {
   return (

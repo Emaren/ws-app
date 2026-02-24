@@ -15,175 +15,177 @@ function stripSingleOuterDiv(html: string): string {
   return t.slice(firstOpenEnd + 1, t.lastIndexOf("</div>"));
 }
 
-function splitAtFirstH2(html: string): {
+function ensureUlHasClass(ulHtml: string, cls: string): string {
+  const open = ulHtml.match(/^<ul\b[^>]*>/i)?.[0];
+  if (!open) return ulHtml;
+
+  if (new RegExp(`\\b${cls}\\b`, "i").test(open)) return ulHtml;
+
+  const m = open.match(/\bclass\s*=\s*(['"])([^'"]*)\1/i);
+  if (m) {
+    const quote = m[1];
+    const cur = (m[2] || "").trim();
+    const next = `${cur} ${cls}`.trim();
+    const replaced = open.replace(m[0], `class=${quote}${next}${quote}`);
+    return replaced + ulHtml.slice(open.length);
+  }
+
+  const replaced = open.replace(/^<ul\b/i, `<ul class="${cls}"`);
+  return replaced + ulHtml.slice(open.length);
+}
+
+function extractChecksEveryBox(html: string): null | {
   before: string;
-  h2Html: string;
-  afterH2: string;
+  leadPara: string;
+  ulHtml: string;
+  after: string;
 } {
-  const m = /<h2[\s\S]*?<\/h2>/i.exec(html);
-  if (!m) return { before: "", h2Html: "", afterH2: html };
+  const lead =
+    "<p\\b[^>]*>\\s*Avalon(?:’|&rsquo;|&#8217;|')s\\s+chocolate\\s+milk\\s+checks\\s+every\\s+box:\\s*<\\/p>";
+  const re = new RegExp(`(${lead})\\s*(<ul\\b[\\s\\S]*?<\\/ul>)`, "i");
+  const m = re.exec(html);
+  if (!m) return null;
+
+  const start = m.index ?? 0;
+  const end = start + m[0].length;
+
+  return {
+    before: html.slice(0, start),
+    leadPara: m[1],
+    ulHtml: m[2],
+    after: html.slice(end),
+  };
+}
+
+function splitAtFirstHeading(html: string): { before: string; heading: string; after: string } {
+  const m = /<h[23][\s\S]*?<\/h[23]>/i.exec(html);
+  if (!m) return { before: "", heading: "", after: html };
   const start = m.index!;
   const end = start + m[0].length;
-  return { before: html.slice(0, start), h2Html: m[0], afterH2: html.slice(end) };
+  return { before: html.slice(0, start), heading: m[0], after: html.slice(end) };
 }
 
-/** Keep first N blocks full width after the H2 */
-function splitAfterNBlocks(html: string, n = 2): { firstChunk: string; rest: string } {
-  const re = /<\/(p|ul|ol|blockquote|pre|figure|table|thead|tbody|tfoot|tr|h3|h4|h5|h6)>/gi;
-  let cut = -1;
-  let count = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) {
-    count += 1;
-    if (count === n) {
-      cut = m.index + m[0].length;
-      break;
-    }
-  }
-  if (cut === -1) return { firstChunk: html, rest: "" };
-  return { firstChunk: html.slice(0, cut), rest: html.slice(cut) };
+function HtmlBlock({ html }: { html?: string }) {
+  if (!html) return null;
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
-
-/** Split after a fraction (0..1) of block closers so we can place the left ad higher/lower */
-function splitHtmlAtBlockFraction(html: string, fraction = 0.33): { head: string; tail: string } {
-  const re = /<\/(p|ul|ol|table|tbody|thead|tfoot|tr|blockquote|pre|figure)>/gi;
-  const ends: number[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) ends.push(m.index + m[0].length);
-  if (ends.length === 0) return { head: html, tail: "" };
-
-  const clamped = Math.min(0.95, Math.max(0.05, fraction));
-  const idx = Math.max(0, Math.min(ends.length - 1, Math.floor(ends.length * clamped)));
-  const cut = ends[idx];
-  return { head: html.slice(0, cut), tail: html.slice(cut) };
-}
-
-/* ----------------------- main ----------------------- */
-
-const LEFT_AD_FRACTION = 0.28;
 
 export default function ArticleBody({ article }: { article: Article }) {
   const raw = article.content ?? "";
   const clean = sanitizeArticleHtml(raw);
   const unwrapped = stripSingleOuterDiv(clean);
-  const { before, h2Html, afterH2 } = splitAtFirstH2(unwrapped);
-  const { firstChunk, rest } = splitAfterNBlocks(afterH2, 2);
-  const { head, tail } = splitHtmlAtBlockFraction(rest, LEFT_AD_FRACTION);
 
-  const parts = {
-    introHtml: before,
-    h2Html,
-    firstBlocksAfterH2: firstChunk,
-    afterBlocksHead: head,
-    afterBlocksTail: tail,
-  };
+  const hasAnyBody = unwrapped.trim().length > 0;
 
-  const hasAnyBody =
-    !!parts &&
-    (parts.introHtml ||
-      parts.h2Html ||
-      parts.firstBlocksAfterH2 ||
-      parts.afterBlocksHead ||
-      parts.afterBlocksTail);
-  const shouldRenderMonetizationSlots = hasAnyBody;
+  const { before: topBefore, heading: topHeading, after: topAfter } = splitAtFirstHeading(unwrapped);
+  const box = extractChecksEveryBox(topAfter);
 
   return (
     <>
       <WysiwygStyle />
       <BigThumbs slug={article.slug} />
 
-      {/* Hard clamp horizontal overflow inside the article column */}
       <article className="min-w-0 overflow-x-clip">
         <div
           className="wysiwyg overflow-x-hidden
             [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
-            [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0 [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
+            [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0
+            [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
         >
-          {!hasAnyBody && (
-            <p className="opacity-70">No formatted article content available yet.</p>
+          {!hasAnyBody && <p className="opacity-70">No formatted article content available yet.</p>}
+
+          <HtmlBlock html={topBefore} />
+          <HtmlBlock html={topHeading} />
+
+          {/* RIGHT ad — Homesteader (slightly bigger for balance) */}
+          {hasAnyBody && (
+            <div style={{ clear: "right" }}>
+              <FloatAd
+                frameless
+                label="Homesteader Health Delivery"
+                side="right"
+                imageSrc="/hh.tight.h156.v3.png"
+                w={400}
+                mdW={420}
+                lgW={450}
+                h={235}
+                mdH={250}
+                lgH={265}
+                pad={0}
+                imgFit="contain"
+                shape="rounded"
+                shapeMargin={14}
+                nudgeY={-4}
+                lgNudgeY={-8}
+                scale={1}
+                mdScale={1}
+                lgScale={1}
+                hoverTint
+                caption="Click for Delivery"
+                deliveryLeadContext={{
+                  source: "LOCAL_AD",
+                  articleSlug: article.slug,
+                  businessSlug: "homesteader-health",
+                  businessName: "Homesteader Health",
+                  inventoryItemName: "Homesteader Health Delivery",
+                }}
+              />
+            </div>
           )}
 
-          {/* 1) Before H2 */}
-          {parts?.introHtml && <div dangerouslySetInnerHTML={{ __html: parts.introHtml }} />}
+          {box ? (
+            <>
+              <HtmlBlock html={box.before} />
+              <HtmlBlock html={box.leadPara} />
 
-          {/* keep floats from jumping above the rule */}
-          <div aria-hidden style={{ clear: "both", height: 0 }} />
-          <hr className="adbay-rule" style={{ marginBlock: 8 }} />
+              {/* Beaverlodge + checklist locked together */}
+              <div className="ws-checkgrid">
+                <div className="ws-check-ad">
+                  <FloatAd
+                    frameless
+                    side="left"
+                    label="Beaverlodge Butcher Shop Delivery"
+                    imageSrc="/bbs.adcard.center.v4.png"
+                    imageAlt="Beaverlodge Butcher Shop delivery"
+                    w={300}
+                    mdW={305}
+                    lgW={315}
+                    h={150}
+                    mdH={155}
+                    lgH={160}
+                    pad={0}
+                    imgFit="contain"
+                    shape="image"
+                    shapeMargin={0}
+                    shapeThreshold={0.45}
+                    mt={0}
+                    nudgeY={0}
+                    lgNudgeY={0}
+                    scale={1}
+                    mdScale={1}
+                    lgScale={1}
+                    hoverTint
+                    caption="Click for Delivery"
+                    deliveryLeadContext={{
+                      source: "LOCAL_AD",
+                      articleSlug: article.slug,
+                      businessSlug: "beaverlodge-butcher-shop",
+                      businessName: "Beaverlodge Butcher Shop",
+                      inventoryItemName: "Beaverlodge Butcher Shop Delivery",
+                    }}
+                  />
+                </div>
 
-          {/* 2) H2 */}
-          {parts?.h2Html && <div dangerouslySetInnerHTML={{ __html: parts.h2Html }} />}
+                <div
+                  className="ws-checklist-wrap"
+                  dangerouslySetInnerHTML={{ __html: ensureUlHasClass(box.ulHtml, "ws-checklist") }}
+                />
+              </div>
 
-          {/* 3) First N blocks after H2 (full width) */}
-          {parts?.firstBlocksAfterH2 && (
-            <div dangerouslySetInnerHTML={{ __html: parts.firstBlocksAfterH2 }} />
-          )}
-
-          {/* Ensure floats stay below the rule */}
-          <div aria-hidden style={{ clear: "both" }} />
-
-          {/* 4) RIGHT ad slot (always present when article body is available) */}
-          {shouldRenderMonetizationSlots && (
-            <FloatAd
-              frameless
-              label="Homesteader Health Delivery"
-              side="right"
-              imageSrc="/hh.tight.h156.v3.png"
-              w={289} mdW={300} lgW={320}
-              h={170} mdH={180} lgH={190}
-              pad={0}
-              imgFit="contain"
-              shape="rounded"
-              shapeMargin={14}
-              nudgeY={-4} lgNudgeY={-8}
-              scale={1} mdScale={1} lgScale={1}
-              hoverTint={true}
-              caption="Click for Delivery"
-              deliveryLeadContext={{
-                source: "LOCAL_AD",
-                articleSlug: article.slug,
-                businessSlug: "homesteader-health",
-                businessName: "Homesteader Health",
-                inventoryItemName: "Homesteader Health Delivery",
-              }}
-            />
-          )}
-
-          {parts?.afterBlocksHead && (
-            <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksHead }} />
-          )}
-
-          {/* 5) LEFT ad slot (always present when article body is available) */}
-          {shouldRenderMonetizationSlots && (
-            <FloatAd
-              frameless
-              side="left"
-              label="Beaverlodge Butcher Shop Delivery"
-              imageSrc="/bbs.adcard.center.v4.png"
-              imageAlt="Beaverlodge Butcher Shop delivery"
-              w={320} mdW={328} lgW={340}
-              h={158} mdH={170} lgH={180}
-              pad={0}
-              imgFit="contain"
-              shape="image"
-              shapeMargin={16}
-              shapeThreshold={0.45}
-              mt={parts?.afterBlocksHead ? 24 : 12}
-              nudgeY={-4} lgNudgeY={-6}
-              scale={1} lgScale={1}
-              hoverTint={true}
-              caption="Click for Delivery"
-              deliveryLeadContext={{
-                source: "LOCAL_AD",
-                articleSlug: article.slug,
-                businessSlug: "beaverlodge-butcher-shop",
-                businessName: "Beaverlodge Butcher Shop",
-                inventoryItemName: "Beaverlodge Butcher Shop Delivery",
-              }}
-            />
-          )}
-
-          {parts?.afterBlocksTail && (
-            <div dangerouslySetInnerHTML={{ __html: parts.afterBlocksTail }} />
+              <HtmlBlock html={box.after} />
+            </>
+          ) : (
+            <HtmlBlock html={topAfter} />
           )}
 
           <div style={{ clear: "both" }} />
