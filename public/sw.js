@@ -1,3 +1,4 @@
+// WS_BUILD_ID=ws-pwa-7c16b2f-1771906138991
 /* eslint-disable no-restricted-globals */
 try {
   importScripts("/sw-version.js");
