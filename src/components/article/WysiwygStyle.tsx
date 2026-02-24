@@ -2,44 +2,76 @@
 import { WYSIWYG_CSS } from "@/components/editor/wysiwygStyle";
 
 const EXTRA_CSS = `
-/* ------------------------------------------------------------ */
-/* Beaverlodge + checklist grid (stable, balanced sizing)       */
-/* ------------------------------------------------------------ */
+/* Base rhythm */
+.wysiwyg{ line-height:1.7; color:inherit; }
+.wysiwyg p{ margin-block:0 1rem; }
 
+/* Headings */
+.wysiwyg :is(h2,h3,h4){
+  margin:2rem 0 .75rem; line-height:1.25; letter-spacing:-0.01em; font-weight:700;
+}
+.wysiwyg h2{ font-size:clamp(1.375rem,2.2vw,1.75rem); }
+.wysiwyg h3{ font-size:clamp(1.125rem,1.8vw,1.375rem); }
+.wysiwyg h4{ font-size:clamp(1rem,1.6vw,1.125rem); }
+
+/* Lists */
+.wysiwyg :is(ul,ol){ margin:0 0 1rem 1.25rem; padding-left:1.25rem; }
+.wysiwyg li{ margin:.25rem 0; }
+
+/* Links */
+.wysiwyg a{ text-decoration:underline; text-underline-offset:2px; }
+
+/* Images */
+.wysiwyg :is(img,a>img,figure>img){
+  display:block; max-width:100%; height:auto; border-radius:.75rem;
+}
+
+/* Tables */
+.wysiwyg table{
+  width:100%; border-collapse:collapse; margin:1rem 0 1.25rem;
+  font-size:.96rem; border-radius:.6rem; overflow:hidden;
+}
+.wysiwyg :is(th,td){
+  border:1px solid color-mix(in oklab,currentColor 22%,transparent);
+  padding:.5rem .75rem; text-align:left; vertical-align:top;
+}
+.wysiwyg thead th{ background:color-mix(in oklab,currentColor 8%,transparent); font-weight:600; }
+.wysiwyg tbody tr:nth-child(odd){ background:color-mix(in oklab,currentColor 6%,transparent); }
+
+/* ------------------------------------------------------------ */
+/* Beaverlodge + checklist grid (stable, balanced)               */
+/* ------------------------------------------------------------ */
 .wysiwyg .ws-checkgrid{
-  display: grid;
-  grid-template-columns: 300px 1fr;   /* was 320px */
+  display:grid;
+  grid-template-columns: minmax(240px, 315px) 1fr;
   column-gap: 1.25rem;
-  align-items: start;
+  align-items:start;
   margin: .65rem 0 1rem;
 }
 
 .wysiwyg .ws-check-ad{
-  margin-top: -6px;
-  margin-left: -6px;
+  margin-top:-10px;
+  margin-left:-10px;
 }
 
-/* FloatAd ships with inline float + w-full; neutralize inside grid */
 .wysiwyg .ws-check-ad .floatad{
-  float: none !important;
-  width: 300px !important;           /* was 320px */
-  max-width: 300px !important;
-  display: inline-block !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  float:none !important;
+  width:300px !important;
+  max-width:300px !important;
+  display:inline-block !important;
+  margin:0 !important;
+  padding:0 !important;
 }
 
 .wysiwyg .ws-check-ad .floatad img{
-  display: block !important;
-  width: 100% !important;
-  height: auto !important;
-  max-width: none !important;
-  margin: 0 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
+  width:100% !important;
+  height:auto !important;
+  max-width:none !important;
+  margin:0 !important;
 }
 
-.wysiwyg .ws-checklist-wrap{ min-width: 0; }
+/* Checklist */
+.wysiwyg .ws-checklist-wrap{ min-width:0; }
 .wysiwyg .ws-checklist-wrap ul.ws-checklist{
   margin: 0;
   padding-left: 1.15rem;
@@ -49,22 +81,22 @@ const EXTRA_CSS = `
   line-height: 1.38;
 }
 .wysiwyg .ws-checklist-wrap ul.ws-checklist > li{ margin: .34rem 0; }
-.wysiwyg .ws-checklist-wrap ul.ws-checklist li > p{ margin: 0; display: inline; }
-.wysiwyg .ws-checklist-wrap ul.ws-checklist strong{ font-weight: 700; }
+.wysiwyg .ws-checklist-wrap ul.ws-checklist li > p{ margin:0; display:inline; }
+.wysiwyg .ws-checklist-wrap ul.ws-checklist strong{ font-weight:700; }
 
-/* Mobile: stack cleanly */
+/* Mobile */
 @media (max-width: 680px){
   .wysiwyg .ws-checkgrid{
     grid-template-columns: 1fr;
     row-gap: .75rem;
   }
   .wysiwyg .ws-check-ad{
-    margin: 0;
-    justify-self: center;
+    margin:0;
+    justify-self:center;
   }
   .wysiwyg .ws-check-ad .floatad{
-    width: min(300px, 100%) !important;
-    max-width: 100% !important;
+    width:min(300px, 100%) !important;
+    max-width:100% !important;
   }
 }
 `;

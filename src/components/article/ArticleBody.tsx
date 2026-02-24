@@ -89,15 +89,14 @@ export default function ArticleBody({ article }: { article: Article }) {
         <div
           className="wysiwyg overflow-x-hidden
             [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
-            [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0
-            [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
+            [&>*:last-child]:mb-0 [&_p:last-child]:mb-0 [&_ul:last-child]:mb-0 [&_ol:last-child]:mb-0 [&_blockquote:last-child]:mb-0 [&_table:last-child]:mb-0"
         >
           {!hasAnyBody && <p className="opacity-70">No formatted article content available yet.</p>}
 
           <HtmlBlock html={topBefore} />
           <HtmlBlock html={topHeading} />
 
-          {/* RIGHT ad — Homesteader (slightly bigger for balance) */}
+          {/* Homesteader: slightly bigger */}
           {hasAnyBody && (
             <div style={{ clear: "right" }}>
               <FloatAd
@@ -105,22 +104,22 @@ export default function ArticleBody({ article }: { article: Article }) {
                 label="Homesteader Health Delivery"
                 side="right"
                 imageSrc="/hh.tight.h156.v3.png"
-                w={400}
-                mdW={420}
-                lgW={450}
-                h={235}
-                mdH={250}
-                lgH={265}
+                w={390}
+                mdW={410}
+                lgW={440}
+                h={228}
+                mdH={242}
+                lgH={260}
                 pad={0}
                 imgFit="contain"
                 shape="rounded"
                 shapeMargin={14}
                 nudgeY={-4}
                 lgNudgeY={-8}
-                scale={1}
-                mdScale={1}
-                lgScale={1}
-                hoverTint
+                scale={1.05}
+                mdScale={1.05}
+                lgScale={1.05}
+                hoverTint={true}
                 caption="Click for Delivery"
                 deliveryLeadContext={{
                   source: "LOCAL_AD",
@@ -138,7 +137,7 @@ export default function ArticleBody({ article }: { article: Article }) {
               <HtmlBlock html={box.before} />
               <HtmlBlock html={box.leadPara} />
 
-              {/* Beaverlodge + checklist locked together */}
+              {/* Beaverlodge: slightly smaller */}
               <div className="ws-checkgrid">
                 <div className="ws-check-ad">
                   <FloatAd
@@ -147,24 +146,24 @@ export default function ArticleBody({ article }: { article: Article }) {
                     label="Beaverlodge Butcher Shop Delivery"
                     imageSrc="/bbs.adcard.center.v4.png"
                     imageAlt="Beaverlodge Butcher Shop delivery"
-                    w={300}
-                    mdW={305}
+                    w={290}
+                    mdW={300}
                     lgW={315}
-                    h={150}
-                    mdH={155}
-                    lgH={160}
+                    h={128}
+                    mdH={136}
+                    lgH={145}
                     pad={0}
                     imgFit="contain"
                     shape="image"
-                    shapeMargin={0}
+                    shapeMargin={12}
                     shapeThreshold={0.45}
                     mt={0}
-                    nudgeY={0}
-                    lgNudgeY={0}
-                    scale={1}
-                    mdScale={1}
-                    lgScale={1}
-                    hoverTint
+                    nudgeY={-6}
+                    lgNudgeY={-8}
+                    scale={0.95}
+                    mdScale={0.95}
+                    lgScale={0.95}
+                    hoverTint={true}
                     caption="Click for Delivery"
                     deliveryLeadContext={{
                       source: "LOCAL_AD",
