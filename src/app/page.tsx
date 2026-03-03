@@ -1,7 +1,6 @@
 // src/app/page.tsx
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-import { unstable_noStore as noStore } from "next/cache";
 import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
@@ -13,7 +12,6 @@ import SocialIconsRow from "@/components/site/SocialIconsRow";
 const container = "ws-container";
 
 export default async function HomePage() {
-  noStore();
   const article = await getLatestArticle();
 
   if (!article) {

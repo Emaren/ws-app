@@ -23,6 +23,9 @@ function resolveSiteOrigin(): URL {
 
 const siteOrigin = resolveSiteOrigin();
 const socialImagePath = "/Avalon.jpg";
+const socialImageAbsolute = new URL(socialImagePath, siteOrigin).toString();
+const canonicalHomeUrl = new URL("/", siteOrigin).toString();
+const socialImageAlt = "Avalon Organic Chocolate Milk feature from Wheat & Stone";
 
 export const metadata: Metadata = {
   metadataBase: siteOrigin,
@@ -31,6 +34,17 @@ export const metadata: Metadata = {
     "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
   alternates: {
     canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   openGraph: {
     type: "website",
@@ -45,7 +59,8 @@ export const metadata: Metadata = {
         url: socialImagePath,
         width: 1175,
         height: 700,
-        alt: "Avalon Organic Chocolate Milk feature from Wheat & Stone",
+        alt: socialImageAlt,
+        type: "image/jpeg",
       },
     ],
   },
@@ -56,6 +71,13 @@ export const metadata: Metadata = {
     description:
       "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
     images: [socialImagePath],
+  },
+  other: {
+    "twitter:url": canonicalHomeUrl,
+    "twitter:domain": siteOrigin.hostname,
+    "twitter:image:alt": socialImageAlt,
+    "og:image:secure_url": socialImageAbsolute,
+    "og:image:type": "image/jpeg",
   },
   manifest: "/manifest.webmanifest",
   icons: {
