@@ -51,6 +51,14 @@ type RecentRegistrationFailure = {
   createdAt: string;
 };
 
+type AuthFunnelStep = {
+  stage: string;
+  label: string;
+  count: number;
+  conversionFromPrevious: number;
+  dropoffFromPrevious: number;
+};
+
 type AuthRegistrationStats = {
   windowDays: number;
   generatedAt: string;
@@ -64,6 +72,16 @@ type AuthRegistrationStats = {
   recentSuccesses: RecentRegistration[];
   recentFailures: RecentRegistrationFailure[];
   topFailureCodes: Array<{ code: string; count: number }>;
+  funnel: {
+    steps: AuthFunnelStep[];
+    totals: {
+      viewStarted: number;
+      submitAttempted: number;
+      registeredSuccess: number;
+      firstLoginSuccess: number;
+      overallConversionRate: number;
+    };
+  };
 };
 
 function formatMethodLabel(method: string): string {
@@ -342,6 +360,52 @@ export default function AdminDashboard() {
                     {authStats.totals.successRate.toFixed(1)}%
                   </p>
                 </article>
+              </div>
+
+              <div className="admin-surface rounded-xl p-3">
+                <h4 className="mb-3 text-sm font-semibold">
+                  Registration Funnel
+                </h4>
+                <div className="space-y-2">
+                  {authStats.funnel.steps.map((step, index) => {
+                    const previous = authStats.funnel.steps[index - 1]?.count ?? step.count;
+                    const progress =
+                      previous > 0
+                        ? Math.max(8, Math.min(100, Math.round((step.count / previous) * 100)))
+                        : 0;
+
+                    return (
+                      <div key={step.stage} className="rounded-lg border border-white/10 p-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-medium">{step.label}</p>
+                          <p className="text-sm tabular-nums">{step.count}</p>
+                        </div>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-amber-300/80 transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        {index > 0 ? (
+                          <p className="mt-1 text-xs opacity-75">
+                            Conversion: {step.conversionFromPrevious.toFixed(1)}% · Drop-off:{" "}
+                            {step.dropoffFromPrevious}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs opacity-75">
+                            Top of funnel traffic
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs opacity-80">
+                  Overall conversion (view → first login):{" "}
+                  <span className="font-semibold">
+                    {authStats.funnel.totals.overallConversionRate.toFixed(1)}%
+                  </span>
+                </p>
               </div>
 
               <div className="admin-surface overflow-x-auto rounded-xl p-3">

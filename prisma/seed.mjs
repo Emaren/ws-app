@@ -436,6 +436,58 @@ async function main() {
     }
   }
 
+  const existingFunnelSeedCount = await prisma.authFunnelEvent.count({
+    where: { sourceContext: "seed_auth_funnel" },
+  });
+
+  if (existingFunnelSeedCount === 0) {
+    const now = Date.now();
+    const buildAt = (offsetMinutes) =>
+      new Date(now - offsetMinutes * 60 * 1000);
+
+    await prisma.authFunnelEvent.createMany({
+      data: [
+        ...Array.from({ length: 12 }, (_, index) => ({
+          stage: "REGISTER_VIEW_STARTED",
+          sessionId: `seed-view-${index + 1}`,
+          sourceContext: "seed_auth_funnel",
+          createdAt: buildAt(180 - index * 5),
+        })),
+        ...Array.from({ length: 9 }, (_, index) => ({
+          stage: "REGISTER_SUBMIT_ATTEMPTED",
+          method: "CREDENTIALS",
+          email: index < 7 ? `seed-user-${index + 1}@example.com` : null,
+          sessionId: `seed-view-${index + 1}`,
+          sourceContext: "seed_auth_funnel",
+          createdAt: buildAt(150 - index * 5),
+        })),
+        ...Array.from({ length: 7 }, (_, index) => ({
+          stage: "REGISTER_SUCCESS",
+          method: "CREDENTIALS",
+          userId: index === 0 ? owner?.id ?? null : null,
+          email:
+            index === 0
+              ? owner?.email?.toLowerCase() ?? "seed-owner@example.com"
+              : `seed-user-${index + 1}@example.com`,
+          sessionId: `seed-view-${index + 1}`,
+          sourceContext: "seed_auth_funnel",
+          createdAt: buildAt(120 - index * 5),
+        })),
+        ...Array.from({ length: 5 }, (_, index) => ({
+          stage: "FIRST_LOGIN_SUCCESS",
+          method: "CREDENTIALS",
+          userId: index === 0 ? owner?.id ?? null : null,
+          email:
+            index === 0
+              ? owner?.email?.toLowerCase() ?? "seed-owner@example.com"
+              : `seed-user-${index + 1}@example.com`,
+          sourceContext: "seed_auth_funnel",
+          createdAt: buildAt(90 - index * 5),
+        })),
+      ],
+    });
+  }
+
   const counts = {
     articles: await prisma.article.count(),
     businesses: await prisma.business.count(),
@@ -449,6 +501,7 @@ async function main() {
     affiliateClicks: await prisma.affiliateClick.count(),
     rewardLedger: await prisma.rewardLedger.count(),
     authRegistrationEvents: await prisma.authRegistrationEvent.count(),
+    authFunnelEvents: await prisma.authFunnelEvent.count(),
   };
 
   console.log("Business-ops seed complete", counts);

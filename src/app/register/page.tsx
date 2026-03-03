@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
+import { trackAuthFunnelEvent } from "@/lib/authFunnelClient";
 
 type AuthProviderLite = {
   id: string;
@@ -38,6 +39,7 @@ function scorePassword(password: string): { score: number; label: string; color:
 
 export default function RegisterPage() {
   const router = useRouter();
+  const hasTrackedViewRef = useRef(false);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,6 +65,16 @@ export default function RegisterPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (hasTrackedViewRef.current) return;
+    hasTrackedViewRef.current = true;
+    trackAuthFunnelEvent({
+      stage: "REGISTER_VIEW_STARTED",
+      sourceContext: "register_page",
+      metadata: { surface: "register_screen_v2" },
+    });
+  }, []);
+
   const passwordStrength = useMemo(() => scorePassword(password), [password]);
   const socialProviders = useMemo(() => {
     const entries = Object.values(providerMap).filter(
@@ -75,6 +87,17 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    trackAuthFunnelEvent({
+      stage: "REGISTER_SUBMIT_ATTEMPTED",
+      provider: "credentials",
+      email,
+      sourceContext: "register_email_submit",
+      metadata: {
+        termsAccepted: acceptTerms,
+        marketingOptIn: acceptMarketing,
+      },
+    });
 
     if (!acceptTerms) {
       setError("Please accept Terms and Privacy to create your account.");
@@ -128,6 +151,12 @@ export default function RegisterPage() {
 
   const launchSocial = async (providerId: string, enabled: boolean) => {
     if (!enabled || socialLoadingId) return;
+    trackAuthFunnelEvent({
+      stage: "REGISTER_SUBMIT_ATTEMPTED",
+      provider: providerId,
+      sourceContext: "register_social_click",
+      metadata: { providerId },
+    });
     setSocialLoadingId(providerId);
     await signIn(providerId, { callbackUrl: "/" });
     setSocialLoadingId(null);

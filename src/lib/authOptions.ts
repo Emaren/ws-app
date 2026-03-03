@@ -10,6 +10,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { AuthProvider, AuthRegistrationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthProvider, recordAuthRegistrationEvent } from "@/lib/authTelemetry";
+import { recordAuthFunnelEvent, recordFirstLoginSuccess } from "@/lib/authFunnel";
 import { normalizeAppRole } from "@/lib/rbac";
 import {
   WsApiHttpError,
@@ -273,6 +274,13 @@ function buildAuthProviders(): NextAuthOptions["providers"] {
             password: credentials.password,
             method: AuthProvider.CREDENTIALS,
           });
+          await recordFirstLoginSuccess({
+            userId: localSyncedUser.id,
+            email: localSyncedUser.email,
+            provider: AuthProvider.CREDENTIALS,
+            sourceContext: "credentials_sign_in",
+            metadata: { source: "authorize_wsapi" },
+          });
 
           return {
             id: localSyncedUser.id,
@@ -290,6 +298,13 @@ function buildAuthProviders(): NextAuthOptions["providers"] {
             credentials.password,
           );
           if (fallback) {
+            await recordFirstLoginSuccess({
+              userId: fallback.id,
+              email: fallback.email,
+              provider: AuthProvider.CREDENTIALS,
+              sourceContext: "credentials_sign_in",
+              metadata: { source: "authorize_local_fallback" },
+            });
             return fallback;
           }
 
@@ -454,7 +469,25 @@ export const authOptions: NextAuthOptions = {
               stage: "oauth_sign_in",
             },
           });
+          await recordAuthFunnelEvent({
+            stage: "REGISTER_SUCCESS",
+            provider: method,
+            email: localSyncedUser.email,
+            userId: localSyncedUser.id,
+            sourceContext: "oauth_sign_in",
+            metadata: {
+              providerId,
+            },
+          });
         }
+
+        await recordFirstLoginSuccess({
+          userId: localSyncedUser.id,
+          email: localSyncedUser.email,
+          provider: method,
+          sourceContext: "oauth_sign_in",
+          metadata: { providerId },
+        });
 
         return true;
       } catch (error) {

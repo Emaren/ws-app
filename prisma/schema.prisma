@@ -29,6 +29,7 @@ model User {
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
   authRegistrationEvents AuthRegistrationEvent[]
+  authFunnelEvents       AuthFunnelEvent[]
 }
 
 model Article {
@@ -469,6 +470,25 @@ model AuthRegistrationEvent {
   @@index([userId, createdAt])
 }
 
+model AuthFunnelEvent {
+  id            String          @id @default(cuid())
+  stage         AuthFunnelStage
+  method        AuthProvider?
+  userId        String?
+  email         String?
+  sessionId     String?
+  sourceContext String?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  user          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([stage, createdAt])
+  @@index([method, stage, createdAt])
+  @@index([userId, stage, createdAt])
+  @@index([email, stage, createdAt])
+  @@index([sessionId, stage, createdAt])
+}
+
 enum Role {
   ADMIN
   CONTRIBUTOR
@@ -491,6 +511,13 @@ enum AuthProvider {
 enum AuthRegistrationStatus {
   SUCCESS
   FAILURE
+}
+
+enum AuthFunnelStage {
+  REGISTER_VIEW_STARTED
+  REGISTER_SUBMIT_ATTEMPTED
+  REGISTER_SUCCESS
+  FIRST_LOGIN_SUCCESS
 }
 
 enum ArticleStatus {

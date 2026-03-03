@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { AuthProvider, AuthRegistrationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAuthRegistrationEvent } from "@/lib/authTelemetry";
+import { recordAuthFunnelEvent } from "@/lib/authFunnel";
 import { normalizeAppRole } from "@/lib/rbac";
 import { WsApiHttpError, wsApiRegister } from "@/lib/wsApiAuth";
 
@@ -156,6 +157,15 @@ export async function POST(req: NextRequest) {
         source: "ws_api_register",
       },
     });
+    await recordAuthFunnelEvent({
+      stage: "REGISTER_SUCCESS",
+      provider: AuthProvider.CREDENTIALS,
+      email: localUser?.email ?? result.user.email.toLowerCase(),
+      userId: localUser?.id ?? null,
+      sourceContext: "register_api",
+      metadata: { source: "ws_api_register" },
+      headers: req.headers,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
@@ -230,6 +240,15 @@ export async function POST(req: NextRequest) {
             metadata: {
               source: "local_fallback_wsapi_unavailable",
             },
+          });
+          await recordAuthFunnelEvent({
+            stage: "REGISTER_SUCCESS",
+            provider: AuthProvider.CREDENTIALS,
+            email: localUser.email,
+            userId: localUser.id,
+            sourceContext: "register_api_local_fallback",
+            metadata: { source: "local_fallback_wsapi_unavailable" },
+            headers: req.headers,
           });
 
           return NextResponse.json(

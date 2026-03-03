@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AuthRegistrationStatus } from "@prisma/client";
+import { AuthFunnelStage, AuthRegistrationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const windowStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   try {
-    const [grouped, recentSuccesses, recentFailures, topFailureCodes] =
+    const [grouped, recentSuccesses, recentFailures, topFailureCodes, funnelGrouped] =
       await Promise.all([
         prisma.authRegistrationEvent.groupBy({
           by: ["method", "status"],
@@ -88,6 +88,13 @@ export async function GET(req: NextRequest) {
           },
           take: 8,
         }),
+        prisma.authFunnelEvent.groupBy({
+          by: ["stage"],
+          where: {
+            createdAt: { gte: windowStart },
+          },
+          _count: { _all: true },
+        }),
       ]);
 
     const providerMap = new Map<
@@ -135,6 +142,25 @@ export async function GET(req: NextRequest) {
       { success: 0, failure: 0, total: 0 },
     );
 
+    const stageCounts: Record<AuthFunnelStage, number> = {
+      REGISTER_VIEW_STARTED: 0,
+      REGISTER_SUBMIT_ATTEMPTED: 0,
+      REGISTER_SUCCESS: 0,
+      FIRST_LOGIN_SUCCESS: 0,
+    };
+
+    for (const row of funnelGrouped) {
+      stageCounts[row.stage] = row._count._all;
+    }
+
+    const viewStarted = stageCounts.REGISTER_VIEW_STARTED;
+    const submitAttempted = stageCounts.REGISTER_SUBMIT_ATTEMPTED;
+    const registeredSuccess = stageCounts.REGISTER_SUCCESS;
+    const firstLoginSuccess = stageCounts.FIRST_LOGIN_SUCCESS;
+
+    const toRate = (value: number, total: number) =>
+      total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0;
+
     return NextResponse.json({
       windowDays: days,
       generatedAt: new Date().toISOString(),
@@ -165,6 +191,45 @@ export async function GET(req: NextRequest) {
         code: row.failureCode || "UNKNOWN",
         count: row._count._all,
       })),
+      funnel: {
+        steps: [
+          {
+            stage: "REGISTER_VIEW_STARTED",
+            label: "View Started",
+            count: viewStarted,
+            conversionFromPrevious: 100,
+            dropoffFromPrevious: 0,
+          },
+          {
+            stage: "REGISTER_SUBMIT_ATTEMPTED",
+            label: "Submit Attempted",
+            count: submitAttempted,
+            conversionFromPrevious: toRate(submitAttempted, viewStarted),
+            dropoffFromPrevious: Math.max(viewStarted - submitAttempted, 0),
+          },
+          {
+            stage: "REGISTER_SUCCESS",
+            label: "Registered",
+            count: registeredSuccess,
+            conversionFromPrevious: toRate(registeredSuccess, submitAttempted),
+            dropoffFromPrevious: Math.max(submitAttempted - registeredSuccess, 0),
+          },
+          {
+            stage: "FIRST_LOGIN_SUCCESS",
+            label: "First Login",
+            count: firstLoginSuccess,
+            conversionFromPrevious: toRate(firstLoginSuccess, registeredSuccess),
+            dropoffFromPrevious: Math.max(registeredSuccess - firstLoginSuccess, 0),
+          },
+        ],
+        totals: {
+          viewStarted,
+          submitAttempted,
+          registeredSuccess,
+          firstLoginSuccess,
+          overallConversionRate: toRate(firstLoginSuccess, viewStarted),
+        },
+      },
     });
   } catch (error) {
     return NextResponse.json(
@@ -176,4 +241,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
