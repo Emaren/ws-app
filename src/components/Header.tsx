@@ -76,6 +76,14 @@ const DEFAULT_WALLET_CHAIN_FALLBACKS = [
   "juno-1",
   "stargaze-1",
 ];
+const PRIMARY_NAV_LINKS = [
+  { href: "/discover", label: "Discover" },
+  { href: "/offers", label: "Offers" },
+  { href: "/map", label: "Map" },
+  { href: "/community", label: "Community" },
+  { href: "/articles", label: "Articles" },
+  { href: "/about", label: "About" },
+] as const;
 
 function chainIdCandidates(): string[] {
   const primary = (
@@ -138,6 +146,7 @@ export default function Header() {
   const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("gray");
+  const [offersBadgeCount, setOffersBadgeCount] = useState(0);
 
   const headerRef = useRef<HTMLElement>(null);
   const menuBtnRef = useRef<HTMLDivElement>(null);
@@ -245,6 +254,46 @@ export default function Header() {
     applyThemeToDocument(nextTheme);
     setTheme(nextTheme);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    let timer: number | null = null;
+
+    const loadOffersBadge = async () => {
+      if (!session?.user) {
+        if (active) {
+          setOffersBadgeCount(0);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/offers/badge", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as { count?: number };
+        if (!active) {
+          return;
+        }
+        setOffersBadgeCount(Math.max(0, Number(payload.count ?? 0)));
+      } catch {
+        // Non-blocking badge fetch; keep the existing value.
+      }
+    };
+
+    void loadOffersBadge();
+    timer = window.setInterval(() => {
+      void loadOffersBadge();
+    }, 45_000);
+
+    return () => {
+      active = false;
+      if (timer !== null) {
+        window.clearInterval(timer);
+      }
+    };
+  }, [session?.user?.id, session?.user?.email]);
 
   const connectWallet = async () => {
     if (walletBusy) {
@@ -413,7 +462,7 @@ export default function Header() {
   return (
     <header
       ref={headerRef}
-      className="w-full bg-[var(--background)] text-[var(--foreground)] shadow relative z-50"
+      className="w-full bg-[var(--background)] text-[var(--foreground)] relative z-50"
       role="banner"
     >
       <div className="ws-container grid min-w-0 grid-cols-[auto_1fr_auto] items-end gap-3 pt-2 pb-1 md:items-center md:gap-4 md:pt-3 md:pb-2">
@@ -431,6 +480,31 @@ export default function Header() {
             decoding="async"
           />
         </a>
+
+        <nav
+          aria-label="Primary"
+          className="hidden md:flex min-w-0 items-center justify-center gap-4 lg:gap-6 text-sm"
+        >
+          {PRIMARY_NAV_LINKS.map((link) => {
+            const showOffersBadge = link.href === "/offers" && offersBadgeCount > 0;
+            const displayCount = Math.min(99, offersBadgeCount);
+
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className="inline-flex items-center whitespace-nowrap opacity-85 hover:opacity-100 hover:underline underline-offset-4 transition"
+              >
+                <span>{link.label}</span>
+                {showOffersBadge ? (
+                  <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {displayCount}
+                  </span>
+                ) : null}
+              </a>
+            );
+          })}
+        </nav>
 
         {/* Desktop actions */}
         <DesktopActions
@@ -553,7 +627,7 @@ export default function Header() {
       <div
         id="mobile-menu"
         ref={menuPanelRef}
-        className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 shadow transition-[max-height,opacity] overflow-hidden ${
+        className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 transition-[max-height,opacity] overflow-hidden ${
           menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
         }`}
       >
@@ -562,6 +636,7 @@ export default function Header() {
           theme={theme}
           setTheme={updateTheme}
           isAdmin={!!isAdmin}
+          offersBadgeCount={offersBadgeCount}
           walletConnected={walletConnected}
           walletBusy={walletBusy}
           walletAddressLabel={walletShortAddress}

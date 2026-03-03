@@ -1,9 +1,23 @@
-// src/app/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { signIn, getProviders } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+type AuthProviderLite = {
+  id: string;
+  name: string;
+  type: string;
+};
+
+const POPULAR_PROVIDER_ORDER: Array<{ id: string; label: string }> = [
+  { id: "google", label: "Continue with Google" },
+  { id: "apple", label: "Continue with Apple" },
+  { id: "azure-ad", label: "Continue with Microsoft" },
+  { id: "facebook", label: "Continue with Facebook" },
+  { id: "github", label: "Continue with GitHub" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +25,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [socialLoadingId, setSocialLoadingId] = useState<string | null>(null);
+  const [providerMap, setProviderMap] = useState<Record<string, AuthProviderLite>>(
+    {},
+  );
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const providers = await getProviders();
+      if (!active || !providers) return;
+      setProviderMap(providers as Record<string, AuthProviderLite>);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const socialProviders = useMemo(() => {
+    const entries = Object.values(providerMap).filter(
+      (provider) => provider.type === "oauth",
+    );
+    return new Map(entries.map((provider) => [provider.id, provider]));
+  }, [providerMap]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,25 +64,58 @@ export default function LoginPage() {
     router.push("/");
   };
 
+  const launchSocial = async (providerId: string, enabled: boolean) => {
+    if (!enabled || socialLoadingId) return;
+    setSocialLoadingId(providerId);
+    await signIn(providerId, { callbackUrl: "/" });
+    setSocialLoadingId(null);
+  };
+
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-xl items-center justify-center px-4 py-8">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-grey dark:bg-neutral-900 p-6 shadow"
+        className="w-full rounded-2xl border border-neutral-200/20 bg-grey p-6 shadow dark:border-neutral-800 dark:bg-neutral-900"
       >
-        {/* Toolbar with title + close */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Sign In</h1>
           <button
             type="button"
             onClick={() => router.push("/")}
             aria-label="Close sign in form"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full cursor-pointer
-                       bg-grey dark:bg-neutral-800 text-neutral-700 dark:text-neutral-100
-                       hover:bg-neutral-50 dark:hover:bg-neutral-700"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-grey text-neutral-700 hover:bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
           >
-            <span className="text-xl leading-none">x</span>
+            <span className="text-xl leading-none">×</span>
           </button>
+        </div>
+
+        <div className="space-y-2">
+          {POPULAR_PROVIDER_ORDER.map((item) => {
+            const provider = socialProviders.get(item.id);
+            const enabled = Boolean(provider);
+            const loadingThis = socialLoadingId === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => launchSocial(item.id, enabled)}
+                disabled={!enabled || Boolean(socialLoadingId)}
+                className={`w-full rounded-xl border px-4 py-2.5 text-left text-sm transition ${
+                  enabled
+                    ? "border-white/20 bg-white/5 hover:border-amber-300/40 hover:bg-white/10"
+                    : "cursor-not-allowed border-white/10 bg-white/5 opacity-50"
+                }`}
+              >
+                {loadingThis ? "Connecting..." : enabled ? item.label : `${item.label} (setup needed)`}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-[0.18em] opacity-60">
+          <span className="h-px flex-1 bg-white/20" />
+          <span>Or email</span>
+          <span className="h-px flex-1 bg-white/20" />
         </div>
 
         <input
@@ -70,25 +141,29 @@ export default function LoginPage() {
           required
         />
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {error ? <p className="mb-4 text-red-500">{error}</p> : null}
 
         <button
           type="submit"
           disabled={loading}
-          className={`bg-black text-white px-4 py-2 rounded w-full ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          className={`bg-black text-white px-4 py-2 rounded w-full ${
+            loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+          }`}
         >
           {loading ? "Please wait..." : "Login"}
         </button>
 
         <p className="mt-3 text-center text-sm">
-          <a href="/forgot-password" className="text-blue-500 underline">
+          <Link href="/forgot-password" className="text-blue-500 underline">
             Forgot password?
-          </a>
+          </Link>
         </p>
 
-        <p className="text-center mt-4">
+        <p className="mt-4 text-center">
           Don’t have an account?{" "}
-          <a href="/register" className="text-blue-500 underline">Register</a>
+          <Link href="/register" className="text-blue-500 underline">
+            Register
+          </Link>
         </p>
       </form>
     </div>

@@ -85,6 +85,8 @@ export default function RichEditor({
   const forceDark = theme === "dark";
 
   const editor = useEditor({
+    // Required for Next.js SSR to avoid hydration mismatch runtime errors.
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Underline,

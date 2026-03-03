@@ -56,6 +56,25 @@ pnpm prisma:migrate:deploy
 pnpm dev
 ```
 
+## Local Postgres troubleshooting
+
+If `pnpm prisma:migrate:deploy` fails with `P1010` (access denied) and your machine already has another Postgres stack on `5432`, run Wheat & Stone Postgres on `5433` instead:
+
+```bash
+docker rm -f ws-postgres >/dev/null 2>&1 || true
+docker run --name ws-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=wheatandstone \
+  -p 5433:5432 -d postgres:16
+```
+
+Then update `DATABASE_URL`:
+
+```bash
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/wheatandstone?schema=public
+```
+
 ## Environment variables
 
 Core required:

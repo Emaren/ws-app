@@ -51,12 +51,20 @@
   --autofill-bg:#f4ecd9;
 }
 
+:root[data-theme="rugged"]{
+  --background:#16110d;
+  --foreground:#ecdac0;
+  --autofill-text:#ecdac0;
+  --autofill-bg:#16110d;
+}
+
 :root{ color-scheme:dark; }
 :root[data-theme="light"],
 :root[data-theme="sepia"]{ color-scheme:light; }
 :root.dark,
 :root[data-theme="dark"],
-:root[data-theme="gray"]{ color-scheme:dark; }
+:root[data-theme="gray"],
+:root[data-theme="rugged"]{ color-scheme:dark; }
 
 /* ---------------- base & overflow safety ---------------- */
 *,
@@ -79,6 +87,13 @@ body{
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
   min-height:100svh;
+}
+
+:root[data-theme="rugged"] body{
+  background-image:
+    radial-gradient(1200px 420px at 50% -12%, rgba(168,120,62,.22), transparent 72%),
+    radial-gradient(900px 300px at 92% 0%, rgba(114,78,40,.16), transparent 70%),
+    linear-gradient(180deg, rgba(255,211,143,.03), rgba(0,0,0,0));
 }
 
 /* Visible affordance: interactive elements always show pointer */

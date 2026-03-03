@@ -27,6 +27,11 @@ const THEME_OPTIONS: Array<{
     label: "Sepia",
     chipClass: "bg-[#e9ddc5] border border-[#a27d48]",
   },
+  {
+    value: "rugged",
+    label: "Rugged",
+    chipClass: "bg-[#1b1511] border border-[#7a5a2e]",
+  },
 ];
 
 export default function ThemeCircles({
@@ -40,9 +45,7 @@ export default function ThemeCircles({
 }) {
   return (
     <div
-      className={`inline-flex items-center rounded-full border border-black/10 bg-[var(--background)]/90 px-2 py-1 shadow-sm dark:border-white/15 ${
-        compact ? "gap-1.5" : "gap-2"
-      }`}
+      className={`inline-flex items-center bg-transparent ${compact ? "gap-1.5" : "gap-2"}`}
       aria-label="Theme selector"
       role="group"
     >
@@ -56,8 +59,8 @@ export default function ThemeCircles({
             aria-pressed={active}
             title={`${option.label} theme`}
             onClick={() => onChange(option.value)}
-            className={`inline-flex h-6 w-6 items-center justify-center rounded-full transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 ${
-              active ? "ring-2 ring-amber-500/80 ring-offset-1 ring-offset-[var(--background)]" : ""
+            className={`inline-flex h-6 w-6 items-center justify-center rounded-full transition cursor-pointer focus:outline-none ${
+              active ? "scale-105 opacity-100" : "opacity-85 hover:opacity-100"
             }`}
           >
             <span className={`h-4 w-4 rounded-full ${option.chipClass}`} aria-hidden="true" />

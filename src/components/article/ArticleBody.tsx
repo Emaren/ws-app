@@ -76,6 +76,8 @@ export default function ArticleBody({ article }: { article: Article }) {
   const unwrapped = stripSingleOuterDiv(clean);
 
   const hasAnyBody = unwrapped.trim().length > 0;
+  const excerpt = article.excerpt?.trim() || "";
+  const hasExcerpt = excerpt.length > 0;
 
   const { before: topBefore, heading: topHeading, after: topAfter } = splitAtFirstHeading(unwrapped);
   const box = extractChecksEveryBox(topAfter);
@@ -84,6 +86,18 @@ export default function ArticleBody({ article }: { article: Article }) {
     <>
       <WysiwygStyle />
       <BigThumbs slug={article.slug} />
+
+      {hasExcerpt && (
+        <section className="ws-article mt-4 md:mt-5 mb-6 md:mb-7">
+          <h3 className="text-[1.95rem] md:text-[2.05rem] leading-tight font-semibold tracking-tight">
+            Excerpt:
+          </h3>
+          <p className="mt-2 text-[1.2rem] md:text-[1.24rem] leading-[1.58] opacity-95">
+            {excerpt}
+          </p>
+          <hr className="adbay-rule mt-5 md:mt-6" />
+        </section>
+      )}
 
       <article className="min-w-0 overflow-x-clip">
         <div

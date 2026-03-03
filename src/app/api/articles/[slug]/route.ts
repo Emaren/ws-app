@@ -72,43 +72,12 @@ export async function PATCH(
     body = {};
   }
 
-  // ---- Public reaction endpoint (no auth) ----
+  // ---- Deprecated legacy reaction endpoint ----
   if (body?.op === "react") {
-    const existing = await prisma.article.findUnique({
-      where: { slug },
-      select: { status: true, publishedAt: true },
-    });
-    if (!existing) {
-      return notFound();
-    }
-
-    const existingStatus = normalizeArticleStatus(existing.status);
-    if (!existingStatus || !isPubliclyVisibleArticle(existingStatus, existing.publishedAt)) {
-      return forbidden();
-    }
-
-    const type = String(body?.type || "").toUpperCase();
-    if (!["LIKE", "WOW", "HMM"].includes(type)) {
-      return badRequest("Invalid reaction type");
-    }
-
-    const data =
-      type === "LIKE"
-        ? { likeCount: { increment: 1 } }
-        : type === "WOW"
-        ? { wowCount: { increment: 1 } }
-        : { hmmCount: { increment: 1 } };
-
-    try {
-      const updated = await prisma.article.update({
-        where: { slug },
-        data,
-        select: { likeCount: true, wowCount: true, hmmCount: true },
-      });
-      return NextResponse.json(updated);
-    } catch {
-      return notFound();
-    }
+    return NextResponse.json(
+      { message: "Deprecated reaction endpoint. Use /api/articles/[slug]/reactions." },
+      { status: 410 },
+    );
   }
 
   // ---- Auth-required editorial updates ----

@@ -6,10 +6,16 @@ import { signIn } from "next-auth/react";
 import type { SVGProps } from "react";
 import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
 import ThemeCircles from "./ThemeCircles";
+import TokenBalancesInline from "./TokenBalancesInline";
 import type { ThemeMode } from "@/lib/theme";
 
 type SessionLike = {
-  user?: { email?: string | null; role?: string | null } | null;
+  user?: {
+    id?: string | null;
+    wsApiUserId?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
 } | null;
 
 function ProfileIcon(props: SVGProps<SVGSVGElement>) {
@@ -138,6 +144,10 @@ export default function DesktopActions({
           <div className="w-full flex items-center justify-end">
             <ThemeCircles value={theme} onChange={setTheme} />
           </div>
+
+          {session?.user?.id ? (
+            <TokenBalancesInline userId={session.user.wsApiUserId ?? session.user.id} />
+          ) : null}
 
           {walletAddressLabel ? (
             <span className="w-full truncate text-right text-[11px] text-emerald-300/90">

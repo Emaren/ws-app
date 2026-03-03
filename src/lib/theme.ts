@@ -1,4 +1,4 @@
-export type ThemeMode = "gray" | "dark" | "light" | "sepia";
+export type ThemeMode = "gray" | "dark" | "light" | "sepia" | "rugged";
 
 export const THEME_STORAGE_KEY = "theme";
 const THEME_META_COLORS: Record<ThemeMode, string> = {
@@ -6,10 +6,17 @@ const THEME_META_COLORS: Record<ThemeMode, string> = {
   dark: "#0a0a0a",
   light: "#ffffff",
   sepia: "#f4ecd9",
+  rugged: "#16110d",
 };
 
 export function normalizeTheme(value: string | null | undefined): ThemeMode | null {
-  if (value === "gray" || value === "dark" || value === "light" || value === "sepia") {
+  if (
+    value === "gray" ||
+    value === "dark" ||
+    value === "light" ||
+    value === "sepia" ||
+    value === "rugged"
+  ) {
     return value;
   }
   return null;
@@ -25,7 +32,7 @@ export function applyThemeToDocument(theme: ThemeMode): void {
   }
 
   const html = document.documentElement;
-  html.classList.toggle("dark", theme === "dark" || theme === "gray");
+  html.classList.toggle("dark", theme === "dark" || theme === "gray" || theme === "rugged");
   html.setAttribute("data-theme", theme);
 
   const metaThemeColor = document.querySelector(
@@ -87,6 +94,10 @@ export function cycleTheme(current: ThemeMode): ThemeMode {
 
   if (current === "light") {
     return "sepia";
+  }
+
+  if (current === "sepia") {
+    return "rugged";
   }
 
   return "gray";

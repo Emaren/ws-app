@@ -7,10 +7,55 @@ import { Geist, Geist_Mono } from "next/font/google";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
+function resolveSiteOrigin(): URL {
+  const fallback = "https://wheatandstone.ca";
+  const raw = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim();
+  if (!raw) {
+    return new URL(fallback);
+  }
+  const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(normalized);
+  } catch {
+    return new URL(fallback);
+  }
+}
+
+const siteOrigin = resolveSiteOrigin();
+const socialImagePath = "/logo.png";
+
 export const metadata: Metadata = {
+  metadataBase: siteOrigin,
   title: "Wheat & Stone",
   description:
     "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: "Wheat & Stone",
+    description:
+      "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
+    siteName: "Wheat & Stone",
+    locale: "en_CA",
+    images: [
+      {
+        url: socialImagePath,
+        width: 1536,
+        height: 1024,
+        alt: "Wheat & Stone - health, heritage, and truth in every bite",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wheat & Stone",
+    description:
+      "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
+    images: [socialImagePath],
+  },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

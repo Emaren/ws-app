@@ -131,10 +131,6 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
         keepalive: true,
       });
 
-      if (res.status === 401) {
-        throw new Error("Sign in required to react");
-      }
-
       if (!res.ok) {
         throw new Error(`Reaction update failed (${res.status})`);
       }
@@ -149,11 +145,8 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
     } catch (error) {
       setSelected(previousSelected);
       setCounts(previousCounts);
-      if (error instanceof Error && error.message.includes("Sign in required")) {
-        alert("Please sign in to react.");
-      } else {
-        alert("Network error — could not register reaction.");
-      }
+      console.warn("Article reaction update failed", error);
+      alert("Network error — could not register reaction.");
     } finally {
       setSending(false);
     }

@@ -62,7 +62,10 @@ export default async function AccountPage() {
           </div>
         </dl>
 
-        <TokenBalancesCard userId={session.user.id} trackedTokens={trackedTokens} />
+        <TokenBalancesCard
+          userId={session.user.wsApiUserId ?? session.user.id}
+          trackedTokens={trackedTokens}
+        />
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Link

@@ -4,10 +4,16 @@
 import { useRouter } from "next/navigation";
 import { roleBadgePrefix } from "@/lib/rbac";
 import ThemeCircles from "./ThemeCircles";
+import TokenBalancesInline from "./TokenBalancesInline";
 import type { ThemeMode } from "@/lib/theme";
 
 type SessionLike = {
-  user?: { email?: string | null; role?: string | null } | null;
+  user?: {
+    id?: string | null;
+    wsApiUserId?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
 } | null;
 
 export default function MobileMenu({
@@ -15,6 +21,7 @@ export default function MobileMenu({
   theme,
   setTheme,
   isAdmin,
+  offersBadgeCount,
   walletConnected,
   walletBusy,
   walletAddressLabel,
@@ -27,6 +34,7 @@ export default function MobileMenu({
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   isAdmin: boolean;
+  offersBadgeCount: number;
   walletConnected: boolean;
   walletBusy: boolean;
   walletAddressLabel: string | null;
@@ -54,6 +62,41 @@ export default function MobileMenu({
 
       <div className="grid grid-cols-2 gap-2">
         <button
+          onClick={() => go("/discover")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Discover
+        </button>
+
+        <button
+          onClick={() => go("/offers")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <span>Offers</span>
+            {offersBadgeCount > 0 ? (
+              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                {Math.min(offersBadgeCount, 99)}
+              </span>
+            ) : null}
+          </span>
+        </button>
+
+        <button
+          onClick={() => go("/map")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Map
+        </button>
+
+        <button
+          onClick={() => go("/community")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Community
+        </button>
+
+        <button
           onClick={() => go("/articles")}
           className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
         >
@@ -65,6 +108,13 @@ export default function MobileMenu({
           className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
         >
           Premium
+        </button>
+
+        <button
+          onClick={() => go("/about")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          About
         </button>
 
         {!session ? (
@@ -129,6 +179,11 @@ export default function MobileMenu({
             {walletError ? (
               <div className="mt-1 text-[12px] text-amber-300/90 break-all">
                 {walletError}
+              </div>
+            ) : null}
+            {session?.user?.id ? (
+              <div className="mt-2">
+                <TokenBalancesInline userId={session.user.wsApiUserId ?? session.user.id} />
               </div>
             ) : null}
           </div>

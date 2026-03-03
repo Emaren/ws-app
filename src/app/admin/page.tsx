@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { isStaffRole, normalizeAppRole } from "@/lib/rbac";
+import { hasAnyRole, isStaffRole, normalizeAppRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import {
   canDeleteArticle,
   normalizeArticleStatus,
@@ -22,15 +22,72 @@ type Article = {
   publishedAt?: string | null;
 };
 
+type RegistrationProviderStats = {
+  method: string;
+  success: number;
+  failure: number;
+  total: number;
+  successRate: number;
+};
+
+type RecentRegistration = {
+  id: string;
+  email: string | null;
+  method: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    role: string;
+  } | null;
+};
+
+type RecentRegistrationFailure = {
+  id: string;
+  email: string | null;
+  method: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  createdAt: string;
+};
+
+type AuthRegistrationStats = {
+  windowDays: number;
+  generatedAt: string;
+  totals: {
+    success: number;
+    failure: number;
+    total: number;
+    successRate: number;
+  };
+  providers: RegistrationProviderStats[];
+  recentSuccesses: RecentRegistration[];
+  recentFailures: RecentRegistrationFailure[];
+  topFailureCodes: Array<{ code: string; count: number }>;
+};
+
+function formatMethodLabel(method: string): string {
+  if (method === "CREDENTIALS") return "Email + Password";
+  if (method === "GOOGLE") return "Google";
+  if (method === "APPLE") return "Apple";
+  if (method === "MICROSOFT") return "Microsoft";
+  if (method === "FACEBOOK") return "Facebook";
+  if (method === "GITHUB") return "GitHub";
+  return method;
+}
+
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
   const [articles, setArticles] = useState<Article[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authStatsLoading, setAuthStatsLoading] = useState(false);
+  const [authStats, setAuthStats] = useState<AuthRegistrationStats | null>(null);
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canDeleteAsStaff = isStaffRole(role);
+  const isOwnerAdmin = hasAnyRole(role, RBAC_ROLE_GROUPS.ownerAdmin);
 
   async function load() {
     setLoading(true);
@@ -47,9 +104,41 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadAuthStats() {
+    if (!isOwnerAdmin) {
+      setAuthStats(null);
+      return;
+    }
+
+    setAuthStatsLoading(true);
+    try {
+      const res = await fetch("/api/admin/auth/registration-stats?days=30", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const data = (await res.json()) as AuthRegistrationStats;
+      setAuthStats(data);
+    } catch (error) {
+      console.error(error);
+      setAuthStats(null);
+    } finally {
+      setAuthStatsLoading(false);
+    }
+  }
+
+  async function reloadAll() {
+    await Promise.all([load(), loadAuthStats()]);
+  }
+
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    void loadAuthStats();
+  }, [isOwnerAdmin]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -118,12 +207,30 @@ export default function AdminDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={load}
+              onClick={reloadAll}
               className="rounded-xl border px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
-              disabled={loading || isPending}
+              disabled={loading || authStatsLoading || isPending}
             >
-              {loading ? "Loading..." : "Reload"}
+              {loading || authStatsLoading ? "Loading..." : "Reload"}
             </button>
+            {canDeleteAsStaff ? (
+              <>
+                <button
+                  onClick={() => router.push("/admin/offers")}
+                  className="rounded-xl border border-red-500/45 bg-red-500/15 px-3 py-2 text-sm font-medium transition hover:bg-red-500/25"
+                >
+                  Offers Command
+                </button>
+                {isOwnerAdmin ? (
+                  <button
+                    onClick={() => router.push("/admin/company")}
+                    className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-sm font-medium transition hover:bg-sky-500/25"
+                  >
+                    Company Dashboards
+                  </button>
+                ) : null}
+              </>
+            ) : null}
             <button
               onClick={() => router.push("/admin/new")}
               className="rounded-xl border border-amber-300/40 bg-amber-200/20 px-3 py-2 text-sm font-medium transition hover:bg-amber-200/30"
@@ -181,6 +288,146 @@ export default function AdminDashboard() {
           </span>
         </div>
       </div>
+
+      {isOwnerAdmin ? (
+        <div className="admin-card space-y-4 p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-semibold md:text-lg">
+                Registration Intelligence
+              </h3>
+              <p className="text-xs opacity-75">
+                Who registered by method, plus where onboarding failures happened.
+              </p>
+            </div>
+            <span className="text-xs opacity-70">
+              Window: last {authStats?.windowDays ?? 30} days
+            </span>
+          </div>
+
+          {authStatsLoading ? (
+            <div className="admin-surface rounded-xl p-4 text-sm opacity-70">
+              Loading registration analytics...
+            </div>
+          ) : null}
+
+          {!authStatsLoading && !authStats ? (
+            <div className="admin-surface rounded-xl p-4 text-sm opacity-70">
+              Registration analytics not available yet.
+            </div>
+          ) : null}
+
+          {authStats ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <article className="admin-surface rounded-xl p-3">
+                  <p className="text-xs uppercase tracking-wide opacity-70">Total Attempts</p>
+                  <p className="mt-1 text-xl font-semibold">{authStats.totals.total}</p>
+                </article>
+                <article className="admin-surface rounded-xl p-3">
+                  <p className="text-xs uppercase tracking-wide opacity-70">Successful</p>
+                  <p className="mt-1 text-xl font-semibold text-emerald-400">
+                    {authStats.totals.success}
+                  </p>
+                </article>
+                <article className="admin-surface rounded-xl p-3">
+                  <p className="text-xs uppercase tracking-wide opacity-70">Failures</p>
+                  <p className="mt-1 text-xl font-semibold text-rose-400">
+                    {authStats.totals.failure}
+                  </p>
+                </article>
+                <article className="admin-surface rounded-xl p-3">
+                  <p className="text-xs uppercase tracking-wide opacity-70">Success Rate</p>
+                  <p className="mt-1 text-xl font-semibold">
+                    {authStats.totals.successRate.toFixed(1)}%
+                  </p>
+                </article>
+              </div>
+
+              <div className="admin-surface overflow-x-auto rounded-xl p-3">
+                <h4 className="mb-2 text-sm font-semibold">Provider Mix</h4>
+                <table className="w-full min-w-[560px] text-left text-sm">
+                  <thead className="opacity-70">
+                    <tr>
+                      <th className="pb-2 pr-3">Method</th>
+                      <th className="pb-2 pr-3">Success</th>
+                      <th className="pb-2 pr-3">Failure</th>
+                      <th className="pb-2 pr-3">Total</th>
+                      <th className="pb-2">Success %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {authStats.providers.map((row) => (
+                      <tr key={row.method} className="border-t border-white/10">
+                        <td className="py-2 pr-3">{formatMethodLabel(row.method)}</td>
+                        <td className="py-2 pr-3 text-emerald-400">{row.success}</td>
+                        <td className="py-2 pr-3 text-rose-400">{row.failure}</td>
+                        <td className="py-2 pr-3">{row.total}</td>
+                        <td className="py-2">{row.successRate.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                    {authStats.providers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-3 opacity-70">
+                          No registration attempts in this window yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="admin-surface rounded-xl p-3">
+                  <h4 className="mb-2 text-sm font-semibold">Recent Registrations</h4>
+                  <ul className="space-y-2 text-sm">
+                    {authStats.recentSuccesses.slice(0, 8).map((item) => (
+                      <li key={item.id} className="rounded-lg border border-white/10 p-2">
+                        <p className="font-medium">
+                          {item.email || "Unknown email"} · {formatMethodLabel(item.method)}
+                        </p>
+                        <p className="text-xs opacity-70">
+                          {new Date(item.createdAt).toLocaleString()} ·{" "}
+                          {item.user?.name || "No profile"} ({item.user?.role || "n/a"})
+                        </p>
+                      </li>
+                    ))}
+                    {authStats.recentSuccesses.length === 0 ? (
+                      <li className="text-xs opacity-70">
+                        No successful registrations yet.
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+                <div className="admin-surface rounded-xl p-3">
+                  <h4 className="mb-2 text-sm font-semibold text-rose-300">
+                    Recent Registration Failures
+                  </h4>
+                  <ul className="space-y-2 text-sm">
+                    {authStats.recentFailures.slice(0, 8).map((item) => (
+                      <li key={item.id} className="rounded-lg border border-rose-500/25 p-2">
+                        <p className="font-medium">
+                          {item.email || "Unknown email"} · {formatMethodLabel(item.method)}
+                        </p>
+                        <p className="text-xs opacity-80">
+                          {item.failureCode || "UNSPECIFIED"} ·{" "}
+                          {item.failureMessage || "No detail"} ·{" "}
+                          {new Date(item.createdAt).toLocaleString()}
+                        </p>
+                      </li>
+                    ))}
+                    {authStats.recentFailures.length === 0 ? (
+                      <li className="text-xs opacity-70">
+                        No registration failures in this window.
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="admin-card p-5 text-sm opacity-75">Loading articles...</div>
@@ -256,4 +503,3 @@ export default function AdminDashboard() {
     </section>
   );
 }
-

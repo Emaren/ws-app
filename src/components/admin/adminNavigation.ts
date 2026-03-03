@@ -37,6 +37,18 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     roles: RBAC_ROLE_GROUPS.staff,
   },
   {
+    href: "/admin/offers",
+    label: "Offers Command",
+    summary: "Assign offer badges per user",
+    roles: RBAC_ROLE_GROUPS.staff,
+  },
+  {
+    href: "/admin/company",
+    label: "Company Dashboards",
+    summary: "Authorize partner operators",
+    roles: RBAC_ROLE_GROUPS.ownerAdmin,
+  },
+  {
     href: "/admin/access",
     label: "Access Control",
     summary: "Role and account governance",

@@ -98,7 +98,7 @@ export default function BigThumbs({ slug }: Props) {
     if (!animating) {
       return;
     }
-    const timer = window.setTimeout(() => setAnimating(null), 280);
+    const timer = window.setTimeout(() => setAnimating(null), 460);
     return () => window.clearTimeout(timer);
   }, [animating]);
 
@@ -121,9 +121,6 @@ export default function BigThumbs({ slug }: Props) {
         cache: "no-store",
       });
 
-      if (response.status === 401) {
-        throw new Error("Sign in required to react");
-      }
       if (!response.ok) {
         throw new Error(`reaction request failed (${response.status})`);
       }
@@ -137,11 +134,8 @@ export default function BigThumbs({ slug }: Props) {
     } catch (error) {
       setSelected(previousSelection);
       setCounts(previousCounts);
-      if (error instanceof Error && error.message.includes("Sign in required")) {
-        alert("Please sign in to react.");
-      } else {
-        console.warn("Product reaction update failed", error);
-      }
+      console.warn("Product reaction update failed", error);
+      alert("Could not register reaction right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -150,38 +144,103 @@ export default function BigThumbs({ slug }: Props) {
   return (
     <section className="ws-container mx-auto w-full mt-3 md:mt-4 mb-0 md:mb-0">
       <div className="thumbs-wrap" role="group" aria-label="Product reactions">
-        <button
-          type="button"
-          aria-label="Thumbs up"
-          aria-pressed={selected === "like"}
-          title="I like this"
-          className={`thumb-vote thumb-vote-like ${selected === "like" ? "is-selected" : ""} ${animating === "like" ? "is-popping" : ""}`}
-          onClick={() => react("like")}
-          disabled={busy}
-        >
-          <ThumbIcon active={selected === "like"} />
-          <span className="thumb-count" aria-live="polite">{counts.like}</span>
-        </button>
+        {selected === "like" ? (
+          <button
+            type="button"
+            aria-label="Thumbs up"
+            aria-pressed="true"
+            title="I like this"
+            className={`thumb-vote thumb-vote-like is-selected ${animating === "like" ? "is-popping" : ""}`}
+            onClick={() => react("like")}
+            disabled={busy}
+          >
+            <span className="thumb-shell" aria-hidden="true">
+              <span className="thumb-halo" />
+              <span className="thumb-burst" />
+              <ThumbIcon active />
+            </span>
+            <span className="thumb-count" aria-live="polite">{counts.like}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Thumbs up"
+            aria-pressed="false"
+            title="I like this"
+            className={`thumb-vote thumb-vote-like ${animating === "like" ? "is-popping" : ""}`}
+            onClick={() => react("like")}
+            disabled={busy}
+          >
+            <span className="thumb-shell" aria-hidden="true">
+              <span className="thumb-halo" />
+              <span className="thumb-burst" />
+              <ThumbIcon active={false} />
+            </span>
+            <span className="thumb-count" aria-live="polite">{counts.like}</span>
+          </button>
+        )}
 
-        <button
-          type="button"
-          aria-label="Thumbs down"
-          aria-pressed={selected === "hmm"}
-          title="Not for me"
-          className={`thumb-vote thumb-vote-hmm ${selected === "hmm" ? "is-selected" : ""} ${animating === "hmm" ? "is-popping" : ""}`}
-          onClick={() => react("hmm")}
-          disabled={busy}
-        >
-          <ThumbIcon down active={selected === "hmm"} />
-          <span className="thumb-count" aria-live="polite">{counts.hmm}</span>
-        </button>
+        {selected === "hmm" ? (
+          <button
+            type="button"
+            aria-label="Thumbs down"
+            aria-pressed="true"
+            title="Not for me"
+            className={`thumb-vote thumb-vote-hmm is-selected ${animating === "hmm" ? "is-popping" : ""}`}
+            onClick={() => react("hmm")}
+            disabled={busy}
+          >
+            <span className="thumb-shell" aria-hidden="true">
+              <span className="thumb-halo" />
+              <span className="thumb-burst" />
+              <ThumbIcon down active />
+            </span>
+            <span className="thumb-count" aria-live="polite">{counts.hmm}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Thumbs down"
+            aria-pressed="false"
+            title="Not for me"
+            className={`thumb-vote thumb-vote-hmm ${animating === "hmm" ? "is-popping" : ""}`}
+            onClick={() => react("hmm")}
+            disabled={busy}
+          >
+            <span className="thumb-shell" aria-hidden="true">
+              <span className="thumb-halo" />
+              <span className="thumb-burst" />
+              <ThumbIcon down active={false} />
+            </span>
+            <span className="thumb-count" aria-live="polite">{counts.hmm}</span>
+          </button>
+        )}
       </div>
 
       <style jsx>{`
         @keyframes vote-pop {
-          0% { transform: scale(1); }
-          55% { transform: scale(1.18); }
-          100% { transform: scale(1); }
+          0% { transform: scale(1) rotate(0deg); }
+          36% { transform: scale(1.22) rotate(-7deg); }
+          72% { transform: scale(0.95) rotate(4deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes halo-pulse {
+          0% { transform: scale(0.78); opacity: 0.2; }
+          35% { transform: scale(1.08); opacity: 0.6; }
+          100% { transform: scale(1.22); opacity: 0; }
+        }
+
+        @keyframes burst-ring {
+          0% { transform: scale(0.55); opacity: 0; }
+          25% { transform: scale(0.85); opacity: 0.85; }
+          100% { transform: scale(1.9); opacity: 0; }
+        }
+
+        @keyframes count-bump {
+          0% { transform: translateY(0) scale(1); }
+          40% { transform: translateY(-4px) scale(1.2); }
+          100% { transform: translateY(0) scale(1); }
         }
 
         .thumbs-wrap {
@@ -192,18 +251,27 @@ export default function BigThumbs({ slug }: Props) {
         }
 
         .thumb-vote {
+          --vote-main: #94a3b8;
+          --vote-soft: #d7dfe8;
+          --vote-glow: rgba(148, 163, 184, 0.28);
+          --vote-chip: rgba(17, 24, 39, 0.35);
+          --vote-chip-border: rgba(148, 163, 184, 0.35);
           border: 0;
           background: transparent;
+          border-radius: 0;
+          padding: 0;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 0.55rem;
-          color: rgba(115, 115, 115, 0.95);
+          gap: 0.5rem;
+          color: var(--vote-main);
           transition:
-            color 140ms ease,
-            filter 180ms ease,
-            transform 180ms ease;
+            color 180ms ease,
+            filter 220ms ease,
+            transform 200ms ease,
+            background-color 180ms ease;
+          position: relative;
         }
 
         .thumb-vote:disabled {
@@ -211,36 +279,89 @@ export default function BigThumbs({ slug }: Props) {
           opacity: 0.64;
         }
 
+        .thumb-shell {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .thumb-halo {
+          position: absolute;
+          inset: 9px;
+          border-radius: 999px;
+          background: radial-gradient(circle at 45% 35%, color-mix(in oklab, var(--vote-main) 78%, #fff) 0%, var(--vote-main) 38%, transparent 72%);
+          opacity: 0;
+          pointer-events: none;
+          z-index: 0;
+          transform: scale(0.9);
+          filter: blur(0.5px);
+        }
+
+        .thumb-burst {
+          position: absolute;
+          width: 62px;
+          height: 62px;
+          border-radius: 999px;
+          border: 2px solid color-mix(in oklab, var(--vote-main) 92%, #fff);
+          opacity: 0;
+          pointer-events: none;
+          z-index: 0;
+        }
+
         .thumb-vote :global(.thumb-icon) {
           transition:
             color 160ms ease,
-            filter 180ms ease,
+            filter 220ms ease,
             transform 180ms ease;
           transform-origin: center;
+          position: relative;
+          z-index: 1;
+        }
+
+        .thumb-vote-like {
+          --vote-main: #086000;
+          --vote-soft: #b8e6cf;
+          --vote-glow: rgba(17, 0, 78, 0.42);
+          --vote-chip: rgba(15, 36, 16, 0.44);
+          --vote-chip-border: rgba(47, 125, 89, 0.3);
+        }
+
+        .thumb-vote-hmm {
+          --vote-main: #78000a;
+          --vote-soft: #f6bec2;
+          --vote-glow: rgba(140, 1, 13, 0.43);
+          --vote-chip: rgba(42, 16, 19, 0.44);
+          --vote-chip-border: rgba(136, 0, 11, 0.32);
         }
 
         .thumb-vote-like:hover,
         .thumb-vote-like:focus-visible,
-        .thumb-vote-like.is-selected {
-          color: #34d399;
-          filter: drop-shadow(0 0 14px rgba(16, 185, 129, 0.55));
-        }
-
+        .thumb-vote-like.is-selected,
         .thumb-vote-hmm:hover,
         .thumb-vote-hmm:focus-visible,
         .thumb-vote-hmm.is-selected {
-          color: #fb7185;
-          filter: drop-shadow(0 0 14px rgba(244, 63, 94, 0.55));
+          color: var(--vote-main);
+          filter: drop-shadow(0 0 20px var(--vote-glow));
+          transform: translateY(-1px);
         }
 
         .thumb-vote.is-selected :global(.thumb-icon),
         .thumb-vote:hover :global(.thumb-icon),
         .thumb-vote:focus-visible :global(.thumb-icon) {
-          transform: scale(1.06);
+          transform: scale(1.08);
         }
 
         .thumb-vote.is-popping :global(.thumb-icon) {
-          animation: vote-pop 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+          animation: vote-pop 460ms cubic-bezier(0.2, 0.74, 0.2, 1);
+        }
+
+        .thumb-vote.is-popping .thumb-halo {
+          animation: halo-pulse 420ms cubic-bezier(0.2, 0.74, 0.2, 1);
+        }
+
+        .thumb-vote.is-popping .thumb-burst {
+          animation: burst-ring 420ms cubic-bezier(0.18, 0.72, 0.21, 1);
         }
 
         .thumb-count {
@@ -250,6 +371,18 @@ export default function BigThumbs({ slug }: Props) {
           line-height: 1;
           text-align: left;
           font-variant-numeric: tabular-nums;
+          color: color-mix(in oklab, var(--vote-main) 84%, #fff);
+          text-shadow: 0 0 8px color-mix(in oklab, var(--vote-main) 35%, transparent);
+          transform-origin: center;
+          background: transparent;
+          border: 0;
+          border-radius: 0;
+          padding: 0;
+          box-shadow: none;
+        }
+
+        .thumb-vote.is-popping .thumb-count {
+          animation: count-bump 360ms cubic-bezier(0.2, 0.74, 0.2, 1);
         }
 
         @media (max-width: 640px) {
@@ -257,11 +390,18 @@ export default function BigThumbs({ slug }: Props) {
             width: 56px;
             height: 56px;
           }
+          .thumb-burst {
+            width: 56px;
+            height: 56px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .thumb-vote,
-          .thumb-vote :global(.thumb-icon) {
+          .thumb-vote :global(.thumb-icon),
+          .thumb-halo,
+          .thumb-burst,
+          .thumb-count {
             transition: none;
             animation: none;
           }

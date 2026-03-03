@@ -13,6 +13,10 @@ model User {
   password               String
   name                   String
   role                   Role                    @default(USER)
+  registeredVia          AuthProvider            @default(CREDENTIALS)
+  registeredAt           DateTime                @default(now())
+  lastAuthProvider       AuthProvider?
+  lastAuthAt             DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   articles               Article[]
@@ -24,6 +28,7 @@ model User {
   affiliateClicks        AffiliateClick[]
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
+  authRegistrationEvents AuthRegistrationEvent[]
 }
 
 model Article {
@@ -96,6 +101,7 @@ model Business {
   pricingRules           PricingRule[]
   offers                 Offer[]
   campaigns              Campaign[]
+  offerInboxItems        UserOfferInbox[]
   notificationRecipients NotificationRecipient[]
   deliveryLeads          DeliveryLead[]
   affiliateClicks        AffiliateClick[]
@@ -213,6 +219,7 @@ model Offer {
   inventoryItem      InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   pricingRule        PricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
   campaign           Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  inboxItems         UserOfferInbox[]
   deliveryLeads      DeliveryLead[]
   analyticsEvents    AnalyticsEvent[]
 
@@ -220,6 +227,32 @@ model Offer {
   @@index([businessId, status])
   @@index([startsAt, endsAt])
   @@index([featured])
+}
+
+model UserOfferInbox {
+  id                 String              @id @default(cuid())
+  userExternalId     String
+  userEmail          String
+  userName           String?
+  offerId            String
+  businessId         String
+  assignedByExternal String?
+  assignedByEmail    String?
+  assignmentMode     OfferAssignmentMode @default(DIRECT)
+  status             OfferInboxStatus    @default(ACTIVE)
+  assignedAt         DateTime            @default(now())
+  seenAt             DateTime?
+  redeemedAt         DateTime?
+  expiresAt          DateTime?
+  metadata           Json?
+  offer              Offer               @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  business           Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userExternalId, offerId])
+  @@index([userExternalId, status, assignedAt])
+  @@index([userEmail, status, assignedAt])
+  @@index([businessId, status, assignedAt])
+  @@index([offerId, status])
 }
 
 model Campaign {
@@ -416,6 +449,26 @@ model RewardLedger {
   @@index([campaignId, createdAt])
 }
 
+model AuthRegistrationEvent {
+  id             String                 @id @default(cuid())
+  userId         String?
+  email          String?
+  method         AuthProvider
+  status         AuthRegistrationStatus
+  failureCode    String?
+  failureMessage String?
+  ipHash         String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime               @default(now())
+  user           User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([method, status, createdAt])
+  @@index([email, createdAt])
+  @@index([userId, createdAt])
+}
+
 enum Role {
   ADMIN
   CONTRIBUTOR
@@ -423,6 +476,21 @@ enum Role {
   USER
   EDITOR
   OWNER
+}
+
+enum AuthProvider {
+  CREDENTIALS
+  GOOGLE
+  APPLE
+  FACEBOOK
+  MICROSOFT
+  GITHUB
+  OTHER
+}
+
+enum AuthRegistrationStatus {
+  SUCCESS
+  FAILURE
 }
 
 enum ArticleStatus {
@@ -462,6 +530,21 @@ enum OfferStatus {
   DRAFT
   LIVE
   PAUSED
+  EXPIRED
+  ARCHIVED
+}
+
+enum OfferAssignmentMode {
+  ALL
+  DIRECT
+  SEGMENT
+  BACKFILL
+}
+
+enum OfferInboxStatus {
+  ACTIVE
+  SEEN
+  REDEEMED
   EXPIRED
   ARCHIVED
 }

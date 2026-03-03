@@ -63,7 +63,7 @@ export default function TokenBalancesCard({
   userId,
   trackedTokens,
 }: {
-  userId: string;
+  userId?: string | null;
   trackedTokens: string[];
 }) {
   const [entries, setEntries] = useState<RewardLedgerEntry[]>([]);
@@ -77,13 +77,13 @@ export default function TokenBalancesCard({
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(
-          `/api/rewards/ledger?userId=${encodeURIComponent(userId)}`,
-          {
-            method: "GET",
-            cache: "no-store",
-          },
-        );
+        const endpoint = userId
+          ? `/api/rewards/ledger?userId=${encodeURIComponent(userId)}`
+          : "/api/rewards/ledger";
+        const response = await fetch(endpoint, {
+          method: "GET",
+          cache: "no-store",
+        });
 
         const payload = await response.json().catch(() => null);
         if (!active) return;

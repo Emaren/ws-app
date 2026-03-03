@@ -11,12 +11,14 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      wsApiUserId?: string | null;
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
     id: string;
     role: string;
+    wsApiUserId?: string;
     wsApiAccessToken?: string;
     wsApiSessionId?: string;
     wsApiSessionExpiresAt?: string;
@@ -27,6 +29,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: string;
+    wsApiUserId?: string;
     wsApiAccessToken?: string;
     wsApiSessionId?: string;
     wsApiSessionExpiresAt?: string;

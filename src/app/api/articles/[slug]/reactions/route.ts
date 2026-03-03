@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createHash, randomUUID } from "node:crypto";
 import { ReactionScope, ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
@@ -12,6 +13,14 @@ type ClientProductReaction = "like" | "hmm";
 
 const ARTICLE_REACTION_TYPES = [ReactionType.LIKE, ReactionType.WOW, ReactionType.HMM];
 const PRODUCT_REACTION_TYPES = [ReactionType.LIKE, ReactionType.HMM];
+const REACTION_ACTOR_COOKIE = "ws_reaction_actor";
+const REACTION_ACTOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+type ReactionActor = {
+  userId: string | null;
+  actorHash: string;
+  setCookieValue: string | null;
+};
 
 function badRequest(message = "Bad Request") {
   return new NextResponse(message, { status: 400 });
@@ -19,10 +28,6 @@ function badRequest(message = "Bad Request") {
 
 function forbidden(message = "Forbidden") {
   return new NextResponse(message, { status: 403 });
-}
-
-function unauthorized(message = "Unauthorized") {
-  return new NextResponse(message, { status: 401 });
 }
 
 function notFound(message = "Not found") {
@@ -53,6 +58,88 @@ function getSearchParam(req: NextRequest, key: string): string | null {
 function parseScope(req: NextRequest): "article" | "product" {
   const raw = (getSearchParam(req, "scope") || "article").toLowerCase();
   return raw === "product" ? "product" : "article";
+}
+
+function firstForwardedIp(req: NextRequest): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) {
+      return first;
+    }
+  }
+
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  return "unknown";
+}
+
+function hashActorSeed(seed: string): string {
+  return createHash("sha256").update(seed).digest("hex");
+}
+
+async function resolveReactionActor(req: NextRequest): Promise<ReactionActor> {
+  const auth = await getApiAuthContext(req);
+  const cookieValue = req.cookies.get(REACTION_ACTOR_COOKIE)?.value?.trim() || "";
+  const actorCookie = cookieValue || randomUUID().replace(/-/g, "");
+  const userAgent = req.headers.get("user-agent")?.trim() || "unknown";
+  const forwardedIp = firstForwardedIp(req);
+  let localUserId = auth.userId ?? null;
+
+  // Graceful fallback for stale sessions that still carry a non-Prisma user id.
+  if (localUserId) {
+    const existingLocalUser = await prisma.user.findUnique({
+      where: { id: localUserId },
+      select: { id: true },
+    });
+    if (!existingLocalUser) {
+      localUserId = null;
+    }
+  }
+
+  const actorSeed = localUserId
+    ? `user:${localUserId}`
+    : `anon:${actorCookie}:${forwardedIp}:${userAgent}`;
+
+  return {
+    userId: localUserId,
+    actorHash: hashActorSeed(actorSeed),
+    setCookieValue: cookieValue ? null : actorCookie,
+  };
+}
+
+function actorFilter(actor: ReactionActor):
+  | { userId: string }
+  | { userId: null; ipHash: string } {
+  if (actor.userId) {
+    return { userId: actor.userId };
+  }
+
+  return {
+    userId: null,
+    ipHash: actor.actorHash,
+  };
+}
+
+function withActorCookie(response: NextResponse, actor: ReactionActor): NextResponse {
+  if (!actor.setCookieValue) {
+    return response;
+  }
+
+  response.cookies.set({
+    name: REACTION_ACTOR_COOKIE,
+    value: actor.setCookieValue,
+    maxAge: REACTION_ACTOR_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return response;
 }
 
 function toClientType(type: ReactionType): ClientArticleReaction {
@@ -117,8 +204,8 @@ export async function GET(
   const { article, error } = await getVisibleArticleBySlug(slug);
   if (!article) return error;
 
-  const auth = await getApiAuthContext(req);
-  const userId = auth.userId;
+  const actor = await resolveReactionActor(req);
+  const mineWhere = actorFilter(actor);
 
   if (scope === "product") {
     const [rows, mine] = await Promise.all([
@@ -131,59 +218,55 @@ export async function GET(
         },
         _count: { _all: true },
       }),
-      userId
-        ? prisma.reaction.findMany({
-            where: {
-              articleId: article.id,
-              userId,
-              scope: ReactionScope.PRODUCT,
-              type: { in: PRODUCT_REACTION_TYPES },
-            },
-            select: { type: true },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          })
-        : Promise.resolve([]),
+      prisma.reaction.findMany({
+        where: {
+          articleId: article.id,
+          ...mineWhere,
+          scope: ReactionScope.PRODUCT,
+          type: { in: PRODUCT_REACTION_TYPES },
+        },
+        select: { type: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      }),
     ]);
 
-    return NextResponse.json({
+    return withActorCookie(NextResponse.json({
       scope,
       counts: mapProductCounts(rows),
       selected: mine[0] ? (toClientType(mine[0].type) as ClientProductReaction) : null,
-    });
+    }), actor);
   }
 
-  const mine = userId
-    ? await prisma.reaction.findMany({
-        where: {
-          articleId: article.id,
-          userId,
-          scope: ReactionScope.ARTICLE,
-          type: { in: ARTICLE_REACTION_TYPES },
-        },
-        select: { type: true },
-      })
-    : [];
+  const mine = await prisma.reaction.findMany({
+    where: {
+      articleId: article.id,
+      ...mineWhere,
+      scope: ReactionScope.ARTICLE,
+      type: { in: ARTICLE_REACTION_TYPES },
+    },
+    select: { type: true },
+  });
 
-  return NextResponse.json({
+  const selected = [...new Set(mine.map((row) => toClientType(row.type)))];
+
+  return withActorCookie(NextResponse.json({
     scope,
     counts: {
       like: article.likeCount,
       wow: article.wowCount,
       hmm: article.hmmCount,
     },
-    selected: mine.map((row) => toClientType(row.type)),
-  });
+    selected,
+  }), actor);
 }
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const auth = await getApiAuthContext(req);
-  if (!auth.userId) {
-    return unauthorized("Sign in required to react");
-  }
+  const actor = await resolveReactionActor(req);
+  const actorWhere = actorFilter(actor);
 
   const { slug } = await params;
   const scope = parseScope(req);
@@ -205,10 +288,17 @@ export async function PATCH(
 
   if (scope === "product") {
     const result = await prisma.$transaction(async (tx) => {
+      const reactionUserId = actor.userId
+        ? (await tx.user.findUnique({
+            where: { id: actor.userId },
+            select: { id: true },
+          }))?.id ?? null
+        : null;
+
       const existing = await tx.reaction.findMany({
         where: {
           articleId: article.id,
-          userId: auth.userId,
+          ...actorWhere,
           scope: ReactionScope.PRODUCT,
           type: { in: PRODUCT_REACTION_TYPES },
         },
@@ -222,7 +312,7 @@ export async function PATCH(
         await tx.reaction.deleteMany({
           where: {
             articleId: article.id,
-            userId: auth.userId,
+            ...actorWhere,
             scope: ReactionScope.PRODUCT,
             type: { in: PRODUCT_REACTION_TYPES },
           },
@@ -231,7 +321,8 @@ export async function PATCH(
         await tx.reaction.create({
           data: {
             articleId: article.id,
-            userId: auth.userId,
+            userId: reactionUserId,
+            ipHash: reactionUserId ? null : actor.actorHash,
             scope: ReactionScope.PRODUCT,
             type: reactionType,
             productSlug: article.slug,
@@ -255,18 +346,25 @@ export async function PATCH(
       };
     });
 
-    return NextResponse.json({
+    return withActorCookie(NextResponse.json({
       scope,
       counts: result.counts,
       selected: result.selected,
-    });
+    }), actor);
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const reactionUserId = actor.userId
+      ? (await tx.user.findUnique({
+          where: { id: actor.userId },
+          select: { id: true },
+        }))?.id ?? null
+      : null;
+
     const existing = await tx.reaction.findFirst({
       where: {
         articleId: article.id,
-        userId: auth.userId,
+        ...actorWhere,
         scope: ReactionScope.ARTICLE,
         type: reactionType,
       },
@@ -277,7 +375,8 @@ export async function PATCH(
       await tx.reaction.create({
         data: {
           articleId: article.id,
-          userId: auth.userId,
+          userId: reactionUserId,
+          ipHash: reactionUserId ? null : actor.actorHash,
           scope: ReactionScope.ARTICLE,
           type: reactionType,
           productSlug: article.slug,
@@ -313,7 +412,7 @@ export async function PATCH(
       tx.reaction.findMany({
         where: {
           articleId: article.id,
-          userId: auth.userId,
+          ...actorWhere,
           scope: ReactionScope.ARTICLE,
           type: { in: ARTICLE_REACTION_TYPES },
         },
@@ -335,9 +434,9 @@ export async function PATCH(
     };
   });
 
-  return NextResponse.json({
+  return withActorCookie(NextResponse.json({
     scope,
     counts: result.counts,
     selected: result.selected,
-  });
+  }), actor);
 }
