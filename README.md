@@ -103,6 +103,16 @@ Optional:
 - `STRIPE_CANCEL_URL`
 - `PORT`
 - `NEXT_DIST_DIR`
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+- `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET`
+- `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET`
+- `INSTAGRAM_CLIENT_ID` / `INSTAGRAM_CLIENT_SECRET`
+- `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` / `MICROSOFT_TENANT_ID`
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`
+
+OAuth note:
+
+- Instagram OAuth does not provide an email by default; `ws-app` bridges this with an internal synthetic email alias for auth/account linking unless the provider returns a real email.
 
 ## Scripts
 

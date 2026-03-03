@@ -503,6 +503,7 @@ enum AuthProvider {
   GOOGLE
   APPLE
   FACEBOOK
+  INSTAGRAM
   MICROSOFT
   GITHUB
   OTHER

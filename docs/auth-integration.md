@@ -16,6 +16,13 @@ Updated: 2026-02-10
 
 `/api/register` in `ws-app` proxies to `ws-api` `POST /auth/register`.
 
+## OAuth flow
+
+- OAuth providers are enabled only when corresponding env credentials are present.
+- Supported providers: Google, Apple, Microsoft, Facebook, Instagram, GitHub.
+- OAuth sign-in/registration is bridged into `ws-api` auth via deterministic bridge password + shared email identity.
+- Instagram provider does not return email by default; `ws-app` uses a synthetic internal alias (`ig_<providerAccountId>@oauth.wheatandstone.local`) so account creation/login can still complete.
+
 ## Forgot password flow
 
 - `/forgot-password` provides the UI entry point from login.
@@ -27,6 +34,15 @@ Updated: 2026-02-10
 - `WS_API_BASE_URL`
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
+
+OAuth env (optional, per provider):
+
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`
+- `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`
+- `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`
+- `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
 
 ## Notes
 

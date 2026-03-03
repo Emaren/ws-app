@@ -32,6 +32,7 @@ const PROVIDER_MAP: Record<string, AuthProvider> = {
   google: "GOOGLE" as AuthProvider,
   apple: "APPLE" as AuthProvider,
   facebook: "FACEBOOK" as AuthProvider,
+  instagram: "INSTAGRAM" as AuthProvider,
   "azure-ad": "MICROSOFT" as AuthProvider,
   microsoft: "MICROSOFT" as AuthProvider,
   github: "GITHUB" as AuthProvider,

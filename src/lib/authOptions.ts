@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import AppleProvider from "next-auth/providers/apple";
 import FacebookProvider from "next-auth/providers/facebook";
+import InstagramProvider from "next-auth/providers/instagram";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import GitHubProvider from "next-auth/providers/github";
 import bcrypt from "bcrypt";
@@ -52,6 +53,23 @@ function bridgePasswordForOAuth(email: string): string {
 
 function oauthProviderFromId(providerId: string | undefined): AuthProvider {
   return normalizeAuthProvider(providerId);
+}
+
+function syntheticOAuthEmail(input: {
+  providerId: string;
+  providerAccountId?: string | null;
+}): string | null {
+  const providerId = input.providerId.trim().toLowerCase();
+  const providerAccountId = input.providerAccountId?.trim();
+  if (!providerAccountId) {
+    return null;
+  }
+
+  if (providerId === "instagram") {
+    return `ig_${providerAccountId}@oauth.wheatandstone.local`;
+  }
+
+  return null;
 }
 
 function optionalEnv(name: string): string | undefined {
@@ -352,6 +370,17 @@ function buildAuthProviders(): NextAuthOptions["providers"] {
     );
   }
 
+  const instagramClientId = optionalEnv("INSTAGRAM_CLIENT_ID");
+  const instagramClientSecret = optionalEnv("INSTAGRAM_CLIENT_SECRET");
+  if (instagramClientId && instagramClientSecret) {
+    providers.push(
+      InstagramProvider({
+        clientId: instagramClientId,
+        clientSecret: instagramClientSecret,
+      }),
+    );
+  }
+
   const microsoftClientId = optionalEnv("MICROSOFT_CLIENT_ID");
   const microsoftClientSecret = optionalEnv("MICROSOFT_CLIENT_SECRET");
   const microsoftTenantId = optionalEnv("MICROSOFT_TENANT_ID");
@@ -398,8 +427,12 @@ export const authOptions: NextAuthOptions = {
       }
 
       const method = oauthProviderFromId(providerId);
-      const email =
+      const providerAccountId = account?.providerAccountId?.trim() || null;
+      const nativeEmail =
         typeof user.email === "string" ? normalizeEmail(user.email) : "";
+      const fallbackEmail = syntheticOAuthEmail({ providerId, providerAccountId });
+      const email = nativeEmail || fallbackEmail || "";
+      const usedSyntheticEmail = Boolean(!nativeEmail && fallbackEmail);
 
       if (!email) {
         await recordAuthRegistrationEvent({
@@ -409,6 +442,7 @@ export const authOptions: NextAuthOptions = {
           failureMessage: "OAuth provider did not return an email address.",
           metadata: {
             providerId,
+            providerAccountId,
             stage: "oauth_sign_in",
           },
         });
@@ -466,6 +500,8 @@ export const authOptions: NextAuthOptions = {
             userId: localSyncedUser.id,
             metadata: {
               providerId,
+              providerAccountId,
+              syntheticEmail: usedSyntheticEmail,
               stage: "oauth_sign_in",
             },
           });
@@ -477,6 +513,8 @@ export const authOptions: NextAuthOptions = {
             sourceContext: "oauth_sign_in",
             metadata: {
               providerId,
+              providerAccountId,
+              syntheticEmail: usedSyntheticEmail,
             },
           });
         }
@@ -486,7 +524,11 @@ export const authOptions: NextAuthOptions = {
           email: localSyncedUser.email,
           provider: method,
           sourceContext: "oauth_sign_in",
-          metadata: { providerId },
+          metadata: {
+            providerId,
+            providerAccountId,
+            syntheticEmail: usedSyntheticEmail,
+          },
         });
 
         return true;
@@ -499,6 +541,8 @@ export const authOptions: NextAuthOptions = {
           failureMessage: error instanceof Error ? error.message : String(error),
           metadata: {
             providerId,
+            providerAccountId,
+            syntheticEmail: usedSyntheticEmail,
             stage: "oauth_sign_in",
           },
         });

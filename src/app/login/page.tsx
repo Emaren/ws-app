@@ -16,6 +16,7 @@ const POPULAR_PROVIDER_ORDER: Array<{ id: string; label: string }> = [
   { id: "apple", label: "Continue with Apple" },
   { id: "azure-ad", label: "Continue with Microsoft" },
   { id: "facebook", label: "Continue with Facebook" },
+  { id: "instagram", label: "Continue with Instagram" },
   { id: "github", label: "Continue with GitHub" },
 ];
 

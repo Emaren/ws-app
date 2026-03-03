@@ -99,6 +99,7 @@ function formatMethodLabel(method: string): string {
   if (method === "APPLE") return "Apple";
   if (method === "MICROSOFT") return "Microsoft";
   if (method === "FACEBOOK") return "Facebook";
+  if (method === "INSTAGRAM") return "Instagram";
   if (method === "GITHUB") return "GitHub";
   return method;
 }

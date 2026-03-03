@@ -21,6 +21,7 @@ const POPULAR_PROVIDER_ORDER: Array<{
   { id: "apple", label: "Continue with Apple", accent: "text-neutral-200" },
   { id: "azure-ad", label: "Continue with Microsoft", accent: "text-sky-300" },
   { id: "facebook", label: "Continue with Facebook", accent: "text-blue-300" },
+  { id: "instagram", label: "Continue with Instagram", accent: "text-pink-300" },
   { id: "github", label: "Continue with GitHub", accent: "text-zinc-200" },
 ];
 
