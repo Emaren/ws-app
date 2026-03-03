@@ -22,7 +22,7 @@ function resolveSiteOrigin(): URL {
 }
 
 const siteOrigin = resolveSiteOrigin();
-const socialImagePath = "/logo.png";
+const socialImagePath = "/Avalon.jpg";
 
 export const metadata: Metadata = {
   metadataBase: siteOrigin,
@@ -43,14 +43,15 @@ export const metadata: Metadata = {
     images: [
       {
         url: socialImagePath,
-        width: 1536,
-        height: 1024,
-        alt: "Wheat & Stone - health, heritage, and truth in every bite",
+        width: 1175,
+        height: 700,
+        alt: "Avalon Organic Chocolate Milk feature from Wheat & Stone",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@wheatandstoneca",
     title: "Wheat & Stone",
     description:
       "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
