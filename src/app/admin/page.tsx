@@ -93,6 +93,19 @@ type AuthRegistrationStats = {
   }>;
 };
 
+type AuthProviderConfig = {
+  id: string;
+  label: string;
+  enabled: boolean;
+  missingEnv: string[];
+  callbackUrl: string;
+};
+
+type AuthProviderConfigResponse = {
+  generatedAt: string;
+  providers: AuthProviderConfig[];
+};
+
 function formatMethodLabel(method: string): string {
   if (method === "CREDENTIALS") return "Email + Password";
   if (method === "GOOGLE") return "Google";
@@ -112,6 +125,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [authStatsLoading, setAuthStatsLoading] = useState(false);
   const [authStats, setAuthStats] = useState<AuthRegistrationStats | null>(null);
+  const [authProviderConfigLoading, setAuthProviderConfigLoading] = useState(false);
+  const [authProviderConfig, setAuthProviderConfig] = useState<AuthProviderConfig[]>(
+    [],
+  );
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canDeleteAsStaff = isStaffRole(role);
@@ -156,8 +173,32 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadAuthProviderConfig() {
+    if (!isOwnerAdmin) {
+      setAuthProviderConfig([]);
+      return;
+    }
+
+    setAuthProviderConfigLoading(true);
+    try {
+      const res = await fetch("/api/admin/auth/provider-config", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const data = (await res.json()) as AuthProviderConfigResponse;
+      setAuthProviderConfig(data.providers ?? []);
+    } catch (error) {
+      console.error(error);
+      setAuthProviderConfig([]);
+    } finally {
+      setAuthProviderConfigLoading(false);
+    }
+  }
+
   async function reloadAll() {
-    await Promise.all([load(), loadAuthStats()]);
+    await Promise.all([load(), loadAuthStats(), loadAuthProviderConfig()]);
   }
 
   useEffect(() => {
@@ -166,6 +207,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     void loadAuthStats();
+  }, [isOwnerAdmin]);
+
+  useEffect(() => {
+    void loadAuthProviderConfig();
   }, [isOwnerAdmin]);
 
   const filtered = useMemo(() => {
@@ -237,9 +282,11 @@ export default function AdminDashboard() {
             <button
               onClick={reloadAll}
               className="rounded-xl border px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
-              disabled={loading || authStatsLoading || isPending}
+              disabled={loading || authStatsLoading || authProviderConfigLoading || isPending}
             >
-              {loading || authStatsLoading ? "Loading..." : "Reload"}
+              {loading || authStatsLoading || authProviderConfigLoading
+                ? "Loading..."
+                : "Reload"}
             </button>
             {canDeleteAsStaff ? (
               <>
@@ -319,6 +366,70 @@ export default function AdminDashboard() {
 
       {isOwnerAdmin ? (
         <div className="admin-card space-y-4 p-4 md:p-5">
+          <div className="admin-surface space-y-3 rounded-xl p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="text-sm font-semibold md:text-base">
+                  OAuth Provider Readiness
+                </h4>
+                <p className="text-xs opacity-75">
+                  Configure these keys on local and VPS so social login buttons become active.
+                </p>
+              </div>
+              <span className="text-xs opacity-70">
+                {authProviderConfigLoading
+                  ? "Checking..."
+                  : `${authProviderConfig.filter((item) => item.enabled).length}/${
+                      authProviderConfig.length
+                    } live`}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="opacity-70">
+                  <tr>
+                    <th className="pb-2 pr-3">Provider</th>
+                    <th className="pb-2 pr-3">Status</th>
+                    <th className="pb-2 pr-3">Missing Env</th>
+                    <th className="pb-2">Callback URL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {authProviderConfig.map((provider) => (
+                    <tr key={provider.id} className="border-t border-white/10">
+                      <td className="py-2 pr-3">{provider.label}</td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={
+                            provider.enabled
+                              ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                              : "rounded-full bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200"
+                          }
+                        >
+                          {provider.enabled ? "Live" : "Setup needed"}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-xs opacity-85">
+                        {provider.missingEnv.length > 0
+                          ? provider.missingEnv.join(", ")
+                          : "none"}
+                      </td>
+                      <td className="py-2 text-xs opacity-80">{provider.callbackUrl}</td>
+                    </tr>
+                  ))}
+                  {!authProviderConfigLoading && authProviderConfig.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-3 text-xs opacity-70">
+                        Provider readiness is unavailable right now.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-base font-semibold md:text-lg">
