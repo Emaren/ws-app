@@ -24,7 +24,8 @@ export type AuthFunnelInput = {
   headers?: HeadersLike | null;
 };
 
-const STAGE_VALUES = new Set<string>(Object.values(AuthFunnelStage));
+const STAGE_VALUES = new Set<string>(Object.values(AuthFunnelStage ?? {}));
+const FIRST_LOGIN_SUCCESS_STAGE = "FIRST_LOGIN_SUCCESS" as AuthFunnelStage;
 
 function normalizeStage(stage: AuthFunnelInput["stage"]): AuthFunnelStage | null {
   if (typeof stage !== "string") return null;
@@ -127,7 +128,7 @@ export async function recordFirstLoginSuccess(input: {
     const existing = await prisma.authFunnelEvent.findFirst({
       where: {
         userId: input.userId,
-        stage: AuthFunnelStage.FIRST_LOGIN_SUCCESS,
+        stage: FIRST_LOGIN_SUCCESS_STAGE,
       },
       select: { id: true },
     });
@@ -137,7 +138,7 @@ export async function recordFirstLoginSuccess(input: {
     }
 
     await recordAuthFunnelEvent({
-      stage: AuthFunnelStage.FIRST_LOGIN_SUCCESS,
+      stage: FIRST_LOGIN_SUCCESS_STAGE,
       provider: input.provider ?? null,
       userId: input.userId,
       email: input.email ?? null,

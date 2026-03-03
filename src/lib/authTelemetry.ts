@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   AuthProvider,
-  AuthRegistrationStatus,
+  type AuthRegistrationStatus,
   type Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -23,15 +23,25 @@ export type AuthTelemetryInput = {
   headers?: HeadersLike | null;
 };
 
+const AUTH_PROVIDER_VALUES = new Set<AuthProvider>(
+  Object.values(AuthProvider ?? {}) as AuthProvider[],
+);
+
 const PROVIDER_MAP: Record<string, AuthProvider> = {
-  credentials: AuthProvider.CREDENTIALS,
-  google: AuthProvider.GOOGLE,
-  apple: AuthProvider.APPLE,
-  facebook: AuthProvider.FACEBOOK,
-  "azure-ad": AuthProvider.MICROSOFT,
-  microsoft: AuthProvider.MICROSOFT,
-  github: AuthProvider.GITHUB,
+  credentials: "CREDENTIALS" as AuthProvider,
+  google: "GOOGLE" as AuthProvider,
+  apple: "APPLE" as AuthProvider,
+  facebook: "FACEBOOK" as AuthProvider,
+  "azure-ad": "MICROSOFT" as AuthProvider,
+  microsoft: "MICROSOFT" as AuthProvider,
+  github: "GITHUB" as AuthProvider,
 };
+
+const OTHER_PROVIDER = "OTHER" as AuthProvider;
+
+function isAuthProvider(value: unknown): value is AuthProvider {
+  return typeof value === "string" && AUTH_PROVIDER_VALUES.has(value as AuthProvider);
+}
 
 function firstForwardedIp(headers?: HeadersLike | null): string | null {
   if (!headers) {
@@ -65,15 +75,19 @@ export function normalizeAuthProvider(
   provider?: string | AuthProvider | null,
 ): AuthProvider {
   if (!provider) {
-    return AuthProvider.OTHER;
+    return OTHER_PROVIDER;
   }
 
-  if (Object.values(AuthProvider).includes(provider as AuthProvider)) {
+  if (isAuthProvider(provider)) {
     return provider as AuthProvider;
   }
 
   const normalized = provider.trim().toLowerCase();
-  return PROVIDER_MAP[normalized] ?? AuthProvider.OTHER;
+  const mapped = PROVIDER_MAP[normalized];
+  if (mapped && isAuthProvider(mapped)) {
+    return mapped;
+  }
+  return OTHER_PROVIDER;
 }
 
 export async function recordAuthRegistrationEvent(
@@ -102,4 +116,3 @@ export async function recordAuthRegistrationEvent(
     console.warn("auth registration telemetry failed", error);
   }
 }
-
