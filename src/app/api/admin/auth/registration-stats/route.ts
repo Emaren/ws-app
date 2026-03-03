@@ -30,7 +30,14 @@ export async function GET(req: NextRequest) {
   const windowStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   try {
-    const [grouped, recentSuccesses, recentFailures, topFailureCodes, funnelGrouped] =
+    const [
+      grouped,
+      recentSuccesses,
+      recentFailures,
+      topFailureCodes,
+      funnelGrouped,
+      funnelByMethodGrouped,
+    ] =
       await Promise.all([
         prisma.authRegistrationEvent.groupBy({
           by: ["method", "status"],
@@ -92,6 +99,23 @@ export async function GET(req: NextRequest) {
           by: ["stage"],
           where: {
             createdAt: { gte: windowStart },
+          },
+          _count: { _all: true },
+        }),
+        prisma.authFunnelEvent.groupBy({
+          by: ["method", "stage"],
+          where: {
+            createdAt: { gte: windowStart },
+            method: {
+              not: null,
+            },
+            stage: {
+              in: [
+                AuthFunnelStage.REGISTER_SUBMIT_ATTEMPTED,
+                AuthFunnelStage.REGISTER_SUCCESS,
+                AuthFunnelStage.FIRST_LOGIN_SUCCESS,
+              ],
+            },
           },
           _count: { _all: true },
         }),
@@ -160,6 +184,48 @@ export async function GET(req: NextRequest) {
 
     const toRate = (value: number, total: number) =>
       total > 0 ? Number(((value / total) * 100).toFixed(1)) : 0;
+
+    const funnelByMethodMap = new Map<
+      string,
+      {
+        method: string;
+        submitAttempted: number;
+        registeredSuccess: number;
+        firstLoginSuccess: number;
+      }
+    >();
+
+    for (const row of funnelByMethodGrouped) {
+      if (!row.method) continue;
+      const method = row.method;
+      const existing = funnelByMethodMap.get(method) ?? {
+        method,
+        submitAttempted: 0,
+        registeredSuccess: 0,
+        firstLoginSuccess: 0,
+      };
+
+      if (row.stage === AuthFunnelStage.REGISTER_SUBMIT_ATTEMPTED) {
+        existing.submitAttempted = row._count._all;
+      }
+      if (row.stage === AuthFunnelStage.REGISTER_SUCCESS) {
+        existing.registeredSuccess = row._count._all;
+      }
+      if (row.stage === AuthFunnelStage.FIRST_LOGIN_SUCCESS) {
+        existing.firstLoginSuccess = row._count._all;
+      }
+
+      funnelByMethodMap.set(method, existing);
+    }
+
+    const funnelByMethod = [...funnelByMethodMap.values()]
+      .map((row) => ({
+        ...row,
+        registrationConversionRate: toRate(row.registeredSuccess, row.submitAttempted),
+        firstLoginConversionRate: toRate(row.firstLoginSuccess, row.registeredSuccess),
+        endToEndConversionRate: toRate(row.firstLoginSuccess, row.submitAttempted),
+      }))
+      .sort((a, b) => b.submitAttempted - a.submitAttempted);
 
     return NextResponse.json({
       windowDays: days,
@@ -230,6 +296,7 @@ export async function GET(req: NextRequest) {
           overallConversionRate: toRate(firstLoginSuccess, viewStarted),
         },
       },
+      funnelByMethod,
     });
   } catch (error) {
     return NextResponse.json(

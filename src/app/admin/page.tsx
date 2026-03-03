@@ -82,6 +82,15 @@ type AuthRegistrationStats = {
       overallConversionRate: number;
     };
   };
+  funnelByMethod: Array<{
+    method: string;
+    submitAttempted: number;
+    registeredSuccess: number;
+    firstLoginSuccess: number;
+    registrationConversionRate: number;
+    firstLoginConversionRate: number;
+    endToEndConversionRate: number;
+  }>;
 };
 
 function formatMethodLabel(method: string): string {
@@ -406,6 +415,55 @@ export default function AdminDashboard() {
                     {authStats.funnel.totals.overallConversionRate.toFixed(1)}%
                   </span>
                 </p>
+              </div>
+
+              <div className="admin-surface overflow-x-auto rounded-xl p-3">
+                <h4 className="mb-2 text-sm font-semibold">
+                  Funnel by Method (Submit → Registered → First Login)
+                </h4>
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="opacity-70">
+                    <tr>
+                      <th className="pb-2 pr-3">Method</th>
+                      <th className="pb-2 pr-3">Submit</th>
+                      <th className="pb-2 pr-3">Registered</th>
+                      <th className="pb-2 pr-3">First Login</th>
+                      <th className="pb-2 pr-3">Submit→Registered</th>
+                      <th className="pb-2 pr-3">Registered→Login</th>
+                      <th className="pb-2">End-to-End</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {authStats.funnelByMethod.map((row) => (
+                      <tr key={row.method} className="border-t border-white/10">
+                        <td className="py-2 pr-3">{formatMethodLabel(row.method)}</td>
+                        <td className="py-2 pr-3">{row.submitAttempted}</td>
+                        <td className="py-2 pr-3 text-emerald-400">
+                          {row.registeredSuccess}
+                        </td>
+                        <td className="py-2 pr-3 text-sky-300">
+                          {row.firstLoginSuccess}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {row.registrationConversionRate.toFixed(1)}%
+                        </td>
+                        <td className="py-2 pr-3">
+                          {row.firstLoginConversionRate.toFixed(1)}%
+                        </td>
+                        <td className="py-2">
+                          {row.endToEndConversionRate.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                    {authStats.funnelByMethod.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-3 opacity-70">
+                          No method-level funnel activity in this window yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
               </div>
 
               <div className="admin-surface overflow-x-auto rounded-xl p-3">
