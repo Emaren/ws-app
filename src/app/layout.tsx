@@ -22,7 +22,9 @@ function resolveSiteOrigin(): URL {
 }
 
 const siteOrigin = resolveSiteOrigin();
-const socialImagePath = "/og-x-card.jpg";
+const socialImageVersion =
+  process.env.NEXT_PUBLIC_X_CARD_VERSION?.trim().replace(/\s+/g, "") || "20260304-1";
+const socialImagePath = `/og-x-card.jpg?v=${encodeURIComponent(socialImageVersion)}`;
 const socialImageAbsolute = new URL(socialImagePath, siteOrigin).toString();
 const canonicalHomeUrl = new URL("/", siteOrigin).toString();
 const socialImageAlt = "Wheat & Stone featured organic review card";
@@ -33,7 +35,7 @@ export const metadata: Metadata = {
   description:
     "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
   alternates: {
-    canonical: "/",
+    canonical: canonicalHomeUrl,
   },
   robots: {
     index: true,
@@ -48,7 +50,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    url: "/",
+    url: canonicalHomeUrl,
     title: "Wheat & Stone",
     description:
       "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
