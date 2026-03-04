@@ -71,6 +71,29 @@ export default function CommentsSection({ article }: Props) {
     return () => window.clearTimeout(timer);
   }, [commentsSrc]);
 
+  function handleIframeLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
+    const frame = event.currentTarget;
+    let isAboutBlank = false;
+
+    // If privacy shields block third-party embeds, iframe can "load" but stay about:blank.
+    try {
+      const loadedHref = frame.contentWindow?.location?.href;
+      isAboutBlank = loadedHref === "about:blank";
+    } catch {
+      // Cross-origin access throws when Facebook actually loaded, which is expected.
+      isAboutBlank = false;
+    }
+
+    if (isAboutBlank) {
+      setIsLoaded(false);
+      setShowFallback(true);
+      return;
+    }
+
+    setIsLoaded(true);
+    setShowFallback(false);
+  }
+
   if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
     console.log("[FB comments] href =", articleUrl);
@@ -138,7 +161,7 @@ export default function CommentsSection({ article }: Props) {
           loading="lazy"
           allow="clipboard-write; encrypted-media; picture-in-picture; web-share"
           referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={() => setIsLoaded(true)}
+          onLoad={handleIframeLoad}
           onError={() => setShowFallback(true)}
         />
         <p className="mt-2 text-[12px] text-neutral-300">

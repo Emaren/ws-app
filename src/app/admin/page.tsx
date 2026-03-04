@@ -106,6 +106,41 @@ type AuthProviderConfigResponse = {
   providers: AuthProviderConfig[];
 };
 
+type SystemSnapshot = {
+  generatedAt: string;
+  localDb: {
+    usersCount: number;
+    ownerAdminUsersCount: number;
+    articlesCount: number;
+    commentsCount: number;
+    reactionsCount: number;
+    businessesCount: number;
+    offersCount: number;
+    liveOffersCount: number;
+    userOfferInboxActiveCount: number;
+    passwordResetPendingCount: number;
+    authRegistrationEvents30dCount: number;
+    authFunnelEvents30dCount: number;
+  };
+  wsApi: {
+    available: boolean;
+    hasAccessToken: boolean;
+    usersCount: number | null;
+    error: string | null;
+  };
+  recentUsers: Array<{
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    registeredVia: string;
+    registeredAt: string;
+    lastAuthProvider: string | null;
+    lastAuthAt: string | null;
+    createdAt: string;
+  }>;
+};
+
 function formatMethodLabel(method: string): string {
   if (method === "CREDENTIALS") return "Email + Password";
   if (method === "GOOGLE") return "Google";
@@ -129,6 +164,8 @@ export default function AdminDashboard() {
   const [authProviderConfig, setAuthProviderConfig] = useState<AuthProviderConfig[]>(
     [],
   );
+  const [systemSnapshotLoading, setSystemSnapshotLoading] = useState(false);
+  const [systemSnapshot, setSystemSnapshot] = useState<SystemSnapshot | null>(null);
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canDeleteAsStaff = isStaffRole(role);
@@ -197,8 +234,32 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadSystemSnapshot() {
+    if (!isOwnerAdmin) {
+      setSystemSnapshot(null);
+      return;
+    }
+
+    setSystemSnapshotLoading(true);
+    try {
+      const res = await fetch("/api/admin/system/snapshot", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const data = (await res.json()) as SystemSnapshot;
+      setSystemSnapshot(data);
+    } catch (error) {
+      console.error(error);
+      setSystemSnapshot(null);
+    } finally {
+      setSystemSnapshotLoading(false);
+    }
+  }
+
   async function reloadAll() {
-    await Promise.all([load(), loadAuthStats(), loadAuthProviderConfig()]);
+    await Promise.all([load(), loadAuthStats(), loadAuthProviderConfig(), loadSystemSnapshot()]);
   }
 
   useEffect(() => {
@@ -211,6 +272,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     void loadAuthProviderConfig();
+  }, [isOwnerAdmin]);
+
+  useEffect(() => {
+    void loadSystemSnapshot();
   }, [isOwnerAdmin]);
 
   const filtered = useMemo(() => {
@@ -282,9 +347,15 @@ export default function AdminDashboard() {
             <button
               onClick={reloadAll}
               className="rounded-xl border px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
-              disabled={loading || authStatsLoading || authProviderConfigLoading || isPending}
+              disabled={
+                loading ||
+                authStatsLoading ||
+                authProviderConfigLoading ||
+                systemSnapshotLoading ||
+                isPending
+              }
             >
-              {loading || authStatsLoading || authProviderConfigLoading
+              {loading || authStatsLoading || authProviderConfigLoading || systemSnapshotLoading
                 ? "Loading..."
                 : "Reload"}
             </button>
@@ -366,6 +437,156 @@ export default function AdminDashboard() {
 
       {isOwnerAdmin ? (
         <div className="admin-card space-y-4 p-4 md:p-5">
+          <div className="admin-surface space-y-3 rounded-xl p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="text-sm font-semibold md:text-base">
+                  System Data Snapshot
+                </h4>
+                <p className="text-xs opacity-75">
+                  Direct live counts from your app database so you don&apos;t need Prisma Studio for routine checks.
+                </p>
+              </div>
+              <span className="text-xs opacity-70">
+                {systemSnapshot?.generatedAt
+                  ? `Updated ${new Date(systemSnapshot.generatedAt).toLocaleString()}`
+                  : "Snapshot unavailable"}
+              </span>
+            </div>
+
+            {systemSnapshotLoading ? (
+              <div className="rounded-lg border border-white/10 p-3 text-sm opacity-70">
+                Loading snapshot...
+              </div>
+            ) : null}
+
+            {!systemSnapshotLoading && !systemSnapshot ? (
+              <div className="rounded-lg border border-white/10 p-3 text-sm opacity-70">
+                Could not load the system snapshot.
+              </div>
+            ) : null}
+
+            {systemSnapshot ? (
+              <>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Users</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.usersCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Owner/Admin</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.ownerAdminUsersCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Articles</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.articlesCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Reactions</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.reactionsCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Offers</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.offersCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Live Offers</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.liveOffersCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Offer Inbox Active</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.userOfferInboxActiveCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Reset Tokens Live</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums">
+                      {systemSnapshot.localDb.passwordResetPendingCount}
+                    </p>
+                  </article>
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">WS-API Status</p>
+                    <span
+                      className={
+                        systemSnapshot.wsApi.available
+                          ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                          : "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200"
+                      }
+                    >
+                      {systemSnapshot.wsApi.available ? "Connected" : "Not connected"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs opacity-80">
+                    Access token: {systemSnapshot.wsApi.hasAccessToken ? "present" : "missing"} ·
+                    WS users: {systemSnapshot.wsApi.usersCount ?? "n/a"}
+                  </p>
+                  {systemSnapshot.wsApi.error ? (
+                    <p className="mt-1 text-xs text-rose-300">
+                      {systemSnapshot.wsApi.error}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-white/10 p-3">
+                  <h5 className="mb-2 text-sm font-semibold">Recent Users</h5>
+                  <table className="w-full min-w-[880px] text-left text-sm">
+                    <thead className="opacity-70">
+                      <tr>
+                        <th className="pb-2 pr-3">Email</th>
+                        <th className="pb-2 pr-3">Role</th>
+                        <th className="pb-2 pr-3">Registered Via</th>
+                        <th className="pb-2 pr-3">Registered</th>
+                        <th className="pb-2 pr-3">Last Auth Provider</th>
+                        <th className="pb-2">Last Auth</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {systemSnapshot.recentUsers.map((user) => (
+                        <tr key={user.id} className="border-t border-white/10">
+                          <td className="py-2 pr-3">{user.email}</td>
+                          <td className="py-2 pr-3">{user.role}</td>
+                          <td className="py-2 pr-3">{formatMethodLabel(user.registeredVia)}</td>
+                          <td className="py-2 pr-3">
+                            {new Date(user.registeredAt).toLocaleString()}
+                          </td>
+                          <td className="py-2 pr-3">
+                            {user.lastAuthProvider ? formatMethodLabel(user.lastAuthProvider) : "n/a"}
+                          </td>
+                          <td className="py-2">
+                            {user.lastAuthAt ? new Date(user.lastAuthAt).toLocaleString() : "n/a"}
+                          </td>
+                        </tr>
+                      ))}
+                      {systemSnapshot.recentUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-3 text-xs opacity-70">
+                            No local users found.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : null}
+          </div>
+
           <div className="admin-surface space-y-3 rounded-xl p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
