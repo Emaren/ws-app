@@ -368,12 +368,20 @@ export default function AdminDashboard() {
                   Offers Command
                 </button>
                 {isOwnerAdmin ? (
-                  <button
-                    onClick={() => router.push("/admin/company")}
-                    className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-sm font-medium transition hover:bg-sky-500/25"
-                  >
-                    Company Dashboards
-                  </button>
+                  <>
+                    <button
+                      onClick={() => router.push("/admin/company")}
+                      className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-sm font-medium transition hover:bg-sky-500/25"
+                    >
+                      Company Dashboards
+                    </button>
+                    <button
+                      onClick={() => router.push("/admin/data")}
+                      className="rounded-xl border border-violet-400/40 bg-violet-500/15 px-3 py-2 text-sm font-medium transition hover:bg-violet-500/25"
+                    >
+                      Data Explorer
+                    </button>
+                  </>
                 ) : null}
               </>
             ) : null}
