@@ -57,8 +57,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: socialImagePath,
-        width: 1175,
-        height: 700,
+        width: 1200,
+        height: 630,
         alt: socialImageAlt,
         type: "image/jpeg",
       },
