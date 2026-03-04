@@ -58,7 +58,7 @@ export default function LoginPage() {
 
     const res = await signIn("credentials", { email, password, redirect: false });
     if (res?.error) {
-      setError("Invalid credentials.");
+      setError("Invalid credentials. Try Forgot password if needed.");
       setLoading(false);
       return;
     }

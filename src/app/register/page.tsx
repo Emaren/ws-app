@@ -129,7 +129,23 @@ export default function RegisterPage() {
     }
 
     if (res.status === 409) {
-      setError(data?.message || "User already exists. Please login.");
+      const existingLogin = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (!existingLogin?.error) {
+        setSuccess("Account already existed. Signing you in...");
+        setTimeout(() => router.push("/"), 350);
+        setLoading(false);
+        return;
+      }
+
+      setError(
+        data?.message ||
+          "User already exists. Password does not match this account. Use Login or Forgot password.",
+      );
       setLoading(false);
       return;
     }

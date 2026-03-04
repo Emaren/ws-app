@@ -8,12 +8,14 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [debugResetUrl, setDebugResetUrl] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setNotice("");
+    setDebugResetUrl("");
     setError("");
 
     try {
@@ -29,12 +31,15 @@ export default function ForgotPasswordPage() {
       }
 
       const payload = (await response.json().catch(() => null)) as
-        | { message?: string }
+        | { message?: string; debugResetUrl?: string }
         | null;
       setNotice(
         payload?.message ??
           "If this email exists, password reset instructions will be sent.",
       );
+      if (typeof payload?.debugResetUrl === "string" && payload.debugResetUrl) {
+        setDebugResetUrl(payload.debugResetUrl);
+      }
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -81,6 +86,14 @@ export default function ForgotPasswordPage() {
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
         {notice && <p className="text-emerald-400 mb-4">{notice}</p>}
+        {debugResetUrl ? (
+          <p className="mb-4 text-xs text-amber-300">
+            Dev reset link:{" "}
+            <a href={debugResetUrl} className="underline break-all">
+              {debugResetUrl}
+            </a>
+          </p>
+        ) : null}
 
         <button
           type="submit"
