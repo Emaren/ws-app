@@ -52,6 +52,24 @@ type ResetEmailResult = {
   reason?: string;
 };
 
+function envFlagEnabled(value: string | undefined): boolean {
+  if (!value) return false;
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function shouldExposeDebugResetUrl(emailResult: ResetEmailResult): boolean {
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
+  const explicitOptIn = envFlagEnabled(process.env.AUTH_EMAIL_EXPOSE_DEBUG_LINK);
+  if (!explicitOptIn) {
+    return false;
+  }
+
+  return !emailResult.delivered;
+}
+
 async function sendPasswordResetEmail(input: {
   to: string;
   resetUrl: string;
@@ -195,7 +213,7 @@ export async function POST(request: NextRequest) {
       resetUrl,
     });
 
-    if (process.env.NODE_ENV !== "production") {
+    if (shouldExposeDebugResetUrl(emailResult)) {
       debugResetUrl = resetUrl;
     }
 
