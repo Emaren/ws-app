@@ -1,5 +1,6 @@
 // src/app/page.tsx
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";

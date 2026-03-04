@@ -22,10 +22,10 @@ function resolveSiteOrigin(): URL {
 }
 
 const siteOrigin = resolveSiteOrigin();
-const socialImagePath = "/Avalon.jpg";
+const socialImagePath = "/og-x-card.jpg";
 const socialImageAbsolute = new URL(socialImagePath, siteOrigin).toString();
 const canonicalHomeUrl = new URL("/", siteOrigin).toString();
-const socialImageAlt = "Avalon Organic Chocolate Milk feature from Wheat & Stone";
+const socialImageAlt = "Wheat & Stone featured organic review card";
 
 export const metadata: Metadata = {
   metadataBase: siteOrigin,
