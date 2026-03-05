@@ -42,16 +42,39 @@ function getPublicOrigin() {
   return "https://wheatandstone.ca";
 }
 
-export default function CommentsSection({ article }: Props) {
-  const origin = getPublicOrigin();
-  const articleUrl = `${origin}/articles/${encodeURIComponent(article.slug)}`;
+function getRuntimeOrigin() {
+  if (typeof window !== "undefined") {
+    try {
+      const url = new URL(window.location.href);
+      const host = url.hostname.toLowerCase();
+      const isLocal =
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".local");
+      if (!isLocal) {
+        return url.origin;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return getPublicOrigin();
+}
 
+export default function CommentsSection({ article }: Props) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [origin, setOrigin] = React.useState(() => getPublicOrigin());
   const [w, setW] = React.useState(680);
+  const [embedRequested, setEmbedRequested] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [showFallback, setShowFallback] = React.useState(false);
   const [sawFacebookMessage, setSawFacebookMessage] = React.useState(false);
   const [useWebHost, setUseWebHost] = React.useState(false);
+  const articleUrl = `${origin}/articles/${encodeURIComponent(article.slug)}`;
+
+  React.useEffect(() => {
+    setOrigin(getRuntimeOrigin());
+  }, []);
 
   React.useEffect(() => {
     const el = wrapRef.current;
@@ -74,7 +97,11 @@ export default function CommentsSection({ article }: Props) {
     setIsLoaded(false);
     setShowFallback(false);
     setSawFacebookMessage(false);
-  }, [commentsSrc]);
+  }, [commentsSrc, embedRequested]);
+
+  React.useEffect(() => {
+    setUseWebHost(false);
+  }, [articleUrl, embedRequested]);
 
   React.useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -98,6 +125,10 @@ export default function CommentsSection({ article }: Props) {
   }, []);
 
   React.useEffect(() => {
+    if (!embedRequested) {
+      return;
+    }
+
     const delayMs = isLoaded ? 3000 : 6500;
     const timer = window.setTimeout(() => {
       if (sawFacebookMessage) {
@@ -114,7 +145,7 @@ export default function CommentsSection({ article }: Props) {
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [isLoaded, sawFacebookMessage, useWebHost, commentsSrc]);
+  }, [embedRequested, isLoaded, sawFacebookMessage, useWebHost, commentsSrc]);
 
   function handleIframeLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
     const frame = event.currentTarget;
@@ -155,6 +186,14 @@ export default function CommentsSection({ article }: Props) {
         className="relative bg-black/70 dark:bg-black border border-neutral-800 p-4 md:p-5 rounded-2xl shadow-sm overflow-hidden"
       >
         <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setEmbedRequested(true)}
+            disabled={embedRequested}
+            className="mr-2 inline-flex items-center rounded-md border border-neutral-600 bg-neutral-900/80 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-neutral-100 hover:bg-neutral-800 disabled:opacity-65 disabled:cursor-default"
+          >
+            {embedRequested ? "Embed Loading..." : "Load Comments In Page"}
+          </button>
           <a
             href={commentsPopup}
             target="_blank"
@@ -165,13 +204,26 @@ export default function CommentsSection({ article }: Props) {
           </a>
         </div>
 
-        {!isLoaded && !showFallback && (
+        {!embedRequested ? (
+          <div className="rounded-xl border border-neutral-700 bg-neutral-950/75 px-4 py-4 text-sm text-neutral-200">
+            <p className="font-semibold">Facebook comments are click-to-load.</p>
+            <p className="mt-1 text-neutral-300">
+              This avoids broken white embeds when privacy shields block third-party frames.
+            </p>
+            <p className="mt-2 text-neutral-300">
+              If there are no comments yet, use{" "}
+              <span className="font-semibold text-neutral-100">Open Comments In Facebook</span> to be first.
+            </p>
+          </div>
+        ) : null}
+
+        {embedRequested && !isLoaded && !showFallback && (
           <div className="absolute inset-x-4 md:inset-x-5 top-4 md:top-5 z-10 rounded-xl border border-neutral-700 bg-neutral-950/80 px-3 py-2 text-[12px] text-neutral-300">
             Loading Facebook comments...
           </div>
         )}
 
-        {showFallback && !isLoaded && (
+        {embedRequested && showFallback && !isLoaded && (
           <div className="absolute inset-0 z-20 bg-neutral-950/92 backdrop-blur-[1px] p-4 md:p-5 flex items-center justify-center">
             <div className="w-full max-w-[620px] rounded-2xl border border-neutral-700 bg-neutral-900/95 p-4 md:p-5 text-neutral-100">
               <p className="text-sm md:text-base font-semibold">Facebook embed is blocked in this browser session.</p>
@@ -200,19 +252,21 @@ export default function CommentsSection({ article }: Props) {
           </div>
         )}
 
-        <iframe
-          key={commentsSrc}
-          title="Facebook Comments"
-          src={commentsSrc}
-          style={{ width: "100%", minHeight: 420, border: "none", overflow: "hidden" }}
-          scrolling="no"
-          loading="lazy"
-          allow="clipboard-write; encrypted-media; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={handleIframeLoad}
-          onError={() => setShowFallback(true)}
-        />
-        <p className="mt-2 text-[12px] text-neutral-300">
+        {embedRequested ? (
+          <iframe
+            key={commentsSrc}
+            title="Facebook Comments"
+            src={commentsSrc}
+            style={{ width: "100%", minHeight: 420, border: "none", overflow: "hidden" }}
+            scrolling="no"
+            loading="lazy"
+            allow="clipboard-write; encrypted-media; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            onLoad={handleIframeLoad}
+            onError={() => setShowFallback(true)}
+          />
+        ) : null}
+        <p className={`mt-2 text-[12px] text-neutral-300 ${embedRequested ? "" : "mb-1"}`}>
           If you don’t see comments, a privacy extension or browser setting may be blocking Facebook embeds{" "}
           <a
             href={commentsPopup}
