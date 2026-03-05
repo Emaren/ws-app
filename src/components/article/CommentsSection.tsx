@@ -6,18 +6,24 @@ import type { Article } from "@prisma/client";
 
 type Props = { article: Article };
 
-function buildCommentsSrc(href: string, widthPx: number, numPosts = 10, dark = false) {
+function buildCommentsSrc(
+  href: string,
+  widthPx: number,
+  numPosts = 10,
+  dark = false,
+  useWebHost = false,
+) {
   const width = String(Math.max(320, Math.min(widthPx, 1200)));
   const params = new URLSearchParams({
     href,
     numposts: String(numPosts),
     width,
     order_by: "reverse_time",
-    lazy: "true",
-    adapt_container_width: "true",
+    mobile: "true",
   });
   if (dark) params.set("colorscheme", "dark");
-  return `https://www.facebook.com/plugins/feedback.php?${params.toString()}`;
+  const host = useWebHost ? "https://web.facebook.com" : "https://www.facebook.com";
+  return `${host}/plugins/feedback.php?${params.toString()}`;
 }
 
 // Prefer a public origin Facebook can fetch; ignore localhost/127.0.0.1/.local
@@ -44,6 +50,8 @@ export default function CommentsSection({ article }: Props) {
   const [w, setW] = React.useState(680);
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [showFallback, setShowFallback] = React.useState(false);
+  const [sawFacebookMessage, setSawFacebookMessage] = React.useState(false);
+  const [useWebHost, setUseWebHost] = React.useState(false);
 
   React.useEffect(() => {
     const el = wrapRef.current;
@@ -59,17 +67,54 @@ export default function CommentsSection({ article }: Props) {
     };
   }, []);
 
-  const commentsSrc = buildCommentsSrc(articleUrl, w, 10, true);
+  const commentsSrc = buildCommentsSrc(articleUrl, w, 10, true, useWebHost);
   const commentsPopup = `https://www.facebook.com/plugins/feedback.php?href=${encodeURIComponent(articleUrl)}`;
 
   React.useEffect(() => {
     setIsLoaded(false);
     setShowFallback(false);
-    const timer = window.setTimeout(() => {
-      setShowFallback(true);
-    }, 5200);
-    return () => window.clearTimeout(timer);
+    setSawFacebookMessage(false);
   }, [commentsSrc]);
+
+  React.useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (typeof event.origin !== "string" || !event.origin) {
+        return;
+      }
+
+      try {
+        const hostname = new URL(event.origin).hostname;
+        if (hostname === "www.facebook.com" || hostname === "web.facebook.com") {
+          setSawFacebookMessage(true);
+          setShowFallback(false);
+        }
+      } catch {
+        // ignore malformed origin values
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  React.useEffect(() => {
+    const delayMs = isLoaded ? 3000 : 6500;
+    const timer = window.setTimeout(() => {
+      if (sawFacebookMessage) {
+        return;
+      }
+
+      // First failure path: retry with web.facebook.com host.
+      if (!useWebHost) {
+        setUseWebHost(true);
+        return;
+      }
+
+      setShowFallback(true);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [isLoaded, sawFacebookMessage, useWebHost, commentsSrc]);
 
   function handleIframeLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
     const frame = event.currentTarget;
@@ -86,12 +131,15 @@ export default function CommentsSection({ article }: Props) {
 
     if (isAboutBlank) {
       setIsLoaded(false);
-      setShowFallback(true);
+      if (!useWebHost) {
+        setUseWebHost(true);
+      } else {
+        setShowFallback(true);
+      }
       return;
     }
 
     setIsLoaded(true);
-    setShowFallback(false);
   }
 
   if (process.env.NODE_ENV !== "production") {
