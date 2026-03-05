@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const window30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const window7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const passwordResetProvider = (
     process.env.AUTH_EMAIL_PROVIDER ??
     process.env.NOTIFICATION_EMAIL_PROVIDER ??
@@ -69,6 +70,9 @@ export async function GET(req: NextRequest) {
       passwordResetPendingCount,
       authRegistrationEvents30dCount,
       authFunnelEvents30dCount,
+      passwordResetDelivered7dCount,
+      passwordResetFailed7dCount,
+      passwordResetRecentDispatches,
       recentUsers,
       publicSurface,
     ] = await Promise.all([
@@ -113,6 +117,38 @@ export async function GET(req: NextRequest) {
           createdAt: {
             gte: window30d,
           },
+        },
+      }),
+      prisma.passwordResetDispatch.count({
+        where: {
+          delivered: true,
+          createdAt: {
+            gte: window7d,
+          },
+        },
+      }),
+      prisma.passwordResetDispatch.count({
+        where: {
+          delivered: false,
+          createdAt: {
+            gte: window7d,
+          },
+        },
+      }),
+      prisma.passwordResetDispatch.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 16,
+        select: {
+          id: true,
+          email: true,
+          source: true,
+          provider: true,
+          delivered: true,
+          reason: true,
+          requestedByEmail: true,
+          createdAt: true,
         },
       }),
       prisma.user.findMany({
@@ -174,6 +210,8 @@ export async function GET(req: NextRequest) {
         passwordResetPendingCount,
         authRegistrationEvents30dCount,
         authFunnelEvents30dCount,
+        passwordResetDelivered7dCount,
+        passwordResetFailed7dCount,
       },
       wsApi: wsApiSnapshot,
       integrations: {
@@ -187,6 +225,7 @@ export async function GET(req: NextRequest) {
         },
       },
       publicSurface,
+      passwordResetRecentDispatches,
       recentUsers,
     });
   } catch (error) {

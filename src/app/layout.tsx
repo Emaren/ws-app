@@ -22,12 +22,8 @@ function resolveSiteOrigin(): URL {
 }
 
 const siteOrigin = resolveSiteOrigin();
-const socialImageVersion =
-  process.env.NEXT_PUBLIC_X_CARD_VERSION?.trim().replace(/\s+/g, "") || "20260304-1";
 const socialImageBasePath = "/og-x-card.jpg";
-const socialImageVersionedPath = `${socialImageBasePath}?v=${encodeURIComponent(socialImageVersion)}`;
 const socialImageAbsolute = new URL(socialImageBasePath, siteOrigin).toString();
-const socialImageAbsoluteVersioned = new URL(socialImageVersionedPath, siteOrigin).toString();
 const canonicalHomeUrl = new URL("/", siteOrigin).toString();
 const socialImageAlt = "Wheat & Stone featured organic review card";
 
@@ -60,14 +56,7 @@ export const metadata: Metadata = {
     locale: "en_CA",
     images: [
       {
-        url: socialImageVersionedPath,
-        width: 1200,
-        height: 630,
-        alt: socialImageAlt,
-        type: "image/jpeg",
-      },
-      {
-        url: socialImageBasePath,
+        url: socialImageAbsolute,
         width: 1200,
         height: 630,
         alt: socialImageAlt,
@@ -81,17 +70,7 @@ export const metadata: Metadata = {
     title: "Wheat & Stone",
     description:
       "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
-    images: [socialImageVersionedPath, socialImageBasePath],
-  },
-  other: {
-    "twitter:url": canonicalHomeUrl,
-    "twitter:domain": siteOrigin.hostname,
-    "twitter:image": socialImageAbsoluteVersioned,
-    "twitter:image:src": socialImageAbsoluteVersioned,
-    "twitter:image:alt": socialImageAlt,
-    "og:image:secure_url": socialImageAbsolute,
-    "og:image:url": socialImageAbsoluteVersioned,
-    "og:image:type": "image/jpeg",
+    images: [socialImageAbsolute],
   },
   manifest: "/manifest.webmanifest",
   icons: {

@@ -121,6 +121,8 @@ type SystemSnapshot = {
     passwordResetPendingCount: number;
     authRegistrationEvents30dCount: number;
     authFunnelEvents30dCount: number;
+    passwordResetDelivered7dCount: number;
+    passwordResetFailed7dCount: number;
   };
   wsApi: {
     available: boolean;
@@ -181,6 +183,10 @@ type SystemSnapshot = {
       hasOgImage: boolean;
       hasTwitterCard: boolean;
       hasSummaryLargeImage: boolean;
+      ogImageCount: number;
+      twitterImageCount: number;
+      hasAbsoluteOgImage: boolean;
+      hasAbsoluteTwitterImage: boolean;
       ogImageValues: string[];
       twitterImageValues: string[];
     };
@@ -188,15 +194,30 @@ type SystemSnapshot = {
       hasOgImage: boolean;
       hasTwitterCard: boolean;
       hasSummaryLargeImage: boolean;
+      ogImageCount: number;
+      twitterImageCount: number;
+      hasAbsoluteOgImage: boolean;
+      hasAbsoluteTwitterImage: boolean;
       ogImageValues: string[];
       twitterImageValues: string[];
     };
+    warnings: string[];
     facebookComments: {
       targetArticleUrl: string | null;
       embedUrl: string | null;
       note: string;
     };
   };
+  passwordResetRecentDispatches: Array<{
+    id: string;
+    email: string;
+    source: string;
+    provider: string;
+    delivered: boolean;
+    reason: string | null;
+    requestedByEmail: string | null;
+    createdAt: string;
+  }>;
   recentUsers: Array<{
     id: string;
     email: string;
@@ -744,6 +765,18 @@ export default function AdminDashboard() {
                       {systemSnapshot.localDb.passwordResetPendingCount}
                     </p>
                   </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Reset Delivered (7d)</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-300">
+                      {systemSnapshot.localDb.passwordResetDelivered7dCount}
+                    </p>
+                  </article>
+                  <article className="rounded-lg border border-white/10 p-2.5">
+                    <p className="text-[11px] uppercase tracking-wide opacity-70">Reset Failed (7d)</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-rose-300">
+                      {systemSnapshot.localDb.passwordResetFailed7dCount}
+                    </p>
+                  </article>
                 </div>
 
                 <div className="rounded-lg border border-white/10 p-3">
@@ -796,6 +829,53 @@ export default function AdminDashboard() {
                       {systemSnapshot.integrations.wsApiBridge.configured ? "configured" : "missing"}
                     </span>
                   </p>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-white/10 p-3">
+                  <h5 className="mb-2 text-sm font-semibold">Recent Password Reset Dispatches</h5>
+                  <table className="w-full min-w-[820px] text-left text-xs">
+                    <thead className="opacity-70">
+                      <tr>
+                        <th className="pb-1.5 pr-2">Time</th>
+                        <th className="pb-1.5 pr-2">Email</th>
+                        <th className="pb-1.5 pr-2">Source</th>
+                        <th className="pb-1.5 pr-2">Provider</th>
+                        <th className="pb-1.5 pr-2">Delivered</th>
+                        <th className="pb-1.5 pr-2">Reason</th>
+                        <th className="pb-1.5">Requested By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {systemSnapshot.passwordResetRecentDispatches.map((row) => (
+                        <tr key={row.id} className="border-t border-white/10">
+                          <td className="py-1.5 pr-2">{new Date(row.createdAt).toLocaleString()}</td>
+                          <td className="py-1.5 pr-2">{row.email}</td>
+                          <td className="py-1.5 pr-2">{row.source}</td>
+                          <td className="py-1.5 pr-2">{row.provider}</td>
+                          <td className="py-1.5 pr-2">
+                            <span
+                              className={
+                                row.delivered
+                                  ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-300"
+                                  : "rounded-full bg-rose-500/20 px-2 py-0.5 text-[11px] text-rose-200"
+                              }
+                            >
+                              {row.delivered ? "yes" : "no"}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-2">{row.reason || "-"}</td>
+                          <td className="py-1.5">{row.requestedByEmail || "-"}</td>
+                        </tr>
+                      ))}
+                      {systemSnapshot.passwordResetRecentDispatches.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-2 opacity-70">
+                            No reset dispatches yet.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
                 </div>
 
                 <div className="rounded-lg border border-white/10 p-3">
@@ -897,7 +977,16 @@ export default function AdminDashboard() {
                     Home meta: og:image{" "}
                     <span className="font-semibold">
                       {systemSnapshot.publicSurface.homeMeta.hasOgImage ? "present" : "missing"}
-                    </span>{" "}
+                    </span>
+                    {" "}({systemSnapshot.publicSurface.homeMeta.ogImageCount}) · absolute{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.homeMeta.hasAbsoluteOgImage ? "yes" : "no"}
+                    </span>
+                    {" "}· twitter:image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.homeMeta.twitterImageCount}
+                    </span>
+                    {" "}
                     · twitter:card{" "}
                     <span className="font-semibold">
                       {systemSnapshot.publicSurface.homeMeta.hasTwitterCard ? "present" : "missing"}
@@ -911,7 +1000,16 @@ export default function AdminDashboard() {
                     Twitterbot meta: og:image{" "}
                     <span className="font-semibold">
                       {systemSnapshot.publicSurface.twitterBotMeta.hasOgImage ? "present" : "missing"}
-                    </span>{" "}
+                    </span>
+                    {" "}({systemSnapshot.publicSurface.twitterBotMeta.ogImageCount}) · absolute{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.twitterBotMeta.hasAbsoluteOgImage ? "yes" : "no"}
+                    </span>
+                    {" "}· twitter:image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.twitterBotMeta.twitterImageCount}
+                    </span>
+                    {" "}
                     · twitter:card{" "}
                     <span className="font-semibold">
                       {systemSnapshot.publicSurface.twitterBotMeta.hasTwitterCard ? "present" : "missing"}
@@ -936,6 +1034,22 @@ export default function AdminDashboard() {
                   <p className="mt-1 text-xs opacity-75">
                     {systemSnapshot.publicSurface.facebookComments.note}
                   </p>
+                  {systemSnapshot.publicSurface.warnings.length > 0 ? (
+                    <div className="mt-2 rounded-lg border border-amber-300/35 bg-amber-300/10 p-2.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-100">
+                        Crawler + Embed Warnings
+                      </p>
+                      <ul className="mt-1 space-y-1 text-xs text-amber-100/90">
+                        {systemSnapshot.publicSurface.warnings.map((warning) => (
+                          <li key={warning}>• {warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-500/10 p-2.5 text-xs text-emerald-200">
+                      No crawler warnings from latest probe.
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <a
                       href={systemSnapshot.publicSurface.homeUrl}

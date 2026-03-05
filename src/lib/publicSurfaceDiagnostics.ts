@@ -17,6 +17,10 @@ type HomeMetaProbe = {
   hasOgImage: boolean;
   hasTwitterCard: boolean;
   hasSummaryLargeImage: boolean;
+  ogImageCount: number;
+  twitterImageCount: number;
+  hasAbsoluteOgImage: boolean;
+  hasAbsoluteTwitterImage: boolean;
   ogImageValues: string[];
   twitterImageValues: string[];
 };
@@ -34,6 +38,7 @@ export type PublicSurfaceSnapshot = {
   socialImageProbe: UrlProbe;
   homeMeta: HomeMetaProbe;
   twitterBotMeta: HomeMetaProbe;
+  warnings: string[];
   facebookComments: {
     targetArticleUrl: string | null;
     embedUrl: string | null;
@@ -123,6 +128,8 @@ async function probeUrl(
 }
 
 function extractHomeMeta(html: string): HomeMetaProbe {
+  const ogImageValues = extractMetaValues(html, "og:image");
+  const twitterImageValues = extractMetaValues(html, "twitter:image");
   return {
     hasOgImage: /<meta[^>]+property=["']og:image["']/i.test(html),
     hasTwitterCard: /<meta[^>]+name=["']twitter:card["']/i.test(html),
@@ -133,8 +140,12 @@ function extractHomeMeta(html: string): HomeMetaProbe {
       /<meta[^>]+content=["']summary_large_image["'][^>]+name=["']twitter:card["']/i.test(
         html,
       ),
-    ogImageValues: extractMetaValues(html, "og:image"),
-    twitterImageValues: extractMetaValues(html, "twitter:image"),
+    ogImageCount: ogImageValues.length,
+    twitterImageCount: twitterImageValues.length,
+    hasAbsoluteOgImage: ogImageValues.some(isAbsoluteHttpsUrl),
+    hasAbsoluteTwitterImage: twitterImageValues.some(isAbsoluteHttpsUrl),
+    ogImageValues,
+    twitterImageValues,
   };
 }
 
@@ -172,6 +183,98 @@ function extractMetaValues(html: string, property: string): string[] {
   return Array.from(values);
 }
 
+function isAbsoluteHttpsUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function probeWarning(label: string, probe: UrlProbe): string | null {
+  if (probe.error) {
+    return `${label} probe error: ${probe.error}`;
+  }
+  if (!probe.ok) {
+    return `${label} probe returned status ${probe.status ?? "n/a"}.`;
+  }
+  return null;
+}
+
+function buildPublicWarnings(input: {
+  homeProbe: UrlProbe;
+  twitterBotProbe: UrlProbe;
+  apexProbe: UrlProbe;
+  socialImageProbe: UrlProbe;
+  homeMeta: HomeMetaProbe;
+  twitterBotMeta: HomeMetaProbe;
+  expectedOrigin: string;
+  expectedSocialImageUrl: string;
+  expectedSocialImageBaseUrl: string;
+}) {
+  const warnings: string[] = [];
+
+  const homeProbeWarning = probeWarning("Home", input.homeProbe);
+  if (homeProbeWarning) warnings.push(homeProbeWarning);
+
+  const twitterProbeWarning = probeWarning("Twitterbot", input.twitterBotProbe);
+  if (twitterProbeWarning) warnings.push(twitterProbeWarning);
+
+  const apexProbeWarning = probeWarning("Apex host", input.apexProbe);
+  if (apexProbeWarning) warnings.push(apexProbeWarning);
+
+  const imageProbeWarning = probeWarning("Social image", input.socialImageProbe);
+  if (imageProbeWarning) warnings.push(imageProbeWarning);
+
+  if (input.apexProbe.redirectedTo && !input.apexProbe.redirectedTo.startsWith(input.expectedOrigin)) {
+    warnings.push(`Apex host redirects to unexpected destination: ${input.apexProbe.redirectedTo}`);
+  }
+
+  if (!input.homeMeta.hasOgImage) warnings.push("Home page is missing og:image.");
+  if (!input.homeMeta.hasTwitterCard) warnings.push("Home page is missing twitter:card.");
+  if (!input.homeMeta.hasSummaryLargeImage) {
+    warnings.push("Home page is not advertising twitter:card=summary_large_image.");
+  }
+  if (input.homeMeta.ogImageCount > 1) {
+    warnings.push(`Home page has ${input.homeMeta.ogImageCount} og:image tags; keep only one canonical image.`);
+  }
+  if (input.homeMeta.twitterImageCount > 1) {
+    warnings.push(
+      `Home page has ${input.homeMeta.twitterImageCount} twitter:image tags; keep one canonical image.`,
+    );
+  }
+  if (!input.homeMeta.hasAbsoluteOgImage) {
+    warnings.push("Home page og:image is not absolute https URL.");
+  }
+  if (!input.homeMeta.hasAbsoluteTwitterImage) {
+    warnings.push("Home page twitter:image is not absolute https URL.");
+  }
+
+  if (!input.twitterBotMeta.hasOgImage || !input.twitterBotMeta.hasTwitterCard) {
+    warnings.push("Twitterbot fetch did not see full social meta tags.");
+  }
+  if (!input.twitterBotMeta.hasSummaryLargeImage) {
+    warnings.push("Twitterbot fetch did not see summary_large_image.");
+  }
+  if (!input.twitterBotMeta.hasAbsoluteOgImage || !input.twitterBotMeta.hasAbsoluteTwitterImage) {
+    warnings.push("Twitterbot fetch did not see absolute https social image URLs.");
+  }
+
+  if (
+    input.homeMeta.ogImageValues.length > 0 &&
+    !input.homeMeta.ogImageValues.some(
+      (value) =>
+        value.includes(input.expectedSocialImageUrl) ||
+        value.includes(input.expectedSocialImageBaseUrl),
+    )
+  ) {
+    warnings.push("Home page og:image does not match expected social image URL.");
+  }
+
+  return warnings;
+}
+
 export async function buildPublicSurfaceSnapshot(
   req: NextRequest,
 ): Promise<PublicSurfaceSnapshot> {
@@ -187,6 +290,7 @@ export async function buildPublicSurfaceSnapshot(
     `/og-x-card.jpg?v=${encodeURIComponent(socialImageVersion)}`,
     siteOrigin,
   ).toString();
+  const socialImageBaseUrl = new URL("/og-x-card.jpg", siteOrigin).toString();
   const xCardBypassUrl = new URL(
     `/?xcard=${encodeURIComponent(socialImageVersion)}`,
     siteOrigin,
@@ -232,9 +336,21 @@ export async function buildPublicSurfaceSnapshot(
   const { bodyPreview: _bodyPreviewIgnored, ...homeProbe } = homeProbeRaw;
   const { bodyPreview: _twitterBodyPreviewIgnored, ...twitterBotProbe } =
     twitterBotProbeRaw;
+  const normalizedOrigin = siteOrigin.toString().replace(/\/+$/, "");
+  const warnings = buildPublicWarnings({
+    homeProbe,
+    twitterBotProbe,
+    apexProbe,
+    socialImageProbe,
+    homeMeta,
+    twitterBotMeta,
+    expectedOrigin: normalizedOrigin,
+    expectedSocialImageUrl: socialImageUrl,
+    expectedSocialImageBaseUrl: socialImageBaseUrl,
+  });
 
   return {
-    origin: siteOrigin.toString().replace(/\/+$/, ""),
+    origin: normalizedOrigin,
     homeUrl,
     apexUrl: apexUrl.toString(),
     xCardBypassUrl,
@@ -246,6 +362,7 @@ export async function buildPublicSurfaceSnapshot(
     socialImageProbe,
     homeMeta,
     twitterBotMeta,
+    warnings,
     facebookComments: {
       targetArticleUrl,
       embedUrl: facebookEmbedUrl,

@@ -276,6 +276,27 @@ export default function CommentsSection({ article }: Props) {
           </div>
         )}
 
+        {embedRequested && isLoaded && showNoCommentsHint && !showFallback ? (
+          <div className="pointer-events-none absolute inset-x-4 top-16 z-10 flex justify-center md:inset-x-5 md:top-20">
+            <div className="pointer-events-auto w-full max-w-[620px] rounded-xl border border-amber-300/40 bg-black/80 px-3 py-2 text-xs text-amber-100 shadow-lg backdrop-blur-sm md:text-sm">
+              <p className="font-semibold">No visible comments yet.</p>
+              <p className="mt-1 text-amber-100/90">
+                This usually means zero comments or browser privacy shielding.
+                Use{" "}
+                <a
+                  href={commentsPopup}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  Open Comments In Facebook
+                </a>{" "}
+                to confirm and post first.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {embedRequested ? (
           <iframe
             ref={iframeRef}
