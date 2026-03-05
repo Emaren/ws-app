@@ -128,6 +128,10 @@ type SystemSnapshot = {
     available: boolean;
     hasAccessToken: boolean;
     usersCount: number | null;
+    usersRepository: "postgres" | "memory" | null;
+    healthUsersCount: number | null;
+    healthReachable: boolean;
+    healthError: string | null;
     error: string | null;
   };
   integrations: {
@@ -794,11 +798,33 @@ export default function AdminDashboard() {
                   </div>
                   <p className="mt-1 text-xs opacity-80">
                     Access token: {systemSnapshot.wsApi.hasAccessToken ? "present" : "missing"} ·
-                    WS users: {systemSnapshot.wsApi.usersCount ?? "n/a"}
+                    WS users: {systemSnapshot.wsApi.usersCount ?? "n/a"} · Health users:{" "}
+                    {systemSnapshot.wsApi.healthUsersCount ?? "n/a"}
                   </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    Health probe:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.wsApi.healthReachable ? "reachable" : "unreachable"}
+                    </span>{" "}
+                    · Users backend:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.wsApi.usersRepository ?? "unknown"}
+                    </span>
+                  </p>
+                  {systemSnapshot.wsApi.usersRepository === "memory" ? (
+                    <p className="mt-1 rounded border border-amber-300/35 bg-amber-300/10 px-2 py-1 text-xs text-amber-100">
+                      WS-API is running with in-memory user storage. Logins and registrations can drift
+                      from main DB after restarts.
+                    </p>
+                  ) : null}
                   {systemSnapshot.wsApi.error ? (
                     <p className="mt-1 text-xs text-rose-300">
                       {systemSnapshot.wsApi.error}
+                    </p>
+                  ) : null}
+                  {systemSnapshot.wsApi.healthError ? (
+                    <p className="mt-1 text-xs text-rose-300">
+                      {systemSnapshot.wsApi.healthError}
                     </p>
                   ) : null}
                 </div>

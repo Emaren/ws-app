@@ -4,6 +4,7 @@ import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import { listWsApiUsers } from "@/app/api/admin/offers/_shared";
 import { buildPublicSurfaceSnapshot } from "@/lib/publicSurfaceDiagnostics";
+import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,8 +13,71 @@ type WsApiSnapshot = {
   available: boolean;
   hasAccessToken: boolean;
   usersCount: number | null;
+  usersRepository: "postgres" | "memory" | null;
+  healthUsersCount: number | null;
+  healthReachable: boolean;
+  healthError: string | null;
   error: string | null;
 };
+
+type WsApiHealthPayload = {
+  status?: string;
+  modules?: {
+    users?: number;
+  };
+  storage?: {
+    users?: "postgres" | "memory";
+  };
+};
+
+async function fetchWsApiHealthSnapshot(): Promise<{
+  reachable: boolean;
+  usersRepository: "postgres" | "memory" | null;
+  usersCount: number | null;
+  error: string | null;
+}> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(`${getWsApiBaseUrl()}/health`, {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      return {
+        reachable: false,
+        usersRepository: null,
+        usersCount: null,
+        error: `health endpoint returned ${response.status}`,
+      };
+    }
+    const payload = (await response.json().catch(() => null)) as
+      | WsApiHealthPayload
+      | null;
+    return {
+      reachable: true,
+      usersRepository:
+        payload?.storage?.users === "postgres" || payload?.storage?.users === "memory"
+          ? payload.storage.users
+          : null,
+      usersCount:
+        typeof payload?.modules?.users === "number" ? payload.modules.users : null,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      reachable: false,
+      usersRepository: null,
+      usersCount: null,
+      error: safeErrorMessage(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function envFlagEnabled(value: string | undefined): boolean {
   if (!value) return false;
@@ -181,8 +245,18 @@ export async function GET(req: NextRequest) {
       available: false,
       hasAccessToken: Boolean(wsAccessToken),
       usersCount: null,
+      usersRepository: null,
+      healthUsersCount: null,
+      healthReachable: false,
+      healthError: null,
       error: null,
     };
+
+    const wsApiHealth = await fetchWsApiHealthSnapshot();
+    wsApiSnapshot.healthReachable = wsApiHealth.reachable;
+    wsApiSnapshot.usersRepository = wsApiHealth.usersRepository;
+    wsApiSnapshot.healthUsersCount = wsApiHealth.usersCount;
+    wsApiSnapshot.healthError = wsApiHealth.error;
 
     if (wsAccessToken) {
       try {
