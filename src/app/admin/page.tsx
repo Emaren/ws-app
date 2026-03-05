@@ -282,6 +282,16 @@ function formatMethodLabel(method: string): string {
   return method;
 }
 
+function buildFreshXCardUrl(homeUrl: string): string | null {
+  try {
+    const url = new URL(homeUrl);
+    url.searchParams.set("xcard", `${Date.now()}`);
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -304,6 +314,7 @@ export default function AdminDashboard() {
   const [publicProbeRunBusy, setPublicProbeRunBusy] = useState(false);
   const [healthCheckBusy, setHealthCheckBusy] = useState(false);
   const [healthCheckNote, setHealthCheckNote] = useState<string | null>(null);
+  const [recrawlActionNote, setRecrawlActionNote] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canDeleteAsStaff = isStaffRole(role);
@@ -478,6 +489,32 @@ export default function AdminDashboard() {
       setPublicProbeError(error instanceof Error ? error.message : String(error));
     } finally {
       setHealthCheckBusy(false);
+    }
+  }
+
+  function openFreshXCardUrl() {
+    if (!systemSnapshot) return;
+    const freshUrl = buildFreshXCardUrl(systemSnapshot.publicSurface.homeUrl);
+    if (!freshUrl) {
+      setRecrawlActionNote("Could not generate fresh X-card URL.");
+      return;
+    }
+    window.open(freshUrl, "_blank", "noopener,noreferrer");
+    setRecrawlActionNote(`Opened fresh X-card URL: ${freshUrl}`);
+  }
+
+  async function copyFreshXCardUrl() {
+    if (!systemSnapshot) return;
+    const freshUrl = buildFreshXCardUrl(systemSnapshot.publicSurface.homeUrl);
+    if (!freshUrl) {
+      setRecrawlActionNote("Could not generate fresh X-card URL.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(freshUrl);
+      setRecrawlActionNote(`Copied fresh X-card URL: ${freshUrl}`);
+    } catch {
+      setRecrawlActionNote("Clipboard permission blocked. Copy manually from Open Home.");
     }
   }
 
@@ -1110,6 +1147,113 @@ export default function AdminDashboard() {
                       >
                         Open FB plugin URL
                       </a>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 rounded-lg border border-sky-300/25 bg-sky-500/10 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-100">
+                      Force Recrawl Checklist (One-Click)
+                    </p>
+                    <ol className="mt-2 space-y-2 text-xs text-sky-100/90">
+                      <li className="rounded border border-white/10 bg-black/20 p-2">
+                        <p className="font-semibold">1. Generate a fresh X share URL</p>
+                        <p className="mt-1 opacity-85">
+                          Use a unique querystring so X treats it as a fresh URL and recrawls.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={openFreshXCardUrl}
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                          >
+                            Open fresh X URL
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void copyFreshXCardUrl()}
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                          >
+                            Copy fresh X URL
+                          </button>
+                        </div>
+                      </li>
+                      <li className="rounded border border-white/10 bg-black/20 p-2">
+                        <p className="font-semibold">2. Confirm image and metadata endpoints</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <a
+                            href={systemSnapshot.publicSurface.socialImageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                          >
+                            Open OG image
+                          </a>
+                          <a
+                            href={systemSnapshot.publicSurface.homeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                          >
+                            Open home source
+                          </a>
+                          <a
+                            href={`${systemSnapshot.publicSurface.origin}/robots.txt`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                          >
+                            Open robots.txt
+                          </a>
+                        </div>
+                      </li>
+                      <li className="rounded border border-white/10 bg-black/20 p-2">
+                        <p className="font-semibold">3. Run probes and health checks</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void runPublicProbeNow()}
+                            disabled={publicProbeRunBusy || healthCheckBusy}
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10 disabled:opacity-60"
+                          >
+                            {publicProbeRunBusy ? "Running probe..." : "Run probe now"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void runSystemHealthCheck()}
+                            disabled={healthCheckBusy || publicProbeRunBusy}
+                            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10 disabled:opacity-60"
+                          >
+                            {healthCheckBusy ? "Running health check..." : "Run full health check"}
+                          </button>
+                        </div>
+                      </li>
+                      <li className="rounded border border-white/10 bg-black/20 p-2">
+                        <p className="font-semibold">4. Validate Facebook comments target</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {systemSnapshot.publicSurface.facebookComments.targetArticleUrl ? (
+                            <a
+                              href={systemSnapshot.publicSurface.facebookComments.targetArticleUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                            >
+                              Open article URL
+                            </a>
+                          ) : null}
+                          {systemSnapshot.publicSurface.facebookComments.embedUrl ? (
+                            <a
+                              href={systemSnapshot.publicSurface.facebookComments.embedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                            >
+                              Open FB plugin URL
+                            </a>
+                          ) : null}
+                        </div>
+                      </li>
+                    </ol>
+                    {recrawlActionNote ? (
+                      <p className="mt-2 text-[11px] text-sky-200">{recrawlActionNote}</p>
                     ) : null}
                   </div>
                   {publicProbeError ? (
