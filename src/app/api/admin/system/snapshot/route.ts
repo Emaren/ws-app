@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import { listWsApiUsers } from "@/app/api/admin/offers/_shared";
+import { buildPublicSurfaceSnapshot } from "@/lib/publicSurfaceDiagnostics";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,6 +14,11 @@ type WsApiSnapshot = {
   usersCount: number | null;
   error: string | null;
 };
+
+function envFlagEnabled(value: string | undefined): boolean {
+  if (!value) return false;
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -26,6 +32,28 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const window30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const passwordResetProvider = (
+    process.env.AUTH_EMAIL_PROVIDER ??
+    process.env.NOTIFICATION_EMAIL_PROVIDER ??
+    "dev"
+  )
+    .trim()
+    .toLowerCase();
+  const passwordResetApiKey =
+    process.env.AUTH_EMAIL_API_KEY ?? process.env.NOTIFICATION_EMAIL_API_KEY;
+  const passwordResetFrom =
+    process.env.AUTH_EMAIL_FROM ?? process.env.NOTIFICATION_EMAIL_FROM;
+  const passwordResetConfigured =
+    passwordResetProvider === "resend"
+      ? Boolean(passwordResetApiKey && passwordResetFrom)
+      : passwordResetProvider !== "dev";
+  const passwordResetDebugLinkExposureEnabled = envFlagEnabled(
+    process.env.AUTH_EMAIL_EXPOSE_DEBUG_LINK,
+  );
+  const wsApiBridgeConfigured = Boolean(
+    process.env.WS_API_BRIDGE_KEY?.trim() ||
+      process.env.AUTH_BRIDGE_SHARED_SECRET?.trim(),
+  );
 
   try {
     const [
@@ -42,6 +70,7 @@ export async function GET(req: NextRequest) {
       authRegistrationEvents30dCount,
       authFunnelEvents30dCount,
       recentUsers,
+      publicSurface,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({
@@ -103,6 +132,7 @@ export async function GET(req: NextRequest) {
           createdAt: true,
         },
       }),
+      buildPublicSurfaceSnapshot(req),
     ]);
 
     const accessTokenRaw = auth.token.wsApiAccessToken;
@@ -146,6 +176,17 @@ export async function GET(req: NextRequest) {
         authFunnelEvents30dCount,
       },
       wsApi: wsApiSnapshot,
+      integrations: {
+        passwordResetEmail: {
+          provider: passwordResetProvider,
+          configured: passwordResetConfigured,
+          debugLinkExposureEnabled: passwordResetDebugLinkExposureEnabled,
+        },
+        wsApiBridge: {
+          configured: wsApiBridgeConfigured,
+        },
+      },
+      publicSurface,
       recentUsers,
     });
   } catch (error) {
@@ -158,4 +199,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

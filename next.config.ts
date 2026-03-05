@@ -13,6 +13,23 @@ const isProd = env === "production";
 const isPreview = process.env.NEXT_DIST_DIR === ".next-preview";
 const devLike = !isProd || isPreview;
 
+function normalizeOrigin(input: string | undefined): string | null {
+  const raw = input?.trim();
+  if (!raw) return null;
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+const normalizedSiteOrigin =
+  normalizeOrigin(process.env.NEXT_PUBLIC_SITE_ORIGIN) ?? "https://wheatandstone.ca";
+const normalizedNextAuthUrl =
+  normalizeOrigin(process.env.NEXTAUTH_URL) ?? normalizedSiteOrigin;
+
 // Directives that differ by mode
 const scriptSrc = devLike
   ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://plausible.io"]
@@ -61,6 +78,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  env: {
+    NEXTAUTH_URL: normalizedNextAuthUrl,
+  },
   async headers() {
     return [
       {

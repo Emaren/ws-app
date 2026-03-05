@@ -1,4 +1,5 @@
 // src/app/articles/[slug]/page.tsx
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
@@ -10,6 +11,100 @@ import SocialIconsRow from "@/components/site/SocialIconsRow";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function resolveSiteOrigin(): URL {
+  const fallback = "https://wheatandstone.ca";
+  const raw = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim() || process.env.NEXTAUTH_URL?.trim();
+  if (!raw) return new URL(fallback);
+  const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(normalized);
+  } catch {
+    return new URL(fallback);
+  }
+}
+
+function resolveSocialImage(siteOrigin: URL, coverUrl?: string | null): string {
+  const candidate = coverUrl?.trim();
+  if (candidate) {
+    try {
+      return new URL(candidate, siteOrigin).toString();
+    } catch {
+      // ignore and use fallback
+    }
+  }
+  const version = process.env.NEXT_PUBLIC_X_CARD_VERSION?.trim().replace(/\s+/g, "") || "20260304-1";
+  return new URL(`/og-x-card.jpg?v=${encodeURIComponent(version)}`, siteOrigin).toString();
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await prisma.article.findUnique({
+    where: { slug },
+    select: {
+      slug: true,
+      title: true,
+      excerpt: true,
+      coverUrl: true,
+      status: true,
+      publishedAt: true,
+    },
+  });
+  const siteOrigin = resolveSiteOrigin();
+  const canonical = new URL(`/articles/${encodeURIComponent(slug)}`, siteOrigin).toString();
+
+  if (!article) {
+    return {
+      title: "Article not found | Wheat & Stone",
+      alternates: { canonical },
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const status = normalizeArticleStatus(article.status);
+  const isVisible = Boolean(status && isPubliclyVisibleArticle(status, article.publishedAt));
+  const title = `${article.title} | Wheat & Stone`;
+  const description =
+    article.excerpt?.trim() ||
+    "Read trusted local-first food reviews from Wheat & Stone.";
+  const image = resolveSocialImage(siteOrigin, article.coverUrl);
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: isVisible
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
+    openGraph: {
+      type: "article",
+      url: canonical,
+      title,
+      description,
+      siteName: "Wheat & Stone",
+      locale: "en_CA",
+      publishedTime: article.publishedAt?.toISOString(),
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function ArticlePage({
   params,

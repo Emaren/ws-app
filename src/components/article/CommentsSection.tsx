@@ -19,11 +19,14 @@ function buildCommentsSrc(
     numposts: String(numPosts),
     width,
     order_by: "reverse_time",
-    mobile: "true",
   });
   if (dark) params.set("colorscheme", "dark");
+  const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
+  if (appId) {
+    params.set("app_id", appId);
+  }
   const host = useWebHost ? "https://web.facebook.com" : "https://www.facebook.com";
-  return `${host}/plugins/feedback.php?${params.toString()}`;
+  return `${host}/plugins/comments.php?${params.toString()}`;
 }
 
 // Prefer a public origin Facebook can fetch; ignore localhost/127.0.0.1/.local
@@ -63,11 +66,13 @@ function getRuntimeOrigin() {
 
 export default function CommentsSection({ article }: Props) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
+  const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const [origin, setOrigin] = React.useState(() => getPublicOrigin());
   const [w, setW] = React.useState(680);
   const [embedRequested, setEmbedRequested] = React.useState(false);
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [showFallback, setShowFallback] = React.useState(false);
+  const [showNoCommentsHint, setShowNoCommentsHint] = React.useState(false);
   const [sawFacebookMessage, setSawFacebookMessage] = React.useState(false);
   const [useWebHost, setUseWebHost] = React.useState(false);
   const articleUrl = `${origin}/articles/${encodeURIComponent(article.slug)}`;
@@ -91,11 +96,12 @@ export default function CommentsSection({ article }: Props) {
   }, []);
 
   const commentsSrc = buildCommentsSrc(articleUrl, w, 10, true, useWebHost);
-  const commentsPopup = `https://www.facebook.com/plugins/feedback.php?href=${encodeURIComponent(articleUrl)}`;
+  const commentsPopup = `https://www.facebook.com/plugins/comments.php?href=${encodeURIComponent(articleUrl)}`;
 
   React.useEffect(() => {
     setIsLoaded(false);
     setShowFallback(false);
+    setShowNoCommentsHint(false);
     setSawFacebookMessage(false);
   }, [commentsSrc, embedRequested]);
 
@@ -106,6 +112,11 @@ export default function CommentsSection({ article }: Props) {
   React.useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (typeof event.origin !== "string" || !event.origin) {
+        return;
+      }
+
+      const frameWindow = iframeRef.current?.contentWindow;
+      if (!frameWindow || event.source !== frameWindow) {
         return;
       }
 
@@ -129,7 +140,7 @@ export default function CommentsSection({ article }: Props) {
       return;
     }
 
-    const delayMs = isLoaded ? 3000 : 6500;
+    const delayMs = isLoaded ? 2200 : 5000;
     const timer = window.setTimeout(() => {
       if (sawFacebookMessage) {
         return;
@@ -146,6 +157,19 @@ export default function CommentsSection({ article }: Props) {
 
     return () => window.clearTimeout(timer);
   }, [embedRequested, isLoaded, sawFacebookMessage, useWebHost, commentsSrc]);
+
+  React.useEffect(() => {
+    if (!embedRequested || !isLoaded || showFallback || sawFacebookMessage) {
+      setShowNoCommentsHint(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowNoCommentsHint(true);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [embedRequested, isLoaded, showFallback, sawFacebookMessage, commentsSrc]);
 
   function handleIframeLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
     const frame = event.currentTarget;
@@ -254,6 +278,7 @@ export default function CommentsSection({ article }: Props) {
 
         {embedRequested ? (
           <iframe
+            ref={iframeRef}
             key={commentsSrc}
             title="Facebook Comments"
             src={commentsSrc}
@@ -265,6 +290,19 @@ export default function CommentsSection({ article }: Props) {
             onLoad={handleIframeLoad}
             onError={() => setShowFallback(true)}
           />
+        ) : null}
+        {embedRequested && isLoaded && !showFallback ? (
+          <p className="mt-2 text-[12px] text-neutral-300">
+            If the embed area looks empty, there may be no comments yet or your browser may be suppressing third-party widgets.
+            Use <span className="font-semibold text-neutral-100">Open Comments In Facebook</span> to confirm and post the first comment.
+          </p>
+        ) : null}
+        {showNoCommentsHint ? (
+          <div className="mt-2 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-[12px] text-amber-100">
+            Comments iframe loaded but no visible thread was detected yet. This usually means
+            there are zero comments or browser privacy shielding is suppressing the widget.
+            Use <span className="font-semibold">Open Comments In Facebook</span> to post the first comment.
+          </div>
         ) : null}
         <p className={`mt-2 text-[12px] text-neutral-300 ${embedRequested ? "" : "mb-1"}`}>
           If you don’t see comments, a privacy extension or browser setting may be blocking Facebook embeds{" "}

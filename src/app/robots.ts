@@ -9,6 +9,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: "https://wheatandstone.ca/sitemap.xml",
-    host: "https://wheatandstone.ca",
   };
 }

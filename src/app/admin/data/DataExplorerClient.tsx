@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type DataEntity = "users" | "offers" | "reactions" | "resetTokens";
+type DataEntity =
+  | "users"
+  | "offers"
+  | "reactions"
+  | "resetTokens"
+  | "resetDispatches"
+  | "registrationEvents"
+  | "funnelEvents";
 
 type ExplorerResponse = {
   entity: DataEntity;
@@ -73,6 +80,53 @@ type ResetTokenRow = {
   } | null;
 };
 
+type ResetDispatchRow = {
+  id: string;
+  email: string;
+  userId: string;
+  source: string;
+  provider: string;
+  delivered: boolean;
+  reason: string | null;
+  requestedByUserId: string | null;
+  requestedByEmail: string | null;
+  createdAt: string;
+  user: {
+    email: string;
+    name: string;
+  } | null;
+};
+
+type RegistrationEventRow = {
+  id: string;
+  userId: string | null;
+  email: string | null;
+  method: string;
+  status: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  createdAt: string;
+  user: {
+    email: string;
+    name: string;
+  } | null;
+};
+
+type FunnelEventRow = {
+  id: string;
+  stage: string;
+  method: string | null;
+  userId: string | null;
+  email: string | null;
+  sessionId: string | null;
+  sourceContext: string | null;
+  createdAt: string;
+  user: {
+    email: string;
+    name: string;
+  } | null;
+};
+
 const ENTITY_OPTIONS: Array<{
   id: DataEntity;
   label: string;
@@ -82,6 +136,21 @@ const ENTITY_OPTIONS: Array<{
   { id: "offers", label: "Offers", helper: "Offer inventory and business ownership" },
   { id: "reactions", label: "Reactions", helper: "Article/product reaction event stream" },
   { id: "resetTokens", label: "Reset Tokens", helper: "Password reset delivery state" },
+  {
+    id: "resetDispatches",
+    label: "Reset Dispatches",
+    helper: "Email provider delivery outcomes and failure reasons",
+  },
+  {
+    id: "registrationEvents",
+    label: "Registration Events",
+    helper: "Signup success/failure telemetry by provider",
+  },
+  {
+    id: "funnelEvents",
+    label: "Funnel Events",
+    helper: "Register view -> submit -> success -> first login timeline",
+  },
 ];
 
 function formatDateTime(value: string | null | undefined): string {
@@ -297,6 +366,125 @@ export default function DataExplorerClient() {
     );
   }
 
+  function renderResetDispatches(rows: ResetDispatchRow[]) {
+    return (
+      <table className="w-full min-w-[1220px] text-left text-sm">
+        <thead className="opacity-70">
+          <tr>
+            <th className="pb-2 pr-3">Email</th>
+            <th className="pb-2 pr-3">User</th>
+            <th className="pb-2 pr-3">Source</th>
+            <th className="pb-2 pr-3">Provider</th>
+            <th className="pb-2 pr-3">Delivered</th>
+            <th className="pb-2 pr-3">Reason</th>
+            <th className="pb-2 pr-3">Requested By</th>
+            <th className="pb-2">Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-white/10">
+              <td className="py-2 pr-3">{row.email}</td>
+              <td className="py-2 pr-3">{row.user?.email || row.userId || "n/a"}</td>
+              <td className="py-2 pr-3">{row.source}</td>
+              <td className="py-2 pr-3">{row.provider}</td>
+              <td className="py-2 pr-3">
+                <span
+                  className={
+                    row.delivered
+                      ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                      : "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200"
+                  }
+                >
+                  {row.delivered ? "yes" : "no"}
+                </span>
+              </td>
+              <td className="py-2 pr-3">{row.reason || "n/a"}</td>
+              <td className="py-2 pr-3">
+                {row.requestedByEmail || row.requestedByUserId || "self-service"}
+              </td>
+              <td className="py-2">{formatDateTime(row.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderRegistrationEvents(rows: RegistrationEventRow[]) {
+    return (
+      <table className="w-full min-w-[1220px] text-left text-sm">
+        <thead className="opacity-70">
+          <tr>
+            <th className="pb-2 pr-3">Created</th>
+            <th className="pb-2 pr-3">Email</th>
+            <th className="pb-2 pr-3">Method</th>
+            <th className="pb-2 pr-3">Status</th>
+            <th className="pb-2 pr-3">Failure Code</th>
+            <th className="pb-2 pr-3">Failure Message</th>
+            <th className="pb-2">User</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-white/10">
+              <td className="py-2 pr-3">{formatDateTime(row.createdAt)}</td>
+              <td className="py-2 pr-3">{row.email || "n/a"}</td>
+              <td className="py-2 pr-3">{formatMethodLabel(row.method)}</td>
+              <td className="py-2 pr-3">
+                <span
+                  className={
+                    row.status === "SUCCESS"
+                      ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                      : "rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-300"
+                  }
+                >
+                  {row.status}
+                </span>
+              </td>
+              <td className="py-2 pr-3">{row.failureCode || "n/a"}</td>
+              <td className="py-2 pr-3">{row.failureMessage || "n/a"}</td>
+              <td className="py-2">{row.user?.email || row.userId || "n/a"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  function renderFunnelEvents(rows: FunnelEventRow[]) {
+    return (
+      <table className="w-full min-w-[1220px] text-left text-sm">
+        <thead className="opacity-70">
+          <tr>
+            <th className="pb-2 pr-3">Created</th>
+            <th className="pb-2 pr-3">Stage</th>
+            <th className="pb-2 pr-3">Method</th>
+            <th className="pb-2 pr-3">Email</th>
+            <th className="pb-2 pr-3">User</th>
+            <th className="pb-2 pr-3">Session</th>
+            <th className="pb-2">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-white/10">
+              <td className="py-2 pr-3">{formatDateTime(row.createdAt)}</td>
+              <td className="py-2 pr-3">{row.stage}</td>
+              <td className="py-2 pr-3">{formatMethodLabel(row.method)}</td>
+              <td className="py-2 pr-3">{row.email || "n/a"}</td>
+              <td className="py-2 pr-3">{row.user?.email || row.userId || "n/a"}</td>
+              <td className="py-2 pr-3">
+                {row.sessionId ? `${row.sessionId.slice(0, 12)}...` : "n/a"}
+              </td>
+              <td className="py-2">{row.sourceContext || "n/a"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
   function renderTable() {
     if (!payload) return null;
     if (payload.rows.length === 0) {
@@ -315,6 +503,15 @@ export default function DataExplorerClient() {
     }
     if (entity === "reactions") {
       return renderReactions(payload.rows as ReactionRow[]);
+    }
+    if (entity === "resetDispatches") {
+      return renderResetDispatches(payload.rows as ResetDispatchRow[]);
+    }
+    if (entity === "registrationEvents") {
+      return renderRegistrationEvents(payload.rows as RegistrationEventRow[]);
+    }
+    if (entity === "funnelEvents") {
+      return renderFunnelEvents(payload.rows as FunnelEventRow[]);
     }
     return renderResetTokens(payload.rows as ResetTokenRow[]);
   }

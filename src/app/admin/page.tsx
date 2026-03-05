@@ -128,6 +128,75 @@ type SystemSnapshot = {
     usersCount: number | null;
     error: string | null;
   };
+  integrations: {
+    passwordResetEmail: {
+      provider: string;
+      configured: boolean;
+      debugLinkExposureEnabled: boolean;
+    };
+    wsApiBridge: {
+      configured: boolean;
+    };
+  };
+  publicSurface: {
+    origin: string;
+    homeUrl: string;
+    apexUrl: string;
+    xCardBypassUrl: string;
+    socialImageUrl: string;
+    socialImageVersion: string;
+    homeProbe: {
+      ok: boolean;
+      status: number | null;
+      redirectedTo: string | null;
+      contentType: string | null;
+      contentLength: string | null;
+      error: string | null;
+    };
+    twitterBotProbe: {
+      ok: boolean;
+      status: number | null;
+      redirectedTo: string | null;
+      contentType: string | null;
+      contentLength: string | null;
+      error: string | null;
+    };
+    apexProbe: {
+      ok: boolean;
+      status: number | null;
+      redirectedTo: string | null;
+      contentType: string | null;
+      contentLength: string | null;
+      error: string | null;
+    };
+    socialImageProbe: {
+      ok: boolean;
+      status: number | null;
+      redirectedTo: string | null;
+      contentType: string | null;
+      contentLength: string | null;
+      error: string | null;
+    };
+    homeMeta: {
+      hasOgImage: boolean;
+      hasTwitterCard: boolean;
+      hasSummaryLargeImage: boolean;
+      ogImageValues: string[];
+      twitterImageValues: string[];
+    };
+    twitterBotMeta: {
+      hasOgImage: boolean;
+      hasTwitterCard: boolean;
+      hasSummaryLargeImage: boolean;
+      ogImageValues: string[];
+      twitterImageValues: string[];
+    };
+    facebookComments: {
+      targetArticleUrl: string | null;
+      embedUrl: string | null;
+      note: string;
+    };
+  };
   recentUsers: Array<{
     id: string;
     email: string;
@@ -140,6 +209,42 @@ type SystemSnapshot = {
     createdAt: string;
   }>;
 };
+
+type PublicSurfaceProbeRun = {
+  id: string;
+  actorUserId: string | null;
+  actorEmail: string | null;
+  origin: string;
+  homeUrl: string;
+  apexUrl: string;
+  socialImageUrl: string;
+  xCardBypassUrl: string;
+  homeStatus: number | null;
+  apexStatus: number | null;
+  socialImageStatus: number | null;
+  homeRedirectedTo: string | null;
+  apexRedirectedTo: string | null;
+  socialImageContentType: string | null;
+  hasOgImage: boolean;
+  hasTwitterCard: boolean;
+  hasSummaryLargeImage: boolean;
+  createdAt: string;
+};
+
+type PublicSurfaceProbeHistory = {
+  generatedAt: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  rows: PublicSurfaceProbeRun[];
+};
+
+function probeBadgeClass(ok: boolean): string {
+  return ok
+    ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+    : "rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200";
+}
 
 function formatMethodLabel(method: string): string {
   if (method === "CREDENTIALS") return "Email + Password";
@@ -166,6 +271,14 @@ export default function AdminDashboard() {
   );
   const [systemSnapshotLoading, setSystemSnapshotLoading] = useState(false);
   const [systemSnapshot, setSystemSnapshot] = useState<SystemSnapshot | null>(null);
+  const [publicProbeHistoryLoading, setPublicProbeHistoryLoading] = useState(false);
+  const [publicProbeHistory, setPublicProbeHistory] = useState<PublicSurfaceProbeHistory | null>(
+    null,
+  );
+  const [publicProbeError, setPublicProbeError] = useState<string | null>(null);
+  const [publicProbeRunBusy, setPublicProbeRunBusy] = useState(false);
+  const [healthCheckBusy, setHealthCheckBusy] = useState(false);
+  const [healthCheckNote, setHealthCheckNote] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const role = normalizeAppRole(session?.user?.role);
   const canDeleteAsStaff = isStaffRole(role);
@@ -258,8 +371,99 @@ export default function AdminDashboard() {
     }
   }
 
+  async function loadPublicProbeHistory() {
+    if (!isOwnerAdmin) {
+      setPublicProbeHistory(null);
+      return;
+    }
+
+    setPublicProbeHistoryLoading(true);
+    setPublicProbeError(null);
+    try {
+      const res = await fetch("/api/admin/system/public-surface?page=1&pageSize=8", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const data = (await res.json()) as PublicSurfaceProbeHistory;
+      setPublicProbeHistory(data);
+    } catch (error) {
+      console.error(error);
+      setPublicProbeHistory(null);
+      setPublicProbeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPublicProbeHistoryLoading(false);
+    }
+  }
+
+  async function runPublicProbeNow() {
+    if (!isOwnerAdmin) return;
+    setPublicProbeRunBusy(true);
+    setPublicProbeError(null);
+    try {
+      const res = await fetch("/api/admin/system/public-surface", {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+
+      await Promise.all([loadSystemSnapshot(), loadPublicProbeHistory()]);
+    } catch (error) {
+      console.error(error);
+      setPublicProbeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPublicProbeRunBusy(false);
+    }
+  }
+
+  async function runSystemHealthCheck() {
+    if (!isOwnerAdmin) return;
+    setHealthCheckBusy(true);
+    setHealthCheckNote(null);
+    setPublicProbeError(null);
+    try {
+      const res = await fetch("/api/admin/system/health-check", {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const payload = (await res.json()) as {
+        identitySummary?: {
+          roleMismatchCount: number;
+          localOnlyCount: number;
+          wsApiOnlyCount: number;
+        };
+        warnings?: string[];
+      };
+      const summary = payload.identitySummary;
+      setHealthCheckNote(
+        summary
+          ? `Health check complete: mismatch=${summary.roleMismatchCount}, localOnly=${summary.localOnlyCount}, wsOnly=${summary.wsApiOnlyCount}`
+          : "Health check complete.",
+      );
+      await Promise.all([
+        loadSystemSnapshot(),
+        loadPublicProbeHistory(),
+      ]);
+    } catch (error) {
+      console.error(error);
+      setPublicProbeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setHealthCheckBusy(false);
+    }
+  }
+
   async function reloadAll() {
-    await Promise.all([load(), loadAuthStats(), loadAuthProviderConfig(), loadSystemSnapshot()]);
+    await Promise.all([
+      load(),
+      loadAuthStats(),
+      loadAuthProviderConfig(),
+      loadSystemSnapshot(),
+      loadPublicProbeHistory(),
+    ]);
   }
 
   useEffect(() => {
@@ -276,6 +480,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     void loadSystemSnapshot();
+  }, [isOwnerAdmin]);
+
+  useEffect(() => {
+    void loadPublicProbeHistory();
   }, [isOwnerAdmin]);
 
   const filtered = useMemo(() => {
@@ -352,10 +560,15 @@ export default function AdminDashboard() {
                 authStatsLoading ||
                 authProviderConfigLoading ||
                 systemSnapshotLoading ||
+                publicProbeHistoryLoading ||
                 isPending
               }
             >
-              {loading || authStatsLoading || authProviderConfigLoading || systemSnapshotLoading
+              {loading ||
+              authStatsLoading ||
+              authProviderConfigLoading ||
+              systemSnapshotLoading ||
+              publicProbeHistoryLoading
                 ? "Loading..."
                 : "Reload"}
             </button>
@@ -369,6 +582,12 @@ export default function AdminDashboard() {
                 </button>
                 {isOwnerAdmin ? (
                   <>
+                    <button
+                      onClick={() => router.push("/admin/access")}
+                      className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-sm font-medium transition hover:bg-emerald-500/25"
+                    >
+                      Access Control
+                    </button>
                     <button
                       onClick={() => router.push("/admin/company")}
                       className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-sm font-medium transition hover:bg-sky-500/25"
@@ -547,6 +766,292 @@ export default function AdminDashboard() {
                   {systemSnapshot.wsApi.error ? (
                     <p className="mt-1 text-xs text-rose-300">
                       {systemSnapshot.wsApi.error}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">Auth + Reset Diagnostics</p>
+                  </div>
+                  <p className="mt-1 text-xs opacity-80">
+                    Reset email provider:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.integrations.passwordResetEmail.provider}
+                    </span>{" "}
+                    · Configured:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.integrations.passwordResetEmail.configured ? "yes" : "no"}
+                    </span>{" "}
+                    · Debug link exposure:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.integrations.passwordResetEmail.debugLinkExposureEnabled
+                        ? "enabled"
+                        : "disabled"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    WS-API password bridge key:{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.integrations.wsApiBridge.configured ? "configured" : "missing"}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">Public Share + Embed Diagnostics</p>
+                      <p className="text-xs opacity-75">
+                        X card version {systemSnapshot.publicSurface.socialImageVersion}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void runPublicProbeNow()}
+                        disabled={publicProbeRunBusy || healthCheckBusy}
+                        className="rounded border border-white/20 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-60"
+                      >
+                        {publicProbeRunBusy ? "Running probe..." : "Run probe now"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void runSystemHealthCheck()}
+                        disabled={healthCheckBusy || publicProbeRunBusy}
+                        className="rounded border border-sky-300/30 bg-sky-500/10 px-2 py-1 text-xs hover:bg-sky-500/20 disabled:opacity-60"
+                      >
+                        {healthCheckBusy ? "Running health check..." : "Run full health check"}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs opacity-80">
+                    Origin: <span className="font-semibold">{systemSnapshot.publicSurface.origin}</span>
+                  </p>
+                  <div className="mt-3 grid gap-2 md:grid-cols-4">
+                    <article className="rounded-lg border border-white/10 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Home probe</p>
+                        <span className={probeBadgeClass(systemSnapshot.publicSurface.homeProbe.ok)}>
+                          {systemSnapshot.publicSurface.homeProbe.ok ? "OK" : "FAIL"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs opacity-80">
+                        Status: {systemSnapshot.publicSurface.homeProbe.status ?? "n/a"}
+                      </p>
+                      {systemSnapshot.publicSurface.homeProbe.redirectedTo ? (
+                        <p className="mt-1 text-[11px] text-amber-200/90">
+                          Redirects to {systemSnapshot.publicSurface.homeProbe.redirectedTo}
+                        </p>
+                      ) : null}
+                    </article>
+
+                    <article className="rounded-lg border border-white/10 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Twitterbot probe</p>
+                        <span className={probeBadgeClass(systemSnapshot.publicSurface.twitterBotProbe.ok)}>
+                          {systemSnapshot.publicSurface.twitterBotProbe.ok ? "OK" : "FAIL"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs opacity-80">
+                        Status: {systemSnapshot.publicSurface.twitterBotProbe.status ?? "n/a"}
+                      </p>
+                      {systemSnapshot.publicSurface.twitterBotProbe.redirectedTo ? (
+                        <p className="mt-1 text-[11px] text-amber-200/90">
+                          Redirects to {systemSnapshot.publicSurface.twitterBotProbe.redirectedTo}
+                        </p>
+                      ) : null}
+                    </article>
+
+                    <article className="rounded-lg border border-white/10 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Apex probe</p>
+                        <span className={probeBadgeClass(systemSnapshot.publicSurface.apexProbe.ok)}>
+                          {systemSnapshot.publicSurface.apexProbe.ok ? "OK" : "FAIL"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs opacity-80">
+                        Status: {systemSnapshot.publicSurface.apexProbe.status ?? "n/a"}
+                      </p>
+                      {systemSnapshot.publicSurface.apexProbe.redirectedTo ? (
+                        <p className="mt-1 text-[11px] text-amber-200/90">
+                          Redirects to {systemSnapshot.publicSurface.apexProbe.redirectedTo}
+                        </p>
+                      ) : null}
+                    </article>
+
+                    <article className="rounded-lg border border-white/10 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-80">OG image probe</p>
+                        <span className={probeBadgeClass(systemSnapshot.publicSurface.socialImageProbe.ok)}>
+                          {systemSnapshot.publicSurface.socialImageProbe.ok ? "OK" : "FAIL"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs opacity-80">
+                        Status: {systemSnapshot.publicSurface.socialImageProbe.status ?? "n/a"} ·{" "}
+                        {systemSnapshot.publicSurface.socialImageProbe.contentType || "unknown content-type"}
+                      </p>
+                    </article>
+                  </div>
+                  <p className="mt-3 text-xs opacity-80">
+                    Home meta: og:image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.homeMeta.hasOgImage ? "present" : "missing"}
+                    </span>{" "}
+                    · twitter:card{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.homeMeta.hasTwitterCard ? "present" : "missing"}
+                    </span>{" "}
+                    · summary_large_image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.homeMeta.hasSummaryLargeImage ? "present" : "missing"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    Twitterbot meta: og:image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.twitterBotMeta.hasOgImage ? "present" : "missing"}
+                    </span>{" "}
+                    · twitter:card{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.twitterBotMeta.hasTwitterCard ? "present" : "missing"}
+                    </span>{" "}
+                    · summary_large_image{" "}
+                    <span className="font-semibold">
+                      {systemSnapshot.publicSurface.twitterBotMeta.hasSummaryLargeImage
+                        ? "present"
+                        : "missing"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    Facebook target:{" "}
+                    {systemSnapshot.publicSurface.facebookComments.targetArticleUrl ? (
+                      <span className="font-semibold">
+                        {systemSnapshot.publicSurface.facebookComments.targetArticleUrl}
+                      </span>
+                    ) : (
+                      "No published article yet"
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs opacity-75">
+                    {systemSnapshot.publicSurface.facebookComments.note}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <a
+                      href={systemSnapshot.publicSurface.homeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                    >
+                      Open home
+                    </a>
+                    <a
+                      href={systemSnapshot.publicSurface.xCardBypassUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                    >
+                      Open X-card bypass URL
+                    </a>
+                    <a
+                      href={systemSnapshot.publicSurface.socialImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                    >
+                      Open OG image
+                    </a>
+                    {systemSnapshot.publicSurface.facebookComments.embedUrl ? (
+                      <a
+                        href={systemSnapshot.publicSurface.facebookComments.embedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
+                      >
+                        Open FB plugin URL
+                      </a>
+                    ) : null}
+                  </div>
+                  {publicProbeError ? (
+                    <p className="mt-2 text-xs text-rose-300">
+                      Probe history error: {publicProbeError}
+                    </p>
+                  ) : null}
+                  {healthCheckNote ? (
+                    <p className="mt-1 text-xs text-sky-200">
+                      {healthCheckNote}
+                    </p>
+                  ) : null}
+                  <div className="mt-3 overflow-x-auto rounded-lg border border-white/10 p-2.5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide opacity-80">
+                      Probe History
+                    </p>
+                    <table className="w-full min-w-[760px] text-left text-xs">
+                      <thead className="opacity-70">
+                        <tr>
+                          <th className="pb-1.5 pr-2">Run Time</th>
+                          <th className="pb-1.5 pr-2">Home</th>
+                          <th className="pb-1.5 pr-2">Apex</th>
+                          <th className="pb-1.5 pr-2">OG</th>
+                          <th className="pb-1.5 pr-2">Meta</th>
+                          <th className="pb-1.5">Operator</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {publicProbeHistory?.rows.map((row) => (
+                          <tr key={row.id} className="border-t border-white/10">
+                            <td className="py-1.5 pr-2">
+                              {new Date(row.createdAt).toLocaleString()}
+                            </td>
+                            <td className="py-1.5 pr-2">{row.homeStatus ?? "n/a"}</td>
+                            <td className="py-1.5 pr-2">{row.apexStatus ?? "n/a"}</td>
+                            <td className="py-1.5 pr-2">
+                              {row.socialImageStatus ?? "n/a"}{" "}
+                              {row.socialImageContentType ? `(${row.socialImageContentType})` : ""}
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              og:{row.hasOgImage ? "y" : "n"} · tw:{row.hasTwitterCard ? "y" : "n"} ·
+                              lg:{row.hasSummaryLargeImage ? "y" : "n"}
+                            </td>
+                            <td className="py-1.5">{row.actorEmail || "n/a"}</td>
+                          </tr>
+                        ))}
+                        {publicProbeHistoryLoading ? (
+                          <tr>
+                            <td colSpan={6} className="py-2 opacity-70">
+                              Loading probe history...
+                            </td>
+                          </tr>
+                        ) : null}
+                        {!publicProbeHistoryLoading &&
+                        (!publicProbeHistory || publicProbeHistory.rows.length === 0) ? (
+                          <tr>
+                            <td colSpan={6} className="py-2 opacity-70">
+                              No probe runs yet.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                  {systemSnapshot.publicSurface.homeProbe.error ? (
+                    <p className="mt-2 text-xs text-rose-300">
+                      Home probe error: {systemSnapshot.publicSurface.homeProbe.error}
+                    </p>
+                  ) : null}
+                  {systemSnapshot.publicSurface.twitterBotProbe.error ? (
+                    <p className="mt-1 text-xs text-rose-300">
+                      Twitterbot probe error: {systemSnapshot.publicSurface.twitterBotProbe.error}
+                    </p>
+                  ) : null}
+                  {systemSnapshot.publicSurface.apexProbe.error ? (
+                    <p className="mt-1 text-xs text-rose-300">
+                      Apex probe error: {systemSnapshot.publicSurface.apexProbe.error}
+                    </p>
+                  ) : null}
+                  {systemSnapshot.publicSurface.socialImageProbe.error ? (
+                    <p className="mt-1 text-xs text-rose-300">
+                      OG image probe error: {systemSnapshot.publicSurface.socialImageProbe.error}
                     </p>
                   ) : null}
                 </div>

@@ -31,6 +31,7 @@ model User {
   authRegistrationEvents AuthRegistrationEvent[]
   authFunnelEvents       AuthFunnelEvent[]
   passwordResetTokens    PasswordResetToken[]
+  passwordResetDispatches PasswordResetDispatch[]
 }
 
 model Article {
@@ -499,10 +500,97 @@ model PasswordResetToken {
   usedAt    DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispatches PasswordResetDispatch[]
 
   @@index([userId, createdAt])
   @@index([email, createdAt])
   @@index([expiresAt])
+}
+
+model PasswordResetDispatch {
+  id                String                    @id @default(cuid())
+  passwordResetTokenId String?
+  userId            String
+  email             String
+  source            PasswordResetDispatchSource
+  provider          String
+  delivered         Boolean
+  reason            String?
+  requestedByUserId String?
+  requestedByEmail  String?
+  metadata          Json?
+  createdAt         DateTime                  @default(now())
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordResetToken PasswordResetToken?      @relation(fields: [passwordResetTokenId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([email, createdAt])
+  @@index([source, delivered, createdAt])
+  @@index([createdAt])
+}
+
+model IdentityAutoHealRun {
+  id                 String   @id @default(cuid())
+  actorUserId        String?
+  actorEmail         String?
+  mode               String   @default("manual")
+  wsApiAvailable     Boolean
+  scannedCount       Int
+  roleMismatchBefore Int
+  roleMismatchAfter  Int
+  localOnlyCount     Int
+  wsApiOnlyCount     Int
+  wsApiRoleUpdated   Int      @default(0)
+  localUsersCreated  Int      @default(0)
+  warnings           Json?
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([mode, createdAt])
+}
+
+model PublicSurfaceProbeRun {
+  id                    String   @id @default(cuid())
+  actorUserId           String?
+  actorEmail            String?
+  origin                String
+  homeUrl               String
+  apexUrl               String
+  socialImageUrl        String
+  xCardBypassUrl        String
+  homeStatus            Int?
+  apexStatus            Int?
+  socialImageStatus     Int?
+  homeRedirectedTo      String?
+  apexRedirectedTo      String?
+  socialImageContentType String?
+  hasOgImage            Boolean
+  hasTwitterCard        Boolean
+  hasSummaryLargeImage  Boolean
+  snapshot              Json
+  createdAt             DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([origin, createdAt])
+}
+
+model AccountRescueRun {
+  id                      String   @id @default(cuid())
+  actorUserId             String?
+  actorEmail              String?
+  targetUserId            String?
+  targetEmail             String
+  wsApiAvailable          Boolean
+  localPasswordUpdated    Boolean
+  wsApiPasswordUpdated    Boolean
+  resetDispatchDelivered  Boolean
+  resetDispatchProvider   String
+  resetDispatchReason     String?
+  warnings                Json?
+  createdAt               DateTime @default(now())
+
+  @@index([targetEmail, createdAt])
+  @@index([createdAt])
 }
 
 enum Role {
@@ -535,6 +623,12 @@ enum AuthFunnelStage {
   REGISTER_SUBMIT_ATTEMPTED
   REGISTER_SUCCESS
   FIRST_LOGIN_SUCCESS
+}
+
+enum PasswordResetDispatchSource {
+  SELF_SERVICE
+  ADMIN_MANUAL
+  ADMIN_RESEND
 }
 
 enum ArticleStatus {

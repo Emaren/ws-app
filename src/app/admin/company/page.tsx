@@ -12,9 +12,10 @@ export default async function AdminCompanyPage() {
     redirect("/login");
   }
 
-  if (!hasAnyRole(session.user.role, RBAC_ROLE_GROUPS.ownerAdmin)) {
+  if (!hasAnyRole(session.user.role, RBAC_ROLE_GROUPS.staff)) {
     redirect("/admin");
   }
 
-  return <CompanyDashboardsClient />;
+  const isOwnerAdmin = hasAnyRole(session.user.role, RBAC_ROLE_GROUPS.ownerAdmin);
+  return <CompanyDashboardsClient isOwnerAdmin={isOwnerAdmin} />;
 }

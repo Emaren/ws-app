@@ -9,6 +9,8 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [debugResetUrl, setDebugResetUrl] = useState("");
+  const [emailProvider, setEmailProvider] = useState("");
+  const [emailProviderConfigured, setEmailProviderConfigured] = useState(true);
   const [error, setError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -16,6 +18,8 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setNotice("");
     setDebugResetUrl("");
+    setEmailProvider("");
+    setEmailProviderConfigured(true);
     setError("");
 
     try {
@@ -31,12 +35,23 @@ export default function ForgotPasswordPage() {
       }
 
       const payload = (await response.json().catch(() => null)) as
-        | { message?: string; debugResetUrl?: string }
+        | {
+            message?: string;
+            debugResetUrl?: string;
+            emailProvider?: string;
+            emailProviderConfigured?: boolean;
+          }
         | null;
       setNotice(
         payload?.message ??
           "If this email exists, password reset instructions will be sent.",
       );
+      if (typeof payload?.emailProvider === "string") {
+        setEmailProvider(payload.emailProvider);
+      }
+      if (typeof payload?.emailProviderConfigured === "boolean") {
+        setEmailProviderConfigured(payload.emailProviderConfigured);
+      }
       if (typeof payload?.debugResetUrl === "string" && payload.debugResetUrl) {
         setDebugResetUrl(payload.debugResetUrl);
       }
@@ -86,6 +101,12 @@ export default function ForgotPasswordPage() {
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
         {notice && <p className="text-emerald-400 mb-4">{notice}</p>}
+        {notice && !emailProviderConfigured ? (
+          <p className="mb-4 rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Password reset email delivery is currently unavailable ({emailProvider || "unknown provider"}).
+            Ask an admin to run One-Click Account Rescue from the Access dashboard.
+          </p>
+        ) : null}
         {debugResetUrl ? (
           <p className="mb-4 text-xs text-amber-300">
             Dev reset link:{" "}

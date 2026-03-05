@@ -9,6 +9,25 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const fetchCache = "force-no-store";
 
+function normalizeOrigin(input: string | undefined): string | null {
+  const raw = input?.trim();
+  if (!raw) return null;
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(withProtocol).origin;
+  } catch {
+    return null;
+  }
+}
+
+// Keep this module-side read so malformed env values surface during dev,
+// while next.config.ts provides a sanitized NEXTAUTH_URL for the client bundle.
+const _normalizedNextAuthUrl =
+  normalizeOrigin(process.env.NEXTAUTH_URL) ??
+  normalizeOrigin(process.env.NEXT_PUBLIC_SITE_ORIGIN) ??
+  "https://wheatandstone.ca";
+void _normalizedNextAuthUrl;
+
 const handler = NextAuth(authOptions);
 
 function hasValidRequestUrl(req: unknown): req is Request {

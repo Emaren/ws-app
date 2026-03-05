@@ -57,6 +57,11 @@ export interface WsApiRegisterResult {
   user: WsApiAuthUser;
 }
 
+export interface WsApiPasswordResetResult {
+  message: string;
+  user?: WsApiAuthUser;
+}
+
 const REQUEST_TIMEOUT_MS = 8000;
 
 function parseWsApiErrorMessage(payload: unknown, fallbackMessage: string): string {
@@ -201,5 +206,35 @@ export async function wsApiRegister(
       body: JSON.stringify({ email, password, name }),
     },
     [201],
+  );
+}
+
+function resolveWsApiBridgeKey(): string | null {
+  const key =
+    process.env.WS_API_BRIDGE_KEY?.trim() ||
+    process.env.AUTH_BRIDGE_SHARED_SECRET?.trim() ||
+    "";
+  return key.length > 0 ? key : null;
+}
+
+export async function wsApiBridgeResetPassword(
+  email: string,
+  password: string,
+): Promise<WsApiPasswordResetResult | null> {
+  const bridgeKey = resolveWsApiBridgeKey();
+  if (!bridgeKey) {
+    return null;
+  }
+
+  return wsApiRequest<WsApiPasswordResetResult>(
+    "/auth/password/reset",
+    {
+      method: "POST",
+      headers: {
+        "x-ws-bridge-key": bridgeKey,
+      },
+      body: JSON.stringify({ email, password }),
+    },
+    [200, 404],
   );
 }

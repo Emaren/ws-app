@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { RBAC_ROLE_GROUPS, hasAnyRole, roleDisplay } from "@/lib/rbac";
+import AccessControlClient from "./AccessControlClient";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export default async function AccessControlPage() {
       <div className="admin-card p-4 md:p-6">
         <h2 className="text-xl font-semibold md:text-2xl">Access Control</h2>
         <p className="mt-1 text-sm opacity-75">
-          Permission model reference for Small Business Admin operations.
+          Identity and permission governance for Small Business Admin operations.
         </p>
         <p className="mt-2 text-xs uppercase tracking-[0.14em] opacity-60">
           Current role: {roleDisplay(session.user.role)}
@@ -58,12 +59,13 @@ export default async function AccessControlPage() {
       <div className="admin-card p-4 md:p-5">
         <h3 className="text-base font-semibold">Operational Notes</h3>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm opacity-85">
-          <li>Role updates are enforced through ws-api user endpoints.</li>
-          <li>Admin navigation is filtered by the normalized role model.</li>
-          <li>Restricted routes redirect to /admin for non-authorized staff.</li>
+          <li>Identity table merges local db and ws-api accounts by email.</li>
+          <li>Role updates apply to local db and ws-api in one action.</li>
+          <li>Manual reset-link generator is owner/admin only and expires on schedule.</li>
         </ul>
       </div>
+
+      <AccessControlClient />
     </section>
   );
 }
-

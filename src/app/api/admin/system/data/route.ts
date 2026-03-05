@@ -1,5 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { Prisma, OfferStatus, ReactionScope, ReactionType, Role } from "@prisma/client";
+import {
+  Prisma,
+  AuthFunnelStage,
+  AuthProvider,
+  AuthRegistrationStatus,
+  OfferStatus,
+  PasswordResetDispatchSource,
+  ReactionScope,
+  ReactionType,
+  Role,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
@@ -7,7 +17,15 @@ import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ENTITY_VALUES = ["users", "offers", "reactions", "resetTokens"] as const;
+const ENTITY_VALUES = [
+  "users",
+  "offers",
+  "reactions",
+  "resetTokens",
+  "resetDispatches",
+  "registrationEvents",
+  "funnelEvents",
+] as const;
 type DataEntity = (typeof ENTITY_VALUES)[number];
 
 function parsePositiveInt(value: string | null, fallback: number, max: number): number {
@@ -45,6 +63,24 @@ function isReactionTypeValue(value: string): value is ReactionType {
 
 function isReactionScopeValue(value: string): value is ReactionScope {
   return value in ReactionScope;
+}
+
+function isAuthProviderValue(value: string): value is AuthProvider {
+  return value in AuthProvider;
+}
+
+function isAuthRegistrationStatusValue(value: string): value is AuthRegistrationStatus {
+  return value in AuthRegistrationStatus;
+}
+
+function isAuthFunnelStageValue(value: string): value is AuthFunnelStage {
+  return value in AuthFunnelStage;
+}
+
+function isPasswordResetDispatchSourceValue(
+  value: string,
+): value is PasswordResetDispatchSource {
+  return value in PasswordResetDispatchSource;
 }
 
 export async function GET(req: NextRequest) {
@@ -158,7 +194,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    if (entity === "reactions") {
+  if (entity === "reactions") {
       const where: Prisma.ReactionWhereInput | undefined = query
         ? {
             OR: [
@@ -200,6 +236,192 @@ export async function GET(req: NextRequest) {
                 title: true,
               },
             },
+            user: {
+              select: {
+                email: true,
+                name: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      return NextResponse.json({
+        entity,
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        query,
+        rows,
+      });
+    }
+
+    if (entity === "resetDispatches") {
+      const upperQuery = query.toUpperCase();
+      const boolQuery =
+        upperQuery === "TRUE"
+          ? true
+          : upperQuery === "FALSE"
+            ? false
+            : null;
+
+      const where: Prisma.PasswordResetDispatchWhereInput | undefined = query
+        ? {
+            OR: [
+              { id: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+              { provider: { contains: query, mode: "insensitive" } },
+              { reason: { contains: query, mode: "insensitive" } },
+              ...(isPasswordResetDispatchSourceValue(upperQuery)
+                ? [{ source: upperQuery as PasswordResetDispatchSource }]
+                : []),
+              { requestedByEmail: { contains: query, mode: "insensitive" } },
+              { userId: { contains: query, mode: "insensitive" } },
+              { requestedByUserId: { contains: query, mode: "insensitive" } },
+              ...(boolQuery === null ? [] : [{ delivered: boolQuery }]),
+              { user: { email: { contains: query, mode: "insensitive" } } },
+              { user: { name: { contains: query, mode: "insensitive" } } },
+            ],
+          }
+        : undefined;
+
+      const [total, rows] = await Promise.all([
+        prisma.passwordResetDispatch.count({ where }),
+        prisma.passwordResetDispatch.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: pageSize,
+          select: {
+            id: true,
+            email: true,
+            userId: true,
+            source: true,
+            provider: true,
+            delivered: true,
+            reason: true,
+            requestedByUserId: true,
+            requestedByEmail: true,
+            createdAt: true,
+            user: {
+              select: {
+                email: true,
+                name: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      return NextResponse.json({
+        entity,
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        query,
+        rows,
+      });
+    }
+
+    if (entity === "registrationEvents") {
+      const upperQuery = query.toUpperCase();
+      const where: Prisma.AuthRegistrationEventWhereInput | undefined = query
+        ? {
+            OR: [
+              { id: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+              { userId: { contains: query, mode: "insensitive" } },
+              { failureCode: { contains: query, mode: "insensitive" } },
+              { failureMessage: { contains: query, mode: "insensitive" } },
+              ...(isAuthProviderValue(upperQuery)
+                ? [{ method: upperQuery as AuthProvider }]
+                : []),
+              ...(isAuthRegistrationStatusValue(upperQuery)
+                ? [{ status: upperQuery as AuthRegistrationStatus }]
+                : []),
+              { user: { email: { contains: query, mode: "insensitive" } } },
+              { user: { name: { contains: query, mode: "insensitive" } } },
+            ],
+          }
+        : undefined;
+
+      const [total, rows] = await Promise.all([
+        prisma.authRegistrationEvent.count({ where }),
+        prisma.authRegistrationEvent.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: pageSize,
+          select: {
+            id: true,
+            userId: true,
+            email: true,
+            method: true,
+            status: true,
+            failureCode: true,
+            failureMessage: true,
+            createdAt: true,
+            user: {
+              select: {
+                email: true,
+                name: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      return NextResponse.json({
+        entity,
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        query,
+        rows,
+      });
+    }
+
+    if (entity === "funnelEvents") {
+      const upperQuery = query.toUpperCase();
+      const where: Prisma.AuthFunnelEventWhereInput | undefined = query
+        ? {
+            OR: [
+              { id: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+              { userId: { contains: query, mode: "insensitive" } },
+              { sessionId: { contains: query, mode: "insensitive" } },
+              { sourceContext: { contains: query, mode: "insensitive" } },
+              ...(isAuthFunnelStageValue(upperQuery)
+                ? [{ stage: upperQuery as AuthFunnelStage }]
+                : []),
+              ...(isAuthProviderValue(upperQuery)
+                ? [{ method: upperQuery as AuthProvider }]
+                : []),
+              { user: { email: { contains: query, mode: "insensitive" } } },
+              { user: { name: { contains: query, mode: "insensitive" } } },
+            ],
+          }
+        : undefined;
+
+      const [total, rows] = await Promise.all([
+        prisma.authFunnelEvent.count({ where }),
+        prisma.authFunnelEvent.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: pageSize,
+          select: {
+            id: true,
+            stage: true,
+            method: true,
+            userId: true,
+            email: true,
+            sessionId: true,
+            sourceContext: true,
+            createdAt: true,
             user: {
               select: {
                 email: true,

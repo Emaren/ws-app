@@ -266,7 +266,6 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const actor = await resolveReactionActor(req);
-  const actorWhere = actorFilter(actor);
 
   const { slug } = await params;
   const scope = parseScope(req);
@@ -294,6 +293,9 @@ export async function PATCH(
             select: { id: true },
           }))?.id ?? null
         : null;
+      const actorWhere = reactionUserId
+        ? { userId: reactionUserId }
+        : { userId: null, ipHash: actor.actorHash };
 
       const existing = await tx.reaction.findMany({
         where: {
@@ -360,6 +362,9 @@ export async function PATCH(
           select: { id: true },
         }))?.id ?? null
       : null;
+    const actorWhere = reactionUserId
+      ? { userId: reactionUserId }
+      : { userId: null, ipHash: actor.actorHash };
 
     const existing = await tx.reaction.findFirst({
       where: {

@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { AuthProvider } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { WsApiHttpError, wsApiBridgeResetPassword } from "@/lib/wsApiAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -75,9 +76,35 @@ export async function POST(request: NextRequest) {
     });
   });
 
+  let wsApiSyncStatus: "skipped" | "success" | "not_found" | "failed" = "skipped";
+  if (resetToken.email) {
+    try {
+      const syncResult = await wsApiBridgeResetPassword(resetToken.email, password);
+      if (syncResult) {
+        wsApiSyncStatus = syncResult.user ? "success" : "not_found";
+      }
+    } catch (error) {
+      wsApiSyncStatus = "failed";
+      if (error instanceof WsApiHttpError) {
+        console.warn("password_reset_wsapi_sync_failed", {
+          statusCode: error.statusCode,
+          message: error.message,
+          payload: error.payload,
+          email: resetToken.email,
+        });
+      } else {
+        console.warn("password_reset_wsapi_sync_failed", {
+          message: error instanceof Error ? error.message : String(error),
+          email: resetToken.email,
+        });
+      }
+    }
+  }
+
   console.info("password_reset_completed", {
     userId: resetToken.userId,
     email: resetToken.email,
+    wsApiSyncStatus,
   });
 
   return NextResponse.json(
