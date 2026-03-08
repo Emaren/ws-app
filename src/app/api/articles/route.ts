@@ -5,6 +5,7 @@ import {
   canSetCreateStatus,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { normalizeArticleCommerceModulesInput } from "@/lib/articleCommerce";
 import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { prisma } from "@/lib/prisma";
@@ -130,6 +131,7 @@ export async function POST(req: NextRequest) {
         coverUrl?: string;
         status?: string;
         reviewProfile?: unknown;
+        commerceModules?: unknown;
       }
     | null;
 
@@ -166,6 +168,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: normalizedReviewProfile.error }, { status: 400 });
   }
 
+  const normalizedCommerceModules = normalizeArticleCommerceModulesInput(body.commerceModules);
+  if (normalizedCommerceModules.error) {
+    return NextResponse.json({ message: normalizedCommerceModules.error }, { status: 400 });
+  }
+
   const article = await prisma.article.create({
     data: {
       title: body.title.trim(),
@@ -179,6 +186,11 @@ export async function POST(req: NextRequest) {
       reviewProfile: normalizedReviewProfile.data
         ? {
             create: normalizedReviewProfile.data,
+          }
+        : undefined,
+      commerceModules: normalizedCommerceModules.data.length
+        ? {
+            create: normalizedCommerceModules.data,
           }
         : undefined,
     },

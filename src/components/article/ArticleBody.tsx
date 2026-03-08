@@ -1,7 +1,9 @@
 // src/components/article/ArticleBody.tsx
-import type { Article } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
-import FloatAd from "./FloatAd";
+import ArticleCommerceModuleView, {
+  type ArticleCommerceRenderableModule,
+} from "./ArticleCommerceModuleView";
 import WysiwygStyle from "./WysiwygStyle";
 import BigThumbs from "./BigThumbs";
 
@@ -34,16 +36,12 @@ function ensureUlHasClass(ulHtml: string, cls: string): string {
   return replaced + ulHtml.slice(open.length);
 }
 
-function extractChecksEveryBox(html: string): null | {
+function extractFirstUnorderedList(html: string): null | {
   before: string;
-  leadPara: string;
   ulHtml: string;
   after: string;
 } {
-  const lead =
-    "<p\\b[^>]*>\\s*Avalon(?:’|&rsquo;|&#8217;|')s\\s+chocolate\\s+milk\\s+checks\\s+every\\s+box:\\s*<\\/p>";
-  const re = new RegExp(`(${lead})\\s*(<ul\\b[\\s\\S]*?<\\/ul>)`, "i");
-  const m = re.exec(html);
+  const m = /<ul\b[\s\S]*?<\/ul>/i.exec(html);
   if (!m) return null;
 
   const start = m.index ?? 0;
@@ -51,8 +49,7 @@ function extractChecksEveryBox(html: string): null | {
 
   return {
     before: html.slice(0, start),
-    leadPara: m[1],
-    ulHtml: m[2],
+    ulHtml: m[0],
     after: html.slice(end),
   };
 }
@@ -70,7 +67,69 @@ function HtmlBlock({ html }: { html?: string }) {
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-export default function ArticleBody({ article }: { article: Article }) {
+type ArticleBodyArticle = Prisma.ArticleGetPayload<{
+  include: {
+    commerceModules: {
+      include: {
+        business: {
+          include: {
+            storeProfile: true,
+          },
+        },
+        offer: true,
+        inventoryItem: true,
+      },
+    },
+  },
+}>;
+
+function legacyCommerceModules(article: {
+  slug: string;
+  title: string;
+}): ArticleCommerceRenderableModule[] {
+  const fingerprint = `${article.slug} ${article.title}`.toLowerCase();
+  if (
+    !fingerprint.includes("avalon") ||
+    !fingerprint.includes("chocolate") ||
+    !fingerprint.includes("milk")
+  ) {
+    return [];
+  }
+
+  return [
+    {
+      id: "legacy-top-spotlight",
+      placement: "AFTER_FIRST_HEADING",
+      side: "RIGHT",
+      sizePreset: "FEATURE",
+      businessSlug: "homesteader-health",
+      businessName: "Homesteader Health",
+      inventoryItemName: "Homesteader Health Delivery",
+      title: "Homesteader Health Delivery",
+      badgeText: "Local spotlight",
+      body: "Bring the organic alternative straight to the door instead of sending the reader to a generic product page.",
+      imageSrc: "/hh.tight.h156.v3.png",
+      caption: "Click for delivery",
+    },
+    {
+      id: "legacy-checklist-spotlight",
+      placement: "CHECKLIST_SPLIT",
+      side: "LEFT",
+      sizePreset: "COMPACT",
+      businessSlug: "beaverlodge-butcher-shop",
+      businessName: "Beaverlodge Butcher Shop",
+      inventoryItemName: "Beaverlodge Butcher Shop Delivery",
+      title: "Beaverlodge Butcher Shop Delivery",
+      badgeText: "Butcher pickup and delivery",
+      body: "Pair clean dairy choices with local butcher delivery so the article can convert into a real household order.",
+      imageSrc: "/bbs.adcard.center.v4.png",
+      imageAlt: "Beaverlodge Butcher Shop delivery",
+      caption: "Click for delivery",
+    },
+  ];
+}
+
+export default function ArticleBody({ article }: { article: ArticleBodyArticle }) {
   const raw = article.content ?? "";
   const clean = sanitizeArticleHtml(raw);
   const unwrapped = stripSingleOuterDiv(clean);
@@ -80,7 +139,13 @@ export default function ArticleBody({ article }: { article: Article }) {
   const hasExcerpt = excerpt.length > 0;
 
   const { before: topBefore, heading: topHeading, after: topAfter } = splitAtFirstHeading(unwrapped);
-  const box = extractChecksEveryBox(topAfter);
+  const checklistSplit = extractFirstUnorderedList(topAfter);
+  const commerceModules =
+    article.commerceModules.length > 0 ? article.commerceModules : legacyCommerceModules(article);
+  const topModules = commerceModules.filter((module) => module.placement === "AFTER_FIRST_HEADING");
+  const checklistModules = commerceModules.filter((module) => module.placement === "CHECKLIST_SPLIT");
+  const primaryChecklistModule = checklistModules[0] ?? null;
+  const secondaryChecklistModules = checklistModules.slice(1);
 
   return (
     <>
@@ -110,92 +175,48 @@ export default function ArticleBody({ article }: { article: Article }) {
           <HtmlBlock html={topBefore} />
           <HtmlBlock html={topHeading} />
 
-          {/* Homesteader: slightly bigger */}
-          {hasAnyBody && (
-            <div style={{ clear: "right" }}>
-              <FloatAd
-                frameless
-                label="Homesteader Health Delivery"
-                side="right"
-                imageSrc="/hh.tight.h156.v3.png"
-                w={390}
-                mdW={410}
-                lgW={440}
-                h={228}
-                mdH={242}
-                lgH={260}
-                pad={0}
-                imgFit="contain"
-                shape="rounded"
-                shapeMargin={14}
-                nudgeY={-4}
-                lgNudgeY={-8}
-                scale={1.05}
-                mdScale={1.05}
-                lgScale={1.05}
-                hoverTint={true}
-                caption="Click for Delivery"
-                deliveryLeadContext={{
-                  source: "LOCAL_AD",
-                  articleSlug: article.slug,
-                  businessSlug: "homesteader-health",
-                  businessName: "Homesteader Health",
-                  inventoryItemName: "Homesteader Health Delivery",
-                }}
-              />
+          {topModules.map((module, index) => (
+            <div
+              key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
+              style={{ clear: module.side === "LEFT" ? "left" : "right" }}
+              className="mb-5"
+            >
+              <ArticleCommerceModuleView articleSlug={article.slug} module={module} />
             </div>
-          )}
+          ))}
 
-          {box ? (
+          {checklistSplit ? (
             <>
-              <HtmlBlock html={box.before} />
-              <HtmlBlock html={box.leadPara} />
-
-              {/* Beaverlodge: slightly smaller */}
+              <HtmlBlock html={checklistSplit.before} />
               <div className="ws-checkgrid">
-                <div className="ws-check-ad">
-                  <FloatAd
-                    frameless
-                    side="left"
-                    label="Beaverlodge Butcher Shop Delivery"
-                    imageSrc="/bbs.adcard.center.v4.png"
-                    imageAlt="Beaverlodge Butcher Shop delivery"
-                    w={290}
-                    mdW={300}
-                    lgW={315}
-                    h={128}
-                    mdH={136}
-                    lgH={145}
-                    pad={0}
-                    imgFit="contain"
-                    shape="image"
-                    shapeMargin={12}
-                    shapeThreshold={0.45}
-                    mt={0}
-                    nudgeY={-6}
-                    lgNudgeY={-8}
-                    scale={0.95}
-                    mdScale={0.95}
-                    lgScale={0.95}
-                    hoverTint={true}
-                    caption="Click for Delivery"
-                    deliveryLeadContext={{
-                      source: "LOCAL_AD",
-                      articleSlug: article.slug,
-                      businessSlug: "beaverlodge-butcher-shop",
-                      businessName: "Beaverlodge Butcher Shop",
-                      inventoryItemName: "Beaverlodge Butcher Shop Delivery",
-                    }}
-                  />
-                </div>
+                {primaryChecklistModule && (
+                  <div className="ws-check-ad">
+                    <ArticleCommerceModuleView
+                      articleSlug={article.slug}
+                      module={primaryChecklistModule}
+                      compact
+                    />
+                  </div>
+                )}
 
                 <div
                   className="ws-checklist-wrap"
-                  dangerouslySetInnerHTML={{ __html: ensureUlHasClass(box.ulHtml, "ws-checklist") }}
+                  dangerouslySetInnerHTML={{
+                    __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                  }}
                 />
               </div>
 
-              <HtmlBlock html={box.after} />
+              {secondaryChecklistModules.map((module, index) => (
+                <div
+                  key={module.id ?? `${module.placement}-extra-${index}-${module.title ?? "module"}`}
+                  className="my-5"
+                >
+                  <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
+                </div>
+              ))}
+
+              <HtmlBlock html={checklistSplit.after} />
             </>
           ) : (
             <HtmlBlock html={topAfter} />

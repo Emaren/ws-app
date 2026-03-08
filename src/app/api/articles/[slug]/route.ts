@@ -10,6 +10,7 @@ import {
   isPubliclyVisibleArticle,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { normalizeArticleCommerceModulesInput } from "@/lib/articleCommerce";
 import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 
@@ -45,7 +46,7 @@ export async function GET(
 
   const article = await prisma.article.findUnique({
     where: { slug },
-    include: { reviewProfile: true },
+    include: { reviewProfile: true, commerceModules: true },
   });
   if (!article) return notFound();
 
@@ -103,6 +104,11 @@ export async function PATCH(
           id: true,
         },
       },
+      commerceModules: {
+        select: {
+          id: true,
+        },
+      },
     },
   });
   if (!existing) {
@@ -125,6 +131,7 @@ export async function PATCH(
     content,
     status,
     reviewProfile,
+    commerceModules,
   }: {
     title?: string;
     slug?: string;
@@ -133,12 +140,18 @@ export async function PATCH(
     content?: string;
     status?: string;
     reviewProfile?: unknown;
+    commerceModules?: unknown;
   } = body || {};
 
   const hasReviewProfilePatch = Object.prototype.hasOwnProperty.call(body ?? {}, "reviewProfile");
+  const hasCommerceModulesPatch = Object.prototype.hasOwnProperty.call(body ?? {}, "commerceModules");
   const normalizedReviewProfile = normalizeReviewProfileInput(reviewProfile);
   if (hasReviewProfilePatch && normalizedReviewProfile.error) {
     return badRequest(normalizedReviewProfile.error);
+  }
+  const normalizedCommerceModules = normalizeArticleCommerceModulesInput(commerceModules);
+  if (hasCommerceModulesPatch && normalizedCommerceModules.error) {
+    return badRequest(normalizedCommerceModules.error);
   }
 
   const nextStatus = status === undefined ? undefined : normalizeArticleStatus(status);
@@ -218,6 +231,17 @@ export async function PATCH(
     } else if (existing.reviewProfile) {
       patch.reviewProfile = { delete: true };
     }
+  }
+
+  if (hasCommerceModulesPatch) {
+    patch.commerceModules = {
+      deleteMany: {},
+      ...(normalizedCommerceModules.data.length
+        ? {
+            create: normalizedCommerceModules.data,
+          }
+        : {}),
+    };
   }
 
   if (Object.keys(patch).length === 0) {

@@ -55,6 +55,7 @@ model Article {
   affiliateClicks AffiliateClick[]
   analyticsEvents AnalyticsEvent[]
   reviewProfile   ReviewProfile?
+  commerceModules ArticleCommerceModule[]
 }
 
 model ReviewProfile {
@@ -85,6 +86,40 @@ model ReviewProfile {
 
   @@index([productName])
   @@index([category])
+}
+
+model ArticleCommerceModule {
+  id                String                     @id @default(cuid())
+  articleId         String
+  placement         ArticleCommercePlacement
+  sortOrder         Int                        @default(0)
+  businessId        String?
+  businessSlug      String?
+  businessName      String?
+  offerId           String?
+  offerTitle        String?
+  inventoryItemId   String?
+  inventoryItemName String?
+  title             String?
+  badgeText         String?
+  body              String?
+  imageSrc          String?
+  imageAlt          String?
+  caption           String?
+  side              ArticleCommerceSide       @default(RIGHT)
+  sizePreset        ArticleCommerceSizePreset @default(FEATURE)
+  isEnabled         Boolean                    @default(true)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  article           Article                    @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  business          Business?                  @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  offer             Offer?                     @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  inventoryItem     InventoryItem?             @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([articleId, placement, sortOrder])
+  @@index([businessId])
+  @@index([offerId])
+  @@index([inventoryItemId])
 }
 
 model Comment {
@@ -141,6 +176,7 @@ model Business {
   affiliateClicks        AffiliateClick[]
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
+  commerceModules        ArticleCommerceModule[]
 
   @@index([ownerUserId])
   @@index([status])
@@ -195,6 +231,7 @@ model InventoryItem {
   offers            Offer[]
   deliveryLeads     DeliveryLead[]
   analyticsEvents   AnalyticsEvent[]
+  commerceModules   ArticleCommerceModule[]
 
   @@unique([businessId, sku])
   @@index([businessId, isActive])
@@ -256,6 +293,7 @@ model Offer {
   inboxItems         UserOfferInbox[]
   deliveryLeads      DeliveryLead[]
   analyticsEvents    AnalyticsEvent[]
+  commerceModules    ArticleCommerceModule[]
 
   @@unique([businessId, couponCode])
   @@index([businessId, status])
@@ -667,6 +705,21 @@ enum ArticleStatus {
   REVIEW
   PUBLISHED
   ARCHIVED
+}
+
+enum ArticleCommercePlacement {
+  AFTER_FIRST_HEADING
+  CHECKLIST_SPLIT
+}
+
+enum ArticleCommerceSide {
+  LEFT
+  RIGHT
+}
+
+enum ArticleCommerceSizePreset {
+  FEATURE
+  COMPACT
 }
 
 enum ReactionType {

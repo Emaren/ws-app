@@ -114,7 +114,22 @@ export default async function ArticlePage({
   const { slug } = await params;
   const article = await prisma.article.findUnique({
     where: { slug },
-    include: { reviewProfile: true },
+    include: {
+      reviewProfile: true,
+      commerceModules: {
+        where: { isEnabled: true },
+        orderBy: [{ placement: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          business: {
+            include: {
+              storeProfile: true,
+            },
+          },
+          offer: true,
+          inventoryItem: true,
+        },
+      },
+    },
   });
   const status = normalizeArticleStatus(article?.status);
 

@@ -21,6 +21,7 @@ git checkout main
 git pull --ff-only origin main
 pnpm install --frozen-lockfile
 pnpm prisma:migrate:deploy
+pnpm prisma:generate
 pnpm build
 sudo systemctl restart wheatandstone-app
 sudo systemctl --no-pager --full status wheatandstone-app

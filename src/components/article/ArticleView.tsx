@@ -12,7 +12,20 @@ import ArticleHeaderArt from "./ArticleHeaderArt";
 import ReviewScorecard from "./ReviewScorecard";
 
 type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
-  include: { reviewProfile: true };
+  include: {
+    reviewProfile: true;
+    commerceModules: {
+      include: {
+        business: {
+          include: {
+            storeProfile: true;
+          };
+        };
+        offer: true;
+        inventoryItem: true;
+      };
+    };
+  };
 }>;
 
 type Props = {

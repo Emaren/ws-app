@@ -20,6 +20,19 @@ export async function getLatestArticle() {
     ],
     include: {
       reviewProfile: true,
+      commerceModules: {
+        where: { isEnabled: true },
+        orderBy: [{ placement: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          business: {
+            include: {
+              storeProfile: true,
+            },
+          },
+          offer: true,
+          inventoryItem: true,
+        },
+      },
     },
   });
 }

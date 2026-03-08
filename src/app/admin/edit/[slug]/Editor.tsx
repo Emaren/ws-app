@@ -4,8 +4,15 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleStatus } from "@prisma/client";
+import CommerceModulesFields from "@/components/admin/CommerceModulesFields";
 import ReviewProfileFields from "@/components/admin/ReviewProfileFields";
 import RichEditor from "@/components/editor/RichEditor";
+import {
+  articleCommerceDraftFromRecord,
+  articleCommercePayloadFromDrafts,
+  type ArticleCommerceModuleDraft,
+  type ArticleCommerceModuleInput,
+} from "@/lib/articleCommerce";
 import {
   reviewProfileDraftFromRecord,
   reviewProfilePayloadFromDraft,
@@ -23,6 +30,7 @@ type EditableArticle = {
   status: ArticleStatus;
   publishedAt: string | null; // ISO string
   reviewProfile: ReviewProfileInput | null;
+  commerceModules: ArticleCommerceModuleInput[];
 };
 
 // ----- utils
@@ -79,6 +87,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
   const [reviewProfile, setReviewProfile] = useState<ReviewProfileDraft>(
     reviewProfileDraftFromRecord(initialArticle.reviewProfile),
   );
+  const [commerceModules, setCommerceModules] = useState<ArticleCommerceModuleDraft[]>(
+    initialArticle.commerceModules.map((module) => articleCommerceDraftFromRecord(module)),
+  );
 
   // Prevent rapid double-submits
   const submittingRef = useRef(false);
@@ -94,6 +105,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
     setContent(initialArticle.content ?? "");
     setStatus(initialArticle.status);
     setReviewProfile(reviewProfileDraftFromRecord(initialArticle.reviewProfile));
+    setCommerceModules(
+      initialArticle.commerceModules.map((module) => articleCommerceDraftFromRecord(module)),
+    );
   }, [
     initialArticle,
   ]);
@@ -109,7 +123,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [title, slug, excerpt, coverUrl, content, status, reviewProfile]);
+  }, [title, slug, excerpt, coverUrl, content, status, reviewProfile, commerceModules]);
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
@@ -134,6 +148,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           content, // full HTML from RichField (TinyMCE)
           status,
           reviewProfile: reviewProfilePayloadFromDraft(reviewProfile),
+          commerceModules: articleCommercePayloadFromDrafts(commerceModules),
         }),
       });
 
@@ -247,6 +262,8 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           setReviewProfile((current) => ({ ...current, [field]: nextValue }))
         }
       />
+
+      <CommerceModulesFields value={commerceModules} onChange={setCommerceModules} />
 
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Status:</span>

@@ -3,8 +3,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import CommerceModulesFields from "@/components/admin/CommerceModulesFields";
 import ReviewProfileFields from "@/components/admin/ReviewProfileFields";
 import RichEditor from "@/components/editor/RichEditor";
+import {
+  articleCommercePayloadFromDrafts,
+  type ArticleCommerceModuleDraft,
+} from "@/lib/articleCommerce";
 import {
   emptyReviewProfileDraft,
   reviewProfilePayloadFromDraft,
@@ -16,6 +21,7 @@ export default function NewArticle() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState(""); // HTML from the rich editor
   const [reviewProfile, setReviewProfile] = useState(emptyReviewProfileDraft);
+  const [commerceModules, setCommerceModules] = useState<ArticleCommerceModuleDraft[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,6 +35,7 @@ export default function NewArticle() {
         title,
         content,
         reviewProfile: reviewProfilePayloadFromDraft(reviewProfile),
+        commerceModules: articleCommercePayloadFromDrafts(commerceModules),
       }),
     });
 
@@ -84,6 +91,8 @@ export default function NewArticle() {
             setReviewProfile((current) => ({ ...current, [field]: nextValue }))
           }
         />
+
+        <CommerceModulesFields value={commerceModules} onChange={setCommerceModules} />
 
         <button
           type="submit"
