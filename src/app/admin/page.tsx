@@ -637,6 +637,12 @@ export default function AdminDashboard() {
             {canDeleteAsStaff ? (
               <>
                 <button
+                  onClick={() => router.push("/admin/commerce")}
+                  className="rounded-xl border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-medium transition hover:bg-amber-500/25"
+                >
+                  Commerce Console
+                </button>
+                <button
                   onClick={() => router.push("/admin/offers")}
                   className="rounded-xl border border-red-500/45 bg-red-500/15 px-3 py-2 text-sm font-medium transition hover:bg-red-500/25"
                 >

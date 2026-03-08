@@ -37,6 +37,12 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     roles: RBAC_ROLE_GROUPS.staff,
   },
   {
+    href: "/admin/commerce",
+    label: "Commerce Console",
+    summary: "Local store profiles, inventory, offers",
+    roles: RBAC_ROLE_GROUPS.staff,
+  },
+  {
     href: "/admin/offers",
     label: "Offers Command",
     summary: "Assign offer badges per user",
