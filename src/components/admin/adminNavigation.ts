@@ -67,6 +67,12 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     roles: RBAC_ROLE_GROUPS.ownerAdmin,
   },
   {
+    href: "/admin/users",
+    label: "Users Atlas",
+    summary: "Deep user insight and behavior intelligence",
+    roles: RBAC_ROLE_GROUPS.ownerAdmin,
+  },
+  {
     href: "/admin/billing",
     label: "Billing Integrity",
     summary: "Stripe reconciliation + mismatch repair",

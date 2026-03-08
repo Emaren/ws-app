@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getApiAuthContext } from "@/lib/apiAuth";
 import { recordAnalyticsEvent } from "@/lib/analytics/server";
 import {
   ANALYTICS_CHANNELS,
@@ -75,7 +77,27 @@ function parsePayload(body: unknown): AnalyticsEventPayload | null {
   };
 }
 
-export async function POST(req: Request) {
+async function touchUserLastSeen(input: {
+  userId: string;
+  pagePath: string | null;
+}): Promise<void> {
+  await prisma.userExperienceProfile.upsert({
+    where: {
+      userId: input.userId,
+    },
+    update: {
+      lastSeenAt: new Date(),
+      lastSeenPath: input.pagePath ?? undefined,
+    },
+    create: {
+      userId: input.userId,
+      lastSeenAt: new Date(),
+      lastSeenPath: input.pagePath ?? undefined,
+    },
+  });
+}
+
+export async function POST(req: NextRequest) {
   const payload = parsePayload(await req.json().catch(() => null));
 
   if (!payload) {
@@ -83,13 +105,23 @@ export async function POST(req: Request) {
   }
 
   try {
+    const auth = await getApiAuthContext(req);
+    const userId = auth.userId ?? null;
+
     await recordAnalyticsEvent({
       ...payload,
-      userId: null,
-      request: null,
+      userId,
+      request: req,
       userAgent: trimTo(req.headers.get("user-agent"), 600),
       sourceContext: payload.sourceContext ?? payload.pagePath ?? null,
     });
+
+    if (userId && payload.eventType === "PAGE_VIEW") {
+      await touchUserLastSeen({
+        userId,
+        pagePath: payload.pagePath ?? payload.sourceContext ?? null,
+      });
+    }
   } catch {
     // Analytics is non-blocking for user flows.
   }

@@ -39,9 +39,23 @@ import MobileMenu from "./header/MobileMenu";
 import ThemeCircles from "./header/ThemeCircles";
 import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
 import {
+  applyExperienceToDocument,
+  defaultSiteVersion,
+  defaultSkin,
+  normalizeSiteVersion,
+  normalizeSkin,
+  persistSiteVersion,
+  persistSkin,
+  readSiteVersionFromStorage,
+  readSkinFromStorage,
+  type SiteSkin,
+  type SiteVersion,
+} from "@/lib/experiencePreferences";
+import {
   applyThemeToDocument,
   cycleTheme,
   getSystemDefaultTheme,
+  normalizeTheme,
   persistTheme,
   readThemeFromDocument,
   readThemeFromStorage,
@@ -252,9 +266,75 @@ export default function Header() {
   useEffect(() => {
     const stored = readThemeFromStorage();
     const nextTheme = stored ?? readThemeFromDocument() ?? getSystemDefaultTheme();
-    applyThemeToDocument(nextTheme);
+    applyExperienceToDocument({
+      theme: nextTheme,
+      skin: readSkinFromStorage() ?? defaultSkin(),
+      siteVersion: readSiteVersionFromStorage() ?? defaultSiteVersion(),
+    });
     setTheme(nextTheme);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!session?.user) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const syncExperience = async () => {
+      try {
+        const response = await fetch("/api/account/preferences", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              profile?: {
+                theme?: string | null;
+                skin?: string | null;
+                siteVersion?: string | null;
+              };
+            }
+          | null;
+
+        if (cancelled || !response.ok || !payload?.profile) {
+          return;
+        }
+
+        const serverTheme =
+          normalizeTheme(payload.profile.theme) ??
+          readThemeFromStorage() ??
+          readThemeFromDocument() ??
+          getSystemDefaultTheme();
+        const serverSkin =
+          normalizeSkin(payload.profile.skin) ?? readSkinFromStorage() ?? defaultSkin();
+        const serverSiteVersion =
+          normalizeSiteVersion(payload.profile.siteVersion) ??
+          readSiteVersionFromStorage() ??
+          defaultSiteVersion();
+
+        applyExperienceToDocument({
+          theme: serverTheme,
+          skin: serverSkin,
+          siteVersion: serverSiteVersion,
+        });
+        persistTheme(serverTheme);
+        persistSkin(serverSkin);
+        persistSiteVersion(serverSiteVersion);
+        setTheme(serverTheme);
+      } catch {
+        // Preference sync is non-blocking.
+      }
+    };
+
+    void syncExperience();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     let active = true;
@@ -435,10 +515,40 @@ export default function Header() {
     }
   };
 
+  const persistExperienceSelection = async (
+    input: Partial<{
+      theme: ThemeMode;
+      skin: SiteSkin;
+      siteVersion: SiteVersion;
+      sourceContext: string;
+    }>,
+  ) => {
+    if (!session?.user) {
+      return;
+    }
+
+    try {
+      await fetch("/api/account/preferences", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(input),
+      });
+    } catch {
+      // Preference persistence is non-blocking.
+    }
+  };
+
   const updateTheme = (nextTheme: ThemeMode) => {
-    applyThemeToDocument(nextTheme);
+    applyExperienceToDocument({ theme: nextTheme });
     persistTheme(nextTheme);
     setTheme(nextTheme);
+    void persistExperienceSelection({
+      theme: nextTheme,
+      sourceContext: "header_theme_selector",
+    });
   };
 
   const toggleTheme = () => {

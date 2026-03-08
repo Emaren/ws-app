@@ -3,13 +3,20 @@
 
 import { useEffect, type ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
+import PageViewTracker from "@/components/analytics/PageViewTracker";
 import Header from "../components/Header";
 import PwaClient from "../components/pwa/PwaClient";
 import {
-  applyThemeToDocument,
   getSystemDefaultTheme,
   readThemeFromStorage,
 } from "@/lib/theme";
+import {
+  applyExperienceToDocument,
+  defaultSiteVersion,
+  defaultSkin,
+  readSiteVersionFromStorage,
+  readSkinFromStorage,
+} from "@/lib/experiencePreferences";
 
 const container = "ws-container";
 
@@ -17,7 +24,11 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   // theme
   useEffect(() => {
     const saved = readThemeFromStorage();
-    applyThemeToDocument(saved ?? getSystemDefaultTheme());
+    applyExperienceToDocument({
+      theme: saved ?? getSystemDefaultTheme(),
+      skin: readSkinFromStorage() ?? defaultSkin(),
+      siteVersion: readSiteVersionFromStorage() ?? defaultSiteVersion(),
+    });
   }, []);
 
   // overflow debugger (visit with ?debug=overflow)
@@ -55,6 +66,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         </div>
 
         <main className="w-full overflow-x-clip min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/7)] mb-[var(--section-gap-lg)]">
+          <PageViewTracker />
           {children}
         </main>
 

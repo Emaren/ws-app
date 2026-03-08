@@ -1,4 +1,5 @@
 export const ANALYTICS_EVENT_TYPES = [
+  "PAGE_VIEW",
   "ARTICLE_VIEW",
   "AD_CLICK",
   "AFFILIATE_CLICK",

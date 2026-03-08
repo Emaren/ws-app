@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
 import AccountActivityCard from "./AccountActivityCard";
+import ExperiencePreferencesCard from "./ExperiencePreferencesCard";
 import OfferAlertSignalsCard from "./OfferAlertSignalsCard";
 import SavedCollectionsCard from "./SavedCollectionsCard";
 import SignOutButton from "./SignOutButton";
 import TokenBalancesCard from "./TokenBalancesCard";
+import WhatsNewSinceLastVisitCard from "./WhatsNewSinceLastVisitCard";
 
 function roleLandingPath(roleInput: string | null | undefined): string {
   const role = normalizeAppRole(roleInput);
@@ -69,6 +71,10 @@ export default async function AccountPage() {
           userId={session.user.id}
           trackedTokens={trackedTokens}
         />
+
+        <ExperiencePreferencesCard />
+
+        <WhatsNewSinceLastVisitCard userId={session.user.id} />
 
         <SavedCollectionsCard userId={session.user.id} />
 

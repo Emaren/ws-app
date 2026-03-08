@@ -32,12 +32,51 @@ model User {
   rewardLedgerEntries    RewardLedger[]
   savedProducts          SavedProduct[]
   savedOffers            SavedOffer[]
+  experienceProfile      UserExperienceProfile?
+  experienceHistory      UserExperienceHistory[]
   savedOfferAlertsEnabled Boolean                 @default(true)
   savedOfferEmailAlertsEnabled Boolean            @default(false)
   authRegistrationEvents AuthRegistrationEvent[]
   authFunnelEvents       AuthFunnelEvent[]
   passwordResetTokens    PasswordResetToken[]
   passwordResetDispatches PasswordResetDispatch[]
+}
+
+model UserExperienceProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  profileImageUrl       String?
+  activeTheme           String   @default("gray")
+  activeSkin            String   @default("editorial")
+  activeSiteVersion     String   @default("v1")
+  personalDigestEnabled Boolean  @default(true)
+  digestCadenceHours    Int      @default(168)
+  lastDigestAt          DateTime?
+  lastSeenAt            DateTime?
+  lastSeenPath          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([activeTheme])
+  @@index([activeSkin])
+  @@index([activeSiteVersion])
+  @@index([lastSeenAt])
+}
+
+model UserExperienceHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  preferenceKey String
+  previousValue String?
+  nextValue     String
+  sourceContext String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, preferenceKey, createdAt])
+  @@index([preferenceKey, createdAt])
 }
 
 model Article {
@@ -1014,6 +1053,7 @@ enum SubscriptionStatus {
 }
 
 enum AnalyticsEventType {
+  PAGE_VIEW
   ARTICLE_VIEW
   AD_CLICK
   AFFILIATE_CLICK
