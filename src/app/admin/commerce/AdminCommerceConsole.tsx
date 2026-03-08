@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { describeDeliveryLeadSource, describeRewardReason } from "@/lib/rewardPresentation";
 
 type StoreProfileRecord = {
   id: string;
@@ -95,6 +96,10 @@ type OverviewResponse = {
     managedBusinessIds: string[];
   };
   selectedBusinessId: string | null;
+  activityWindow: {
+    days: number;
+    startsAt: string;
+  };
   businesses: BusinessRecord[];
   products: ProductRecord[];
   inventoryItems: InventoryRecord[];
@@ -107,6 +112,67 @@ type OverviewResponse = {
     liveOfferCount: number;
     productLinkedOfferCount: number;
   };
+  selectedActivitySummary: {
+    leadCount: number;
+    openLeadCount: number;
+    reservedLeadCount: number;
+    fulfilledLeadCount: number;
+    cancelledLeadCount: number;
+    trackedDemandCents: number;
+    avgLeadValueCents: number;
+    leadToReserveRate: number;
+    leadToFulfillmentRate: number;
+    notificationOptInCount: number;
+    rewardCount: number;
+    rewardTotals: {
+      WHEAT: number;
+      STONE: number;
+    };
+  };
+  recentLeads: Array<{
+    id: string;
+    status: string;
+    source: string;
+    requestedQty: number;
+    totalCents: number | null;
+    requestedAt: string;
+    updatedAt: string;
+    deliveryAddress: string | null;
+    recipientName: string | null;
+    recipientEmail: string | null;
+    recipientPhone: string | null;
+    inventoryItemName: string | null;
+    offerTitle: string | null;
+  }>;
+  recentRewards: Array<{
+    id: string;
+    token: "WHEAT" | "STONE";
+    direction: "CREDIT" | "DEBIT";
+    amount: number;
+    reason: string;
+    createdAt: string;
+    userName: string | null;
+    userEmail: string | null;
+  }>;
+  businessPerformance: Array<{
+    businessId: string;
+    businessSlug: string;
+    businessName: string;
+    deliveryEnabled: boolean;
+    activeInventoryCount: number;
+    liveOfferCount: number;
+    leadCount: number;
+    openLeadCount: number;
+    reservedLeadCount: number;
+    fulfilledLeadCount: number;
+    cancelledLeadCount: number;
+    rewardTotals: {
+      WHEAT: number;
+      STONE: number;
+    };
+    leadToReserveRate: number;
+    leadToFulfillmentRate: number;
+  }>;
   selectionSummary: {
     inventoryCount: number;
     activeInventoryCount: number;
@@ -210,6 +276,29 @@ function localDate(iso: string | null): string {
   const parsed = new Date(iso);
   if (!Number.isFinite(parsed.getTime())) return "-";
   return parsed.toLocaleString();
+}
+
+function formatTokenAmount(value: number): string {
+  return Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+  });
+}
+
+function leadStatusClassName(status: string): string {
+  switch (status) {
+    case "FULFILLED":
+      return "border-emerald-500/35 bg-emerald-500/10 text-emerald-100";
+    case "RESERVED":
+      return "border-sky-500/35 bg-sky-500/10 text-sky-100";
+    case "CONTACTED":
+      return "border-amber-500/35 bg-amber-500/10 text-amber-100";
+    case "CANCELLED":
+    case "EXPIRED":
+      return "border-rose-500/35 bg-rose-500/10 text-rose-100";
+    default:
+      return "border-white/10 bg-white/5 text-white/80";
+  }
 }
 
 function toDateTimeLocalValue(iso: string | null): string {
@@ -657,6 +746,11 @@ export default function AdminCommerceConsole() {
   }
 
   const networkSummary = overview?.networkSummary;
+  const activityWindow = overview?.activityWindow;
+  const selectedActivitySummary = overview?.selectedActivitySummary;
+  const recentLeads = overview?.recentLeads ?? [];
+  const recentRewards = overview?.recentRewards ?? [];
+  const businessPerformance = overview?.businessPerformance ?? [];
   const selectionSummary = overview?.selectionSummary;
 
   return (
@@ -768,6 +862,257 @@ export default function AdminCommerceConsole() {
             {networkSummary?.productLinkedOfferCount ?? 0}
           </p>
         </article>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="admin-card space-y-4 p-4 md:p-5">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70">
+                Selected Store Activity
+              </p>
+              <h3 className="mt-1 text-xl font-semibold">
+                {selectedBusiness?.name || "No business selected"}
+              </h3>
+              <p className="mt-1 text-sm opacity-75">
+                Last {activityWindow?.days ?? 30} days of delivery conversion and reward movement.
+              </p>
+            </div>
+            <div className="text-sm opacity-70">
+              Tracked demand{" "}
+              <span className="font-medium text-white">
+                {money(selectedActivitySummary?.trackedDemandCents ?? null)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Delivery leads</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.leadCount ?? 0}
+              </p>
+            </div>
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Open pipeline</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.openLeadCount ?? 0}
+              </p>
+            </div>
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Reserved</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.reservedLeadCount ?? 0}
+              </p>
+            </div>
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Fulfilled</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.fulfilledLeadCount ?? 0}
+              </p>
+            </div>
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Opt-ins</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.notificationOptInCount ?? 0}
+              </p>
+            </div>
+            <div className="admin-surface rounded-xl p-3">
+              <p className="text-xs uppercase tracking-wide opacity-70">Reward entries</p>
+              <p className="mt-1 text-xl font-semibold">
+                {selectedActivitySummary?.rewardCount ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/80">
+                Buyer rewards
+              </p>
+              <p className="mt-1 text-lg font-semibold text-emerald-50">
+                $STONE {formatTokenAmount(selectedActivitySummary?.rewardTotals.STONE ?? 0)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-300/20 bg-amber-400/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-100/80">
+                Contributor rewards
+              </p>
+              <p className="mt-1 text-lg font-semibold text-amber-50">
+                $WHEAT {formatTokenAmount(selectedActivitySummary?.rewardTotals.WHEAT ?? 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-2 text-sm opacity-80 md:grid-cols-3">
+            <p>
+              Reserve conversion{" "}
+              <span className="font-medium">
+                {selectedActivitySummary?.leadToReserveRate ?? 0}%
+              </span>
+            </p>
+            <p>
+              Fulfillment conversion{" "}
+              <span className="font-medium">
+                {selectedActivitySummary?.leadToFulfillmentRate ?? 0}%
+              </span>
+            </p>
+            <p>
+              Average request value{" "}
+              <span className="font-medium">
+                {money(selectedActivitySummary?.avgLeadValueCents ?? null)}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-card space-y-3 p-4 md:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70">Store Performance</p>
+              <h3 className="mt-1 text-lg font-semibold">Network leaderboard</h3>
+            </div>
+            <span className="text-xs opacity-65">
+              {activityWindow?.days ?? 30}-day activity
+            </span>
+          </div>
+
+          {businessPerformance.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-70">
+              No managed businesses in scope yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {businessPerformance.slice(0, 6).map((row) => (
+                <article key={row.businessId} className="admin-surface rounded-xl px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{row.businessName}</p>
+                      <p className="mt-1 text-xs opacity-70">
+                        {row.deliveryEnabled ? "Delivery enabled" : "Delivery off"} ·{" "}
+                        {row.activeInventoryCount} active items · {row.liveOfferCount} live offers
+                      </p>
+                    </div>
+                    <div className="text-right text-xs opacity-75">
+                      <p>{row.leadCount} leads</p>
+                      <p>{row.fulfilledLeadCount} fulfilled</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs opacity-80 md:grid-cols-2">
+                    <p>
+                      Reserve {row.leadToReserveRate}% · Fulfillment {row.leadToFulfillmentRate}%
+                    </p>
+                    <p>
+                      $STONE {formatTokenAmount(row.rewardTotals.STONE)} · $WHEAT{" "}
+                      {formatTokenAmount(row.rewardTotals.WHEAT)}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="admin-card space-y-3 p-4 md:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70">Recent Leads</p>
+              <h3 className="mt-1 text-lg font-semibold">Delivery pipeline</h3>
+            </div>
+            <span className="text-xs opacity-65">
+              {selectedBusiness?.name || "Selected business"}
+            </span>
+          </div>
+
+          {recentLeads.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-70">
+              No delivery lead activity yet for this store.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recentLeads.map((lead) => (
+                <article key={lead.id} className="admin-surface rounded-xl px-3 py-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="font-medium">
+                        {lead.inventoryItemName || lead.offerTitle || "Delivery request"}
+                      </p>
+                      <p className="mt-1 text-sm opacity-75">
+                        {lead.recipientName || lead.recipientEmail || lead.recipientPhone || "Unknown contact"}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[11px] font-medium ${leadStatusClassName(lead.status)}`}
+                    >
+                      {lead.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-70">
+                    <span>{describeDeliveryLeadSource(lead.source)}</span>
+                    <span>Qty {lead.requestedQty}</span>
+                    <span>{money(lead.totalCents)}</span>
+                    <span>{localDate(lead.updatedAt)}</span>
+                  </div>
+
+                  <p className="mt-2 text-xs opacity-60">
+                    {lead.deliveryAddress || "Delivery address not supplied"}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="admin-card space-y-3 p-4 md:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70">Recent Rewards</p>
+              <h3 className="mt-1 text-lg font-semibold">Token movement</h3>
+            </div>
+            <Link
+              href="/admin/rewards"
+              className="text-xs font-medium opacity-75 transition hover:opacity-100"
+            >
+              Open rewards ops
+            </Link>
+          </div>
+
+          {recentRewards.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-70">
+              No reward entries yet for this store.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recentRewards.map((reward) => {
+                const signedAmount =
+                  reward.direction === "DEBIT" ? -reward.amount : reward.amount;
+
+                return (
+                  <article key={reward.id} className="admin-surface rounded-xl px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{describeRewardReason(reward.reason)}</p>
+                        <p className="mt-1 text-sm opacity-75">
+                          {reward.userName || reward.userEmail || "Unknown user"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold">
+                          {signedAmount >= 0 ? "+" : ""}
+                          {formatTokenAmount(signedAmount)} {reward.token}
+                        </p>
+                        <p className="mt-1 text-xs opacity-70">{localDate(reward.createdAt)}</p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">

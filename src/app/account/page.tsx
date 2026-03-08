@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
+import AccountActivityCard from "./AccountActivityCard";
 import SignOutButton from "./SignOutButton";
 import TokenBalancesCard from "./TokenBalancesCard";
 
@@ -66,6 +67,8 @@ export default async function AccountPage() {
           userId={session.user.id}
           trackedTokens={trackedTokens}
         />
+
+        <AccountActivityCard userId={session.user.id} />
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Link
