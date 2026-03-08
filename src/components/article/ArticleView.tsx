@@ -13,7 +13,15 @@ import ReviewScorecard from "./ReviewScorecard";
 
 type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
   include: {
-    reviewProfile: true;
+    reviewProfile: {
+      include: {
+        product: {
+          include: {
+            brand: true;
+          };
+        };
+      };
+    };
     commerceModules: {
       include: {
         business: {
@@ -128,11 +136,18 @@ export default function ArticleView({
                   {article.reviewProfile.category}
                 </span>
               )}
-              {article.reviewProfile?.productName && (
+              {article.reviewProfile?.product?.slug ? (
+                <Link
+                  href={`/products/${article.reviewProfile.product.slug}`}
+                  className="rounded-full border border-neutral-700 px-2.5 py-1 transition hover:bg-black/20"
+                >
+                  {article.reviewProfile.productName}
+                </Link>
+              ) : article.reviewProfile?.productName ? (
                 <span className="rounded-full border border-neutral-700 px-2.5 py-1">
                   {article.reviewProfile.productName}
                 </span>
-              )}
+              ) : null}
             </div>
           )}
           {article.excerpt && (

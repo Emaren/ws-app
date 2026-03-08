@@ -83,6 +83,13 @@ export default function MobileMenu({
         </button>
 
         <button
+          onClick={() => go("/products")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Products
+        </button>
+
+        <button
           onClick={() => go("/map")}
           className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
         >

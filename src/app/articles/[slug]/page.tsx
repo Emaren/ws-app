@@ -115,7 +115,15 @@ export default async function ArticlePage({
   const article = await prisma.article.findUnique({
     where: { slug },
     include: {
-      reviewProfile: true,
+      reviewProfile: {
+        include: {
+          product: {
+            include: {
+              brand: true,
+            },
+          },
+        },
+      },
       commerceModules: {
         where: { isEnabled: true },
         orderBy: [{ placement: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],

@@ -6,6 +6,7 @@ import {
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
 import { normalizeArticleCommerceModulesInput } from "@/lib/articleCommerce";
+import { syncProductGraphFromReviewProfile } from "@/lib/productGraph";
 import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { prisma } from "@/lib/prisma";
@@ -173,6 +174,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: normalizedCommerceModules.error }, { status: 400 });
   }
 
+  const syncedProduct = normalizedReviewProfile.data
+    ? await syncProductGraphFromReviewProfile(prisma, {
+        reviewProfile: normalizedReviewProfile.data,
+        articleExcerpt: body.excerpt ?? null,
+        articleCoverUrl: body.coverUrl ?? null,
+      })
+    : null;
+
   const article = await prisma.article.create({
     data: {
       title: body.title.trim(),
@@ -185,7 +194,16 @@ export async function POST(req: NextRequest) {
       publishedAt: status === "PUBLISHED" ? new Date() : null,
       reviewProfile: normalizedReviewProfile.data
         ? {
-            create: normalizedReviewProfile.data,
+            create: {
+              ...normalizedReviewProfile.data,
+              ...(syncedProduct
+                ? {
+                    product: {
+                      connect: { id: syncedProduct.id },
+                    },
+                  }
+                : {}),
+            },
           }
         : undefined,
       commerceModules: normalizedCommerceModules.data.length

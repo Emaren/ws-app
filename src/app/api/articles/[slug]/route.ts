@@ -11,6 +11,7 @@ import {
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
 import { normalizeArticleCommerceModulesInput } from "@/lib/articleCommerce";
+import { syncProductGraphFromReviewProfile } from "@/lib/productGraph";
 import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 
@@ -99,9 +100,31 @@ export async function PATCH(
       status: true,
       authorId: true,
       publishedAt: true,
+      excerpt: true,
+      coverUrl: true,
       reviewProfile: {
         select: {
           id: true,
+          productId: true,
+          productName: true,
+          brandName: true,
+          category: true,
+          reviewScore: true,
+          verdict: true,
+          organicStatus: true,
+          recommendedFor: true,
+          avoidFor: true,
+          localAvailability: true,
+          conventionalTitle: true,
+          conventionalHref: true,
+          conventionalImageSrc: true,
+          conventionalBadge: true,
+          conventionalPriceHint: true,
+          organicTitle: true,
+          organicHref: true,
+          organicImageSrc: true,
+          organicBadge: true,
+          organicPriceHint: true,
         },
       },
       commerceModules: {
@@ -153,6 +176,25 @@ export async function PATCH(
   if (hasCommerceModulesPatch && normalizedCommerceModules.error) {
     return badRequest(normalizedCommerceModules.error);
   }
+
+  const shouldRefreshExistingProductGraph =
+    !hasReviewProfilePatch &&
+    !!existing.reviewProfile &&
+    (excerpt !== undefined || coverUrl !== undefined);
+
+  const syncedProduct = normalizedReviewProfile.data
+    ? await syncProductGraphFromReviewProfile(prisma, {
+        reviewProfile: normalizedReviewProfile.data,
+        articleExcerpt: excerpt !== undefined ? excerpt ?? null : existing.excerpt ?? null,
+        articleCoverUrl: coverUrl !== undefined ? coverUrl ?? null : existing.coverUrl ?? null,
+      })
+    : shouldRefreshExistingProductGraph && existing.reviewProfile
+      ? await syncProductGraphFromReviewProfile(prisma, {
+          reviewProfile: existing.reviewProfile,
+          articleExcerpt: excerpt !== undefined ? excerpt ?? null : existing.excerpt ?? null,
+          articleCoverUrl: coverUrl !== undefined ? coverUrl ?? null : existing.coverUrl ?? null,
+        })
+      : null;
 
   const nextStatus = status === undefined ? undefined : normalizeArticleStatus(status);
   if (status !== undefined && !nextStatus) {
@@ -223,14 +265,40 @@ export async function PATCH(
     if (normalizedReviewProfile.data) {
       patch.reviewProfile = existing.reviewProfile
         ? {
-            update: normalizedReviewProfile.data,
+            update: {
+              ...normalizedReviewProfile.data,
+              ...(syncedProduct
+                ? {
+                    product: {
+                      connect: { id: syncedProduct.id },
+                    },
+                  }
+                : {}),
+            },
           }
         : {
-            create: normalizedReviewProfile.data,
+            create: {
+              ...normalizedReviewProfile.data,
+              ...(syncedProduct
+                ? {
+                    product: {
+                      connect: { id: syncedProduct.id },
+                    },
+                  }
+                : {}),
+            },
           };
     } else if (existing.reviewProfile) {
       patch.reviewProfile = { delete: true };
     }
+  } else if (syncedProduct && existing.reviewProfile) {
+    patch.reviewProfile = {
+      update: {
+        product: {
+          connect: { id: syncedProduct.id },
+        },
+      },
+    };
   }
 
   if (hasCommerceModulesPatch) {

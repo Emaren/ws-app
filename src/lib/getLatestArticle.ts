@@ -19,7 +19,15 @@ export async function getLatestArticle() {
       { createdAt: "desc" },   // fallback if publishedAt is null/missing
     ],
     include: {
-      reviewProfile: true,
+      reviewProfile: {
+        include: {
+          product: {
+            include: {
+              brand: true,
+            },
+          },
+        },
+      },
       commerceModules: {
         where: { isEnabled: true },
         orderBy: [{ placement: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],

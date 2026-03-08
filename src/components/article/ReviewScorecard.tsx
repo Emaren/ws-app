@@ -1,4 +1,5 @@
-import type { ReviewProfile } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import Link from "next/link";
 
 function scoreLabel(score: number | null): string {
   if (score === null) return "Awaiting score";
@@ -29,7 +30,15 @@ function DetailRow({
 export default function ReviewScorecard({
   profile,
 }: {
-  profile?: ReviewProfile | null;
+  profile?: Prisma.ReviewProfileGetPayload<{
+    include: {
+      product: {
+        include: {
+          brand: true;
+        };
+      };
+    };
+  }> | null;
 }) {
   if (!profile) return null;
 
@@ -51,11 +60,15 @@ export default function ReviewScorecard({
           </div>
 
           <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.18em] opacity-75">
-            {profile.brandName && (
+            {profile.product?.brand?.name ? (
+              <span className="rounded-full border border-neutral-700 px-3 py-1">
+                Brand: {profile.product.brand.name}
+              </span>
+            ) : profile.brandName ? (
               <span className="rounded-full border border-neutral-700 px-3 py-1">
                 Brand: {profile.brandName}
               </span>
-            )}
+            ) : null}
             {profile.category && (
               <span className="rounded-full border border-neutral-700 px-3 py-1">
                 {profile.category}
@@ -76,6 +89,16 @@ export default function ReviewScorecard({
             <div className="pb-1 text-sm opacity-65">/100</div>
           </div>
           <div className="mt-2 text-sm font-medium text-amber-100">{scoreLabel(score)}</div>
+          {profile.product?.slug && (
+            <div className="mt-4">
+              <Link
+                href={`/products/${profile.product.slug}`}
+                className="inline-flex items-center rounded-xl border border-amber-300/30 bg-amber-200/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-amber-100 transition hover:bg-amber-200/18"
+              >
+                Open Product Page
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

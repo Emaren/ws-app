@@ -168,6 +168,15 @@ async function getVisibleArticleBySlug(slug: string) {
       likeCount: true,
       wowCount: true,
       hmmCount: true,
+      reviewProfile: {
+        select: {
+          product: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -286,6 +295,7 @@ export async function PATCH(
   }
 
   if (scope === "product") {
+    const productSlug = article.reviewProfile?.product?.slug ?? article.slug;
     const result = await prisma.$transaction(async (tx) => {
       const reactionUserId = actor.userId
         ? (await tx.user.findUnique({
@@ -327,7 +337,7 @@ export async function PATCH(
             ipHash: reactionUserId ? null : actor.actorHash,
             scope: ReactionScope.PRODUCT,
             type: reactionType,
-            productSlug: article.slug,
+            productSlug,
           },
         });
       }
@@ -356,6 +366,7 @@ export async function PATCH(
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const productSlug = article.reviewProfile?.product?.slug ?? article.slug;
     const reactionUserId = actor.userId
       ? (await tx.user.findUnique({
           where: { id: actor.userId },
@@ -384,7 +395,7 @@ export async function PATCH(
           ipHash: reactionUserId ? null : actor.actorHash,
           scope: ReactionScope.ARTICLE,
           type: reactionType,
-          productSlug: article.slug,
+          productSlug,
         },
       });
 

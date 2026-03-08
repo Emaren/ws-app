@@ -78,6 +78,7 @@ const DEFAULT_WALLET_CHAIN_FALLBACKS = [
 ];
 const PRIMARY_NAV_LINKS = [
   { href: "/discover", label: "Discover" },
+  { href: "/products", label: "Products" },
   { href: "/offers", label: "Offers" },
   { href: "/map", label: "Map" },
   { href: "/community", label: "Community" },

@@ -11,6 +11,7 @@ const STATIC_ROUTES = [
   "/map",
   "/community",
   "/articles",
+  "/products",
   "/about",
   "/get-stone",
   "/get-wheat",
@@ -47,5 +48,36 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-  return [...staticEntries, ...articleEntries];
+  const products = await prisma.product.findMany({
+    select: {
+      slug: true,
+      updatedAt: true,
+      reviewProfiles: {
+        select: {
+          article: {
+            select: {
+              status: true,
+              publishedAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const productEntries: MetadataRoute.Sitemap = products
+    .filter((product) =>
+      product.reviewProfiles.some((review) => {
+        const status = normalizeArticleStatus(review.article.status);
+        return status ? isPubliclyVisibleArticle(status, review.article.publishedAt) : false;
+      }),
+    )
+    .map((product) => ({
+      url: `${BASE_URL}/products/${product.slug}`,
+      lastModified: product.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    }));
+
+  return [...staticEntries, ...articleEntries, ...productEntries];
 }
