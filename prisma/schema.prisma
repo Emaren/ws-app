@@ -26,6 +26,7 @@ model User {
   notificationRecipients NotificationRecipient[]
   deliveryLeads          DeliveryLead[]
   assignedDeliveryLeads  DeliveryLead[]          @relation("DeliveryLeadAssignee")
+  defaultFulfillmentAutomationProfiles FulfillmentAutomationProfile[] @relation("FulfillmentAutomationDefaultAssignee")
   affiliateClicks        AffiliateClick[]
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
@@ -215,9 +216,35 @@ model Business {
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
   commerceModules        ArticleCommerceModule[]
+  fulfillmentAutomationProfile FulfillmentAutomationProfile?
 
   @@index([ownerUserId])
   @@index([status])
+}
+
+model FulfillmentAutomationProfile {
+  id                      String   @id @default(cuid())
+  businessId              String   @unique
+  defaultAssigneeUserId   String?
+  defaultAssigneeName     String?
+  autoAssignEnabled       Boolean  @default(false)
+  autoEscalateEnabled     Boolean  @default(false)
+  slaHours                Int      @default(24)
+  escalationCooldownHours Int      @default(6)
+  escalationEmail         String?
+  customerContactTemplate String?
+  delayUpdateTemplate     String?
+  escalationTemplate      String?
+  lastRunAt               DateTime?
+  lastEscalationAt        DateTime?
+  lastRunSummary          Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  defaultAssignee         User?    @relation("FulfillmentAutomationDefaultAssignee", fields: [defaultAssigneeUserId], references: [id], onDelete: SetNull)
+
+  @@index([defaultAssigneeUserId])
+  @@index([lastRunAt])
 }
 
 model StoreProfile {

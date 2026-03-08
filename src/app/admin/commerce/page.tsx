@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOptions";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import FulfillmentConsole from "../business/FulfillmentConsole";
 import AdminCommerceConsole from "./AdminCommerceConsole";
+import FulfillmentAutomationCenter from "./FulfillmentAutomationCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AdminCommercePage() {
         title="Commerce Fulfillment Board"
         summary="Turn store performance into action. Claim owners, set due targets, triage unassigned and overdue delivery leads, and communicate with customers from the commerce admin surface."
       />
+      <FulfillmentAutomationCenter />
     </div>
   );
 }
