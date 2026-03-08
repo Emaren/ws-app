@@ -217,6 +217,8 @@ model Business {
   rewardLedgerEntries    RewardLedger[]
   commerceModules        ArticleCommerceModule[]
   fulfillmentAutomationProfile FulfillmentAutomationProfile?
+  fulfillmentAutomationRuns    FulfillmentAutomationRun[]
+  fulfillmentAutomationAlerts  FulfillmentAutomationAlert[]
 
   @@index([ownerUserId])
   @@index([status])
@@ -229,22 +231,88 @@ model FulfillmentAutomationProfile {
   defaultAssigneeName     String?
   autoAssignEnabled       Boolean  @default(false)
   autoEscalateEnabled     Boolean  @default(false)
+  scheduleEnabled         Boolean  @default(false)
+  scheduleIntervalHours   Int      @default(6)
   slaHours                Int      @default(24)
+  digestEnabled           Boolean  @default(false)
+  digestCadenceHours      Int      @default(24)
   escalationCooldownHours Int      @default(6)
   escalationEmail         String?
+  digestEmail             String?
   customerContactTemplate String?
   delayUpdateTemplate     String?
   escalationTemplate      String?
+  digestTemplate          String?
   lastRunAt               DateTime?
   lastEscalationAt        DateTime?
+  lastDigestAt            DateTime?
   lastRunSummary          Json?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   defaultAssignee         User?    @relation("FulfillmentAutomationDefaultAssignee", fields: [defaultAssigneeUserId], references: [id], onDelete: SetNull)
+  runs                    FulfillmentAutomationRun[]
+  alerts                  FulfillmentAutomationAlert[]
 
   @@index([defaultAssigneeUserId])
   @@index([lastRunAt])
+  @@index([scheduleEnabled, lastRunAt])
+  @@index([digestEnabled, lastDigestAt])
+}
+
+model FulfillmentAutomationRun {
+  id                      String                         @id @default(cuid())
+  profileId               String
+  businessId              String
+  source                  FulfillmentAutomationRunSource @default(MANUAL)
+  status                  FulfillmentAutomationRunStatus @default(SUCCESS)
+  actorUserId             String?
+  actorEmail              String?
+  autoAssignedCount       Int                            @default(0)
+  overdueLeadCount        Int                            @default(0)
+  openLeadCount           Int                            @default(0)
+  unassignedLeadCount     Int                            @default(0)
+  escalationQueued        Boolean                        @default(false)
+  digestQueued            Boolean                        @default(false)
+  escalationSkippedReason String?
+  digestSkippedReason     String?
+  processSummary          Json?
+  summary                 Json?
+  metadata                Json?
+  startedAt               DateTime                       @default(now())
+  completedAt             DateTime?
+  createdAt               DateTime                       @default(now())
+  business                Business                       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  profile                 FulfillmentAutomationProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  alerts                  FulfillmentAutomationAlert[]
+
+  @@index([profileId, startedAt])
+  @@index([businessId, startedAt])
+  @@index([source, startedAt])
+  @@index([status, startedAt])
+}
+
+model FulfillmentAutomationAlert {
+  id             String                            @id @default(cuid())
+  profileId      String
+  businessId     String
+  runId          String?
+  type           FulfillmentAutomationAlertType
+  status         FulfillmentAutomationAlertStatus  @default(QUEUED)
+  recipientEmail String?
+  subject        String?
+  leadCount      Int                               @default(0)
+  reason         String?
+  metadata       Json?
+  createdAt      DateTime                          @default(now())
+  business       Business                          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  profile        FulfillmentAutomationProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  run            FulfillmentAutomationRun?         @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, createdAt])
+  @@index([businessId, createdAt])
+  @@index([type, createdAt])
+  @@index([status, createdAt])
 }
 
 model StoreProfile {
@@ -930,4 +998,26 @@ enum RewardToken {
 enum RewardDirection {
   CREDIT
   DEBIT
+}
+
+enum FulfillmentAutomationRunSource {
+  MANUAL
+  SCHEDULED
+}
+
+enum FulfillmentAutomationRunStatus {
+  SUCCESS
+  SKIPPED
+  FAILED
+}
+
+enum FulfillmentAutomationAlertType {
+  ESCALATION
+  DIGEST
+}
+
+enum FulfillmentAutomationAlertStatus {
+  QUEUED
+  SKIPPED
+  FAILED
 }

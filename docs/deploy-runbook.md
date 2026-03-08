@@ -10,7 +10,12 @@ This runbook covers production pull/restart/smoke for `ws-app` on hel1.
 
 - Repo path: `/var/www/wheatandstone/ws-app`
 - Services: `wheatandstone-app.service` (active), `wheatandstone-web.service` (legacy alias)
+- Scheduler units: `wheatandstone-fulfillment-automation.service`, `wheatandstone-fulfillment-automation.timer`
 - Branch policy: `main` only
+- Production env should define:
+  - `FULFILLMENT_AUTOMATION_KEY` (or reuse `SYSTEM_HEALTHCHECK_KEY`)
+  - `WS_API_SYSTEM_ACCESS_TOKEN`
+  - optional `FULFILLMENT_AUTOMATION_BASE_URL` and `FULFILLMENT_AUTOMATION_LIMIT`
 
 ## Deploy sequence
 
@@ -25,6 +30,17 @@ pnpm prisma:generate
 pnpm build
 sudo systemctl restart wheatandstone-app
 sudo systemctl --no-pager --full status wheatandstone-app
+```
+
+If this deploy includes fulfillment automation scheduler changes, refresh the systemd units and restart the timer:
+
+```bash
+sudo cp ops/systemd/wheatandstone-fulfillment-automation.service /etc/systemd/system/
+sudo cp ops/systemd/wheatandstone-fulfillment-automation.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now wheatandstone-fulfillment-automation.timer
+sudo systemctl restart wheatandstone-fulfillment-automation.timer
+sudo systemctl --no-pager --full status wheatandstone-fulfillment-automation.timer
 ```
 
 If `pnpm prisma:migrate:deploy` fails with `P3005` (legacy DB missing migration baseline), use this one-time fallback:
@@ -53,6 +69,13 @@ Expected:
 - `/api/health` returns `200` with `"ok":true`
 - `/` returns `200` and renders Wheat & Stone shell
 - `/articles` returns `200`
+
+For fulfillment automation scheduler deploys, also verify:
+
+```bash
+pnpm automation:fulfillment:run
+sudo systemctl list-timers wheatandstone-fulfillment-automation.timer
+```
 
 ## Parity verification
 

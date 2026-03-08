@@ -1,0 +1,10 @@
+[Unit]
+Description=Wheat & Stone fulfillment automation scheduler
+After=network.target wheatandstone-app.service
+Wants=wheatandstone-app.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/wheatandstone/ws-app
+EnvironmentFile=/var/www/wheatandstone/ws-app/.env.production
+ExecStart=/usr/bin/env bash -lc 'pnpm automation:fulfillment:run'

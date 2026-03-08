@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Wheat & Stone fulfillment automation every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+Unit=wheatandstone-fulfillment-automation.service
+
+[Install]
+WantedBy=timers.target
