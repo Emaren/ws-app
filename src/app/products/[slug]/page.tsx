@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ArticleCommerceModuleView from "@/components/article/ArticleCommerceModuleView";
+import SaveToggleButton from "@/components/community/SaveToggleButton";
+import { authOptions } from "@/lib/authOptions";
 import {
   resolveContributorDisplayName,
   resolveContributorPublicSlug,
 } from "@/lib/contributorIdentity";
 import { getPublicProductBySlug } from "@/lib/publicProducts";
+import { listSavedProductIdsForUser } from "@/lib/savedCollections";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,11 +64,19 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getPublicProductBySlug(slug);
+  const [product, session] = await Promise.all([
+    getPublicProductBySlug(slug),
+    getServerSession(authOptions),
+  ]);
 
   if (!product) {
     notFound();
   }
+
+  const savedProductIds =
+    session?.user?.id ? await listSavedProductIdsForUser(session.user.id) : new Set<string>();
+  const isAuthenticated = Boolean(session?.user?.id);
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(`/products/${product.slug}`)}`;
 
   return (
     <main className="ws-container py-8 md:py-10">
@@ -131,6 +143,15 @@ export default async function ProductPage({
               >
                 Browse Catalog
               </Link>
+              <SaveToggleButton
+                kind="product"
+                itemId={product.id}
+                isAuthenticated={isAuthenticated}
+                loginHref={loginHref}
+                initialSaved={savedProductIds.has(product.id)}
+                initialCount={product.savedCount}
+                tone="amber"
+              />
             </div>
           </div>
         </section>
@@ -155,6 +176,10 @@ export default async function ProductPage({
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] opacity-65">Delivery stores</p>
                 <p className="mt-2 text-3xl font-semibold">{product.trustSignals.deliveryStoreCount}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">Saved by members</p>
+                <p className="mt-2 text-3xl font-semibold">{product.trustSignals.savedCount}</p>
               </div>
             </div>
           </div>
@@ -402,6 +427,11 @@ export default async function ProductPage({
                       {typeof related.featuredReview.score === "number" && (
                         <span className="rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-amber-100">
                           {related.featuredReview.score}/100
+                        </span>
+                      )}
+                      {related.savedCount > 0 && (
+                        <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+                          {related.savedCount} saved
                         </span>
                       )}
                     </div>

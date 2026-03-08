@@ -53,6 +53,11 @@ type ContributorQueryRow = Prisma.UserGetPayload<{
               select: {
                 slug: true;
                 name: true;
+                _count: {
+                  select: {
+                    savedProducts: true;
+                  };
+                };
               };
             };
           };
@@ -105,6 +110,7 @@ type ContributorReview = {
   category: string | null;
   productName: string | null;
   productSlug: string | null;
+  productSavedCount: number;
   reactionCount: number;
   affiliateClicks: number;
   commerceModuleCount: number;
@@ -130,12 +136,13 @@ export type PublicContributor = {
   reactionCount: number;
   affiliateClickCount: number;
   localRouteCount: number;
+  memberSaveCount: number;
   wheatBalance: number;
   stoneBalance: number;
   communityRank: number;
   latestPublishedAt: Date | null;
   categories: Array<{ name: string; count: number }>;
-  products: Array<{ slug: string | null; name: string; count: number }>;
+  products: Array<{ slug: string | null; name: string; count: number; savedCount: number }>;
   badges: PublicContributorBadge[];
   latestReview: ContributorReview | null;
   reviews: ContributorReview[];
@@ -166,6 +173,10 @@ export type PublicCommunityOverview = {
   affiliateClickCount: number;
   deliveryLeadCount: number;
   completedDeliveryCount: number;
+  engagedMemberCount: number;
+  savedProductCount: number;
+  savedOfferCount: number;
+  memberSaveCount: number;
   wheatGranted: number;
   stoneGranted: number;
   topCategories: Array<{ name: string; count: number }>;
@@ -200,6 +211,7 @@ function badgeSet(input: {
   publishedReviewCount: number;
   averageScore: number | null;
   localRouteCount: number;
+  memberSaveCount: number;
   wheatBalance: number;
   reactionCount: number;
 }): PublicContributorBadge[] {
@@ -213,6 +225,9 @@ function badgeSet(input: {
   }
   if (input.localRouteCount > 0) {
     badges.push({ label: "Local Route Activator", tone: "sky" });
+  }
+  if (input.memberSaveCount >= 5) {
+    badges.push({ label: "Member Demand", tone: "sky" });
   }
   if (input.wheatBalance > 0) {
     badges.push({ label: "WHEAT Earner", tone: "amber" });
@@ -265,6 +280,7 @@ function buildContributorFromData(input: {
     category: article.reviewProfile?.category ?? null,
     productName: article.reviewProfile?.productName ?? null,
     productSlug: article.reviewProfile?.product?.slug ?? null,
+    productSavedCount: article.reviewProfile?.product?._count.savedProducts ?? 0,
     reactionCount: article.likeCount + article.wowCount + article.hmmCount,
     affiliateClicks: article._count.affiliateClicks,
     commerceModuleCount: article._count.commerceModules,
@@ -275,7 +291,10 @@ function buildContributorFromData(input: {
   }
 
   const categoryMap = new Map<string, number>();
-  const productMap = new Map<string, { slug: string | null; name: string; count: number }>();
+  const productMap = new Map<
+    string,
+    { slug: string | null; name: string; count: number; savedCount: number }
+  >();
   const scoreValues: number[] = [];
   let reactionCount = 0;
   let affiliateClickCount = 0;
@@ -300,8 +319,10 @@ function buildContributorFromData(input: {
         slug: review.productSlug,
         name: review.productName,
         count: 0,
+        savedCount: 0,
       };
       existing.count += 1;
+      existing.savedCount = Math.max(existing.savedCount, review.productSavedCount);
       productMap.set(key, existing);
     }
   }
@@ -340,8 +361,12 @@ function buildContributorFromData(input: {
     if (right.count !== left.count) {
       return right.count - left.count;
     }
+    if (right.savedCount !== left.savedCount) {
+      return right.savedCount - left.savedCount;
+    }
     return left.name.localeCompare(right.name);
   });
+  const memberSaveCount = products.reduce((sum, product) => sum + product.savedCount, 0);
 
   const communityRank =
     reviews.length * 40 +
@@ -350,6 +375,7 @@ function buildContributorFromData(input: {
     localRouteCount * 9 +
     affiliateClickCount * 2 +
     Math.min(reactionCount, 200) +
+    Math.min(memberSaveCount, 150) * 3 +
     Math.round(wheatBalance * 6);
 
   const latestReview = reviews[0] ?? null;
@@ -371,6 +397,7 @@ function buildContributorFromData(input: {
     reactionCount,
     affiliateClickCount,
     localRouteCount,
+    memberSaveCount,
     wheatBalance,
     stoneBalance,
     communityRank,
@@ -381,6 +408,7 @@ function buildContributorFromData(input: {
       publishedReviewCount: reviews.length,
       averageScore,
       localRouteCount,
+      memberSaveCount,
       wheatBalance,
       reactionCount,
     }),
@@ -439,6 +467,11 @@ export async function listPublicContributors(limit?: number): Promise<PublicCont
                   select: {
                     slug: true,
                     name: true,
+                    _count: {
+                      select: {
+                        savedProducts: true,
+                      },
+                    },
                   },
                 },
               },
@@ -496,6 +529,11 @@ export async function listPublicContributors(limit?: number): Promise<PublicCont
               select: {
                 slug: true,
                 name: true,
+                _count: {
+                  select: {
+                    savedProducts: true,
+                  },
+                },
               },
             },
           },
@@ -549,7 +587,16 @@ export async function getPublicContributorBySlug(
 }
 
 export async function getPublicCommunityOverview(): Promise<PublicCommunityOverview> {
-  const [contributors, deliveryLeadCount, completedDeliveryCount, rewardTotals] = await Promise.all([
+  const [
+    contributors,
+    deliveryLeadCount,
+    completedDeliveryCount,
+    rewardTotals,
+    savedProductCount,
+    savedOfferCount,
+    savedProductMembers,
+    savedOfferMembers,
+  ] = await Promise.all([
     listPublicContributors(),
     prisma.deliveryLead.count(),
     prisma.deliveryLead.count({
@@ -563,6 +610,20 @@ export async function getPublicCommunityOverview(): Promise<PublicCommunityOverv
       by: ["token", "direction"],
       _sum: {
         amount: true,
+      },
+    }),
+    prisma.savedProduct.count(),
+    prisma.savedOffer.count(),
+    prisma.savedProduct.findMany({
+      distinct: ["userId"],
+      select: {
+        userId: true,
+      },
+    }),
+    prisma.savedOffer.findMany({
+      distinct: ["userId"],
+      select: {
+        userId: true,
       },
     }),
   ]);
@@ -583,6 +644,11 @@ export async function getPublicCommunityOverview(): Promise<PublicCommunityOverv
     (sum, contributor) => sum + contributor.affiliateClickCount,
     0,
   );
+  const engagedMemberCount = new Set([
+    ...savedProductMembers.map((row) => row.userId),
+    ...savedOfferMembers.map((row) => row.userId),
+  ]).size;
+  const memberSaveCount = savedProductCount + savedOfferCount;
 
   const productKeys = new Set<string>();
   const categoryCounts = new Map<string, number>();
@@ -666,6 +732,10 @@ export async function getPublicCommunityOverview(): Promise<PublicCommunityOverv
     affiliateClickCount,
     deliveryLeadCount,
     completedDeliveryCount,
+    engagedMemberCount,
+    savedProductCount,
+    savedOfferCount,
+    memberSaveCount,
     wheatGranted: Math.round(wheatGranted * 100) / 100,
     stoneGranted: Math.round(stoneGranted * 100) / 100,
     topCategories,

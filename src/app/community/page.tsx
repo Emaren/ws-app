@@ -36,18 +36,22 @@ export default async function CommunityPage() {
         <section className="rounded-[2.25rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.14),_rgba(10,10,10,0.96)_60%)] p-6 md:p-8">
           <div className="text-xs uppercase tracking-[0.3em] opacity-65">Community</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
-            Contributors, reputation, and momentum are now public
+            Contributors, reputation, and member momentum are now public
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 opacity-85 md:text-lg">
             Wheat & Stone now exposes the human side of trust. Readers can see who is publishing,
-            how much coverage exists, how much local activation is happening, and where token
-            rewards are beginning to show real participation.
+            where member demand is building, how much local activation is happening, and where
+            token rewards are beginning to show real participation.
           </p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Contributors</p>
               <p className="mt-2 text-3xl font-semibold">{overview.contributorCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Engaged members</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.engagedMemberCount}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Published reviews</p>
@@ -63,7 +67,7 @@ export default async function CommunityPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Products covered</p>
               <p className="mt-2 text-3xl font-semibold">{overview.productCoverageCount}</p>
@@ -71,6 +75,29 @@ export default async function CommunityPage() {
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Local routes authored</p>
               <p className="mt-2 text-3xl font-semibold">{overview.localRouteCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Product saves</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.savedProductCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Offer saves</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.savedOfferCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Total saves</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.memberSaveCount}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Completed deliveries</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.completedDeliveryCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Affiliate clicks</p>
+              <p className="mt-2 text-3xl font-semibold">{overview.affiliateClickCount}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">WHEAT granted</p>
@@ -132,12 +159,15 @@ export default async function CommunityPage() {
 
           {overview.featuredContributors.length > 0 ? (
             <div className="grid gap-5 xl:grid-cols-2">
-              {overview.featuredContributors.map((contributor) => (
+              {overview.featuredContributors.map((contributor, index) => (
                 <article
                   key={contributor.id}
                   className="rounded-[2rem] border border-neutral-800 bg-black/35 p-5 md:p-6"
                 >
                   <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
+                    <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+                      Rank #{index + 1}
+                    </span>
                     <span className="rounded-full border border-white/10 px-3 py-1">
                       {contributorRoleLabel(contributor.role)}
                     </span>
@@ -151,6 +181,12 @@ export default async function CommunityPage() {
                   <div className="mt-4 space-y-2">
                     <h3 className="text-2xl font-semibold tracking-tight">{contributor.name}</h3>
                     <p className="text-sm leading-6 opacity-80">{contributor.summary}</p>
+                    {contributor.memberSaveCount > 0 && (
+                      <p className="text-sm text-sky-100/85">
+                        Member demand: {contributor.memberSaveCount} saved product
+                        {contributor.memberSaveCount === 1 ? "" : "s"} across this contributor's coverage.
+                      </p>
+                    )}
                   </div>
 
                   {contributor.badges.length > 0 && (
@@ -166,7 +202,7 @@ export default async function CommunityPage() {
                     </div>
                   )}
 
-                  <div className="mt-5 grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-4">
+                  <div className="mt-5 grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-5">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] opacity-60">Reviews</div>
                       <div className="mt-1 text-lg font-semibold">{contributor.publishedReviewCount}</div>
@@ -178,6 +214,10 @@ export default async function CommunityPage() {
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] opacity-60">Routes</div>
                       <div className="mt-1 text-lg font-semibold">{contributor.localRouteCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] opacity-60">Saves</div>
+                      <div className="mt-1 text-lg font-semibold">{contributor.memberSaveCount}</div>
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] opacity-60">WHEAT</div>

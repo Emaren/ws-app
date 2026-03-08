@@ -125,6 +125,11 @@ export async function listPublicProducts(limit?: number) {
   const products = await prisma.product.findMany({
     include: {
       brand: true,
+      _count: {
+        select: {
+          savedProducts: true,
+        },
+      },
       reviewProfiles: {
         include: {
           article: {
@@ -294,6 +299,7 @@ export async function listPublicProducts(limit?: number) {
         summary: buildProductSummary({ summary: product.summary, reviewProfiles: publicReviews }),
         heroImageUrl: product.heroImageUrl || featuredReview.article.coverUrl || null,
         reviewCount: publicReviews.length,
+        savedCount: product._count.savedProducts,
         buyRouteCount: metrics?.buyRouteCount ?? 0,
         liveOfferCount: metrics?.liveOfferCount ?? 0,
         storeCount: metrics?.storeIds.size ?? 0,
@@ -318,6 +324,7 @@ export async function listPublicProducts(limit?: number) {
     summary: string | null;
     heroImageUrl: string | null;
     reviewCount: number;
+    savedCount: number;
     buyRouteCount: number;
     liveOfferCount: number;
     storeCount: number;
@@ -340,6 +347,11 @@ export async function getPublicProductBySlug(slug: string) {
     where: { slug },
     include: {
       brand: true,
+      _count: {
+        select: {
+          savedProducts: true,
+        },
+      },
       reviewProfiles: {
         include: {
           article: {
@@ -704,6 +716,7 @@ export async function getPublicProductBySlug(slug: string) {
     name: string;
     summary: string | null;
     heroImageUrl: string | null;
+    savedCount: number;
     featuredReview: {
       articleSlug: string;
       articleTitle: string;
@@ -722,6 +735,11 @@ export async function getPublicProductBySlug(slug: string) {
         },
         include: {
           brand: true,
+          _count: {
+            select: {
+              savedProducts: true,
+            },
+          },
           reviewProfiles: {
             include: {
               article: {
@@ -761,6 +779,7 @@ export async function getPublicProductBySlug(slug: string) {
           reviewProfiles: candidateReviews,
         }),
         heroImageUrl: candidate.heroImageUrl || candidateReviews[0]?.article.coverUrl || null,
+        savedCount: candidate._count.savedProducts,
         featuredReview: {
           articleSlug: candidateReviews[0].article.slug,
           articleTitle: candidateReviews[0].article.title,
@@ -774,6 +793,7 @@ export async function getPublicProductBySlug(slug: string) {
     name: string;
     summary: string | null;
     heroImageUrl: string | null;
+    savedCount: number;
     featuredReview: {
       articleSlug: string;
       articleTitle: string;
@@ -782,6 +802,7 @@ export async function getPublicProductBySlug(slug: string) {
   }>;
 
   return {
+    id: product.id,
     slug: product.slug,
     name: product.name,
     brandName: product.brand?.name ?? null,
@@ -790,6 +811,7 @@ export async function getPublicProductBySlug(slug: string) {
     summary: buildProductSummary({ summary: product.summary, reviewProfiles: publicReviews }),
     heroImageUrl: product.heroImageUrl || publicReviews[0]?.article.coverUrl || null,
     reviewCount: publicReviews.length,
+    savedCount: product._count.savedProducts,
     latestReview: publicReviews[0],
     reviews: publicReviews,
     buyOptions,
@@ -805,6 +827,7 @@ export async function getPublicProductBySlug(slug: string) {
       liveOfferCount: buyOptions.filter((option) => option.source === "offer").length,
       storeCount: storeSummaryMap.size,
       deliveryStoreCount: [...storeSummaryMap.values()].filter((store) => store.deliveryEnabled).length,
+      savedCount: product._count.savedProducts,
       editorialSpotlightCount: editorialSpotlights.length,
       latestReviewPublishedAt: publicReviews[0]?.article.publishedAt ?? null,
     },

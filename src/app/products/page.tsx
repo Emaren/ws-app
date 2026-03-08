@@ -1,5 +1,9 @@
+import { getServerSession } from "next-auth";
 import Link from "next/link";
+import SaveToggleButton from "@/components/community/SaveToggleButton";
+import { authOptions } from "@/lib/authOptions";
 import { listPublicProducts } from "@/lib/publicProducts";
+import { listSavedProductIdsForUser } from "@/lib/savedCollections";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -25,8 +29,10 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, session] = await Promise.all([searchParams, getServerSession(authOptions)]);
   const allProducts = await listPublicProducts();
+  const savedProductIds =
+    session?.user?.id ? await listSavedProductIdsForUser(session.user.id) : new Set<string>();
 
   const query = asString(params.q).trim().toLowerCase();
   const selectedCategory = asString(params.category).trim();
@@ -65,6 +71,11 @@ export default async function ProductsPage({
       return right.buyRouteCount - left.buyRouteCount;
     }
 
+    if (sort === "saved") {
+      if (right.savedCount !== left.savedCount) return right.savedCount - left.savedCount;
+      return (right.featuredReview.score ?? 0) - (left.featuredReview.score ?? 0);
+    }
+
     if (sort === "recent") {
       const rightTime = right.featuredReview.publishedAt?.getTime() ?? 0;
       const leftTime = left.featuredReview.publishedAt?.getTime() ?? 0;
@@ -80,6 +91,9 @@ export default async function ProductsPage({
   const featuredProducts = products.slice(0, 3);
   const totalDeliveryProducts = allProducts.filter((product) => product.deliveryStoreCount > 0).length;
   const totalLocalStores = allProducts.reduce((count, product) => count + product.storeCount, 0);
+  const totalSavedSignals = allProducts.reduce((count, product) => count + product.savedCount, 0);
+  const isAuthenticated = Boolean(session?.user?.id);
+  const loginHref = `/login?callbackUrl=${encodeURIComponent("/products")}`;
 
   return (
     <main className="ws-container py-8 md:py-10">
@@ -95,7 +109,7 @@ export default async function ProductsPage({
             card in a content feed.
           </p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Products</p>
               <p className="mt-2 text-3xl font-semibold">{allProducts.length}</p>
@@ -111,6 +125,10 @@ export default async function ProductsPage({
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Store links surfaced</p>
               <p className="mt-2 text-3xl font-semibold">{totalLocalStores}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Member saves</p>
+              <p className="mt-2 text-3xl font-semibold">{totalSavedSignals}</p>
             </div>
           </div>
         </header>
@@ -166,6 +184,7 @@ export default async function ProductsPage({
                 <option value="score">Top score</option>
                 <option value="local">Most local coverage</option>
                 <option value="offers">Most live offers</option>
+                <option value="saved">Most saved</option>
                 <option value="recent">Most recent review</option>
               </select>
             </label>
@@ -213,6 +232,11 @@ export default async function ProductsPage({
                         Delivery live
                       </span>
                     )}
+                    {product.savedCount > 0 && (
+                      <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+                        {product.savedCount} saved
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="mt-4 text-xl font-semibold tracking-tight">{product.name}</h3>
@@ -220,7 +244,7 @@ export default async function ProductsPage({
                     {product.summary || "Canonical product page now available."}
                   </p>
 
-                  <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                  <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
                     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
                       <p className="text-xs uppercase tracking-wide opacity-65">Local stores</p>
                       <p className="mt-1 text-xl font-semibold">{product.storeCount}</p>
@@ -228,6 +252,10 @@ export default async function ProductsPage({
                     <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
                       <p className="text-xs uppercase tracking-wide opacity-65">Live offers</p>
                       <p className="mt-1 text-xl font-semibold">{product.liveOfferCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+                      <p className="text-xs uppercase tracking-wide opacity-65">Saved</p>
+                      <p className="mt-1 text-xl font-semibold">{product.savedCount}</p>
                     </div>
                   </div>
 
@@ -244,6 +272,15 @@ export default async function ProductsPage({
                     >
                       Read Review
                     </Link>
+                    <SaveToggleButton
+                      kind="product"
+                      itemId={product.id}
+                      isAuthenticated={isAuthenticated}
+                      loginHref={loginHref}
+                      initialSaved={savedProductIds.has(product.id)}
+                      initialCount={product.savedCount}
+                      tone="amber"
+                    />
                   </div>
                 </article>
               ))}
@@ -309,6 +346,11 @@ export default async function ProductsPage({
                         {product.deliveryStoreCount} delivery store{product.deliveryStoreCount === 1 ? "" : "s"}
                       </span>
                     )}
+                    {product.savedCount > 0 && (
+                      <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+                        {product.savedCount} saved
+                      </span>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -319,7 +361,7 @@ export default async function ProductsPage({
                     </p>
                   </div>
 
-                  <div className="grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-3">
+                  <div className="grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-4">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] opacity-60">Reviews</div>
                       <div className="mt-1 text-lg font-semibold">{product.reviewCount}</div>
@@ -331,6 +373,10 @@ export default async function ProductsPage({
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] opacity-60">Stores</div>
                       <div className="mt-1 text-lg font-semibold">{product.storeCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] opacity-60">Saved</div>
+                      <div className="mt-1 text-lg font-semibold">{product.savedCount}</div>
                     </div>
                   </div>
 
@@ -367,6 +413,15 @@ export default async function ProductsPage({
                     >
                       Find Local Stores
                     </Link>
+                    <SaveToggleButton
+                      kind="product"
+                      itemId={product.id}
+                      isAuthenticated={isAuthenticated}
+                      loginHref={loginHref}
+                      initialSaved={savedProductIds.has(product.id)}
+                      initialCount={product.savedCount}
+                      tone="amber"
+                    />
                   </div>
                 </div>
               </article>

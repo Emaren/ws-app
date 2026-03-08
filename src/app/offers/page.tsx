@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
+import SaveToggleButton from "@/components/community/SaveToggleButton";
 import { authOptions } from "@/lib/authOptions";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { listSavedOfferIdsForUser } from "@/lib/savedCollections";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,10 @@ function localDate(iso: Date | null): string {
 export default async function OffersPage() {
   const session = await getServerSession(authOptions);
   const isOffersManager = hasAnyRole(session?.user?.role, RBAC_ROLE_GROUPS.staff);
+  const savedOfferIds =
+    session?.user?.id ? await listSavedOfferIdsForUser(session.user.id) : new Set<string>();
+  const isAuthenticated = Boolean(session?.user?.id);
+  const loginHref = `/login?callbackUrl=${encodeURIComponent("/offers")}`;
 
   const now = new Date();
   const liveOffers = await prisma.offer.findMany({
@@ -70,6 +76,11 @@ export default async function OffersPage() {
           },
         },
       },
+      _count: {
+        select: {
+          savedOffers: true,
+        },
+      },
     },
     orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
     take: 24,
@@ -79,9 +90,9 @@ export default async function OffersPage() {
     id: string;
     assignedAt: Date;
     expiresAt: Date | null;
-    offer: {
-      id: string;
-      title: string;
+      offer: {
+        id: string;
+        title: string;
       description: string | null;
       discountPriceCents: number | null;
       ctaUrl: string | null;
@@ -93,15 +104,18 @@ export default async function OffersPage() {
         slug: string;
         name: string;
       } | null;
-      inventoryItem: {
-        product: {
-          slug: string;
-          name: string;
+        inventoryItem: {
+          product: {
+            slug: string;
+            name: string;
+          } | null;
         } | null;
-      } | null;
-    };
-    business: {
-      id: string;
+        _count: {
+          savedOffers: number;
+        };
+      };
+      business: {
+        id: string;
       name: string;
       slug: string;
     };
@@ -153,6 +167,11 @@ export default async function OffersPage() {
                   },
                 },
               },
+              _count: {
+                select: {
+                  savedOffers: true,
+                },
+              },
             },
           },
           business: {
@@ -186,6 +205,11 @@ export default async function OffersPage() {
           <span className="rounded-full border border-red-500/40 bg-red-600 px-3 py-1 text-xs font-semibold text-white">
             Badge Count: {inboxItems.length}
           </span>
+          {session?.user ? (
+            <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-xs font-semibold text-sky-100">
+              Saved offers: {savedOfferIds.size}
+            </span>
+          ) : null}
           {isOffersManager ? (
             <Link
               href="/admin/offers"
@@ -232,14 +256,26 @@ export default async function OffersPage() {
                       <p className="text-xs opacity-70">
                         Assigned: {localDate(item.assignedAt)} · Expires: {localDate(item.expiresAt)}
                       </p>
-                      {item.offer.ctaUrl ? (
-                        <a
-                          href={item.offer.ctaUrl}
-                          className="inline-flex items-center rounded-lg border border-amber-300/50 bg-amber-300/15 px-3 py-1.5 text-xs font-medium hover:bg-amber-300/25"
-                        >
-                          Claim Offer
-                        </a>
-                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {item.offer.ctaUrl ? (
+                          <a
+                            href={item.offer.ctaUrl}
+                            className="inline-flex items-center rounded-lg border border-amber-300/50 bg-amber-300/15 px-3 py-1.5 text-xs font-medium hover:bg-amber-300/25"
+                          >
+                            Claim Offer
+                          </a>
+                        ) : null}
+                        <SaveToggleButton
+                          kind="offer"
+                          itemId={item.offer.id}
+                          isAuthenticated={isAuthenticated}
+                          loginHref={loginHref}
+                          initialSaved={savedOfferIds.has(item.offer.id)}
+                          initialCount={item.offer._count.savedOffers}
+                          tone="sky"
+                          compact
+                        />
+                      </div>
                     </li>
                   );
                 })}
@@ -281,9 +317,34 @@ export default async function OffersPage() {
                         {product.name}
                       </Link>
                     ) : null}
+                    {offer._count.savedOffers > 0 ? (
+                      <span className="inline-flex items-center rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-sky-100">
+                        {offer._count.savedOffers} saved
+                      </span>
+                    ) : null}
                     <p className="text-xs opacity-70">
                       Starts: {localDate(offer.startsAt)} · Ends: {localDate(offer.endsAt)}
                     </p>
+                    <div className="flex flex-wrap gap-2">
+                      {offer.ctaUrl ? (
+                        <a
+                          href={offer.ctaUrl}
+                          className="inline-flex items-center rounded-lg border border-amber-300/50 bg-amber-300/15 px-3 py-1.5 text-xs font-medium hover:bg-amber-300/25"
+                        >
+                          Claim Offer
+                        </a>
+                      ) : null}
+                      <SaveToggleButton
+                        kind="offer"
+                        itemId={offer.id}
+                        isAuthenticated={isAuthenticated}
+                        loginHref={loginHref}
+                        initialSaved={savedOfferIds.has(offer.id)}
+                        initialCount={offer._count.savedOffers}
+                        tone="sky"
+                        compact
+                      />
+                    </div>
                   </li>
                 );
               })}

@@ -19,6 +19,22 @@ function badgeTone(tone: "amber" | "emerald" | "sky" | "neutral") {
 
 export default async function CommunityContributorsPage() {
   const contributors = await listPublicContributors();
+  const totalReviews = contributors.reduce(
+    (sum, contributor) => sum + contributor.publishedReviewCount,
+    0,
+  );
+  const totalMemberSaves = contributors.reduce(
+    (sum, contributor) => sum + contributor.memberSaveCount,
+    0,
+  );
+  const totalRoutes = contributors.reduce(
+    (sum, contributor) => sum + contributor.localRouteCount,
+    0,
+  );
+  const totalWheat = contributors.reduce(
+    (sum, contributor) => sum + contributor.wheatBalance,
+    0,
+  );
 
   return (
     <main className="ws-container py-8 md:py-10">
@@ -30,9 +46,29 @@ export default async function CommunityContributorsPage() {
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 opacity-85 md:text-lg">
             This directory turns authors into trusted public entities. Every contributor card now
-            carries review coverage, reaction momentum, local route activation, and recorded token
-            activity.
+            carries review coverage, reaction momentum, member save demand, local route activation,
+            and recorded token activity.
           </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Contributors</p>
+              <p className="mt-2 text-3xl font-semibold">{contributors.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Published reviews</p>
+              <p className="mt-2 text-3xl font-semibold">{totalReviews}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Member saves</p>
+              <p className="mt-2 text-3xl font-semibold">{totalMemberSaves}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Local routes</p>
+              <p className="mt-2 text-3xl font-semibold">{totalRoutes}</p>
+              <p className="mt-1 text-xs opacity-60">{totalWheat} WHEAT recorded</p>
+            </div>
+          </div>
         </section>
 
         {contributors.length === 0 ? (
@@ -44,12 +80,15 @@ export default async function CommunityContributorsPage() {
           </section>
         ) : (
           <section className="grid gap-5 xl:grid-cols-2">
-            {contributors.map((contributor) => (
+            {contributors.map((contributor, index) => (
               <article
                 key={contributor.id}
                 className="rounded-[2rem] border border-neutral-800 bg-black/35 p-5 md:p-6"
               >
                 <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
+                  <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+                    Rank #{index + 1}
+                  </span>
                   <span className="rounded-full border border-white/10 px-3 py-1">
                     {contributorRoleLabel(contributor.role)}
                   </span>
@@ -63,6 +102,12 @@ export default async function CommunityContributorsPage() {
                 <div className="mt-4 space-y-2">
                   <h2 className="text-2xl font-semibold tracking-tight">{contributor.name}</h2>
                   <p className="text-sm leading-6 opacity-80">{contributor.summary}</p>
+                  {contributor.memberSaveCount > 0 && (
+                    <p className="text-sm text-sky-100/85">
+                      Member demand is clustering around {contributor.memberSaveCount} saved product
+                      {contributor.memberSaveCount === 1 ? "" : "s"} in this profile.
+                    </p>
+                  )}
                 </div>
 
                 {contributor.badges.length > 0 && (
@@ -78,7 +123,7 @@ export default async function CommunityContributorsPage() {
                   </div>
                 )}
 
-                <div className="mt-5 grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-4">
+                <div className="mt-5 grid gap-3 rounded-2xl border border-neutral-800/80 bg-black/20 p-4 sm:grid-cols-5">
                   <div>
                     <div className="text-xs uppercase tracking-[0.18em] opacity-60">Reviews</div>
                     <div className="mt-1 text-lg font-semibold">{contributor.publishedReviewCount}</div>
@@ -86,6 +131,10 @@ export default async function CommunityContributorsPage() {
                   <div>
                     <div className="text-xs uppercase tracking-[0.18em] opacity-60">Products</div>
                     <div className="mt-1 text-lg font-semibold">{contributor.productCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] opacity-60">Saves</div>
+                    <div className="mt-1 text-lg font-semibold">{contributor.memberSaveCount}</div>
                   </div>
                   <div>
                     <div className="text-xs uppercase tracking-[0.18em] opacity-60">Reactions</div>
@@ -106,6 +155,7 @@ export default async function CommunityContributorsPage() {
                         className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] opacity-75 transition hover:bg-white/5"
                       >
                         {product.name}
+                        {product.savedCount > 0 ? ` · ${product.savedCount} saves` : ""}
                       </Link>
                     ) : (
                       <span
@@ -113,6 +163,7 @@ export default async function CommunityContributorsPage() {
                         className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] opacity-75"
                       >
                         {product.name}
+                        {product.savedCount > 0 ? ` · ${product.savedCount} saves` : ""}
                       </span>
                     ),
                   )}

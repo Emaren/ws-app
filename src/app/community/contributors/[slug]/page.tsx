@@ -70,6 +70,9 @@ export default async function CommunityContributorPage({
       <div className="space-y-8">
         <section className="rounded-[2.25rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.16),_rgba(10,10,10,0.96)_60%)] p-6 md:p-8">
           <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.2em] opacity-75">
+            <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-3 py-1 text-sky-100">
+              Rank score {contributor.communityRank}
+            </span>
             <span className="rounded-full border border-white/10 px-3 py-1">
               {contributorRoleLabel(contributor.role)}
             </span>
@@ -102,7 +105,7 @@ export default async function CommunityContributorPage({
             </div>
           )}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Published reviews</p>
               <p className="mt-2 text-3xl font-semibold">{contributor.publishedReviewCount}</p>
@@ -119,9 +122,13 @@ export default async function CommunityContributorPage({
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Local routes</p>
               <p className="mt-2 text-3xl font-semibold">{contributor.localRouteCount}</p>
             </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Member saves</p>
+              <p className="mt-2 text-3xl font-semibold">{contributor.memberSaveCount}</p>
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Recorded WHEAT</p>
               <p className="mt-2 text-3xl font-semibold">{contributor.wheatBalance}</p>
@@ -137,6 +144,10 @@ export default async function CommunityContributorPage({
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
               <p className="text-xs uppercase tracking-[0.18em] opacity-65">Categories</p>
               <p className="mt-2 text-3xl font-semibold">{contributor.categoryCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] opacity-65">Rank score</p>
+              <p className="mt-2 text-3xl font-semibold">{contributor.communityRank}</p>
             </div>
           </div>
 
@@ -171,6 +182,7 @@ export default async function CommunityContributorPage({
                     className="rounded-full border border-white/10 px-4 py-2 text-sm transition hover:bg-white/5"
                   >
                     {product.name} ({product.count})
+                    {product.savedCount > 0 ? ` · ${product.savedCount} saves` : ""}
                   </Link>
                 ) : (
                   <span
@@ -178,6 +190,7 @@ export default async function CommunityContributorPage({
                     className="rounded-full border border-white/10 px-4 py-2 text-sm opacity-75"
                   >
                     {product.name} ({product.count})
+                    {product.savedCount > 0 ? ` · ${product.savedCount} saves` : ""}
                   </span>
                 ),
               )}

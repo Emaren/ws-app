@@ -30,6 +30,8 @@ model User {
   affiliateClicks        AffiliateClick[]
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
+  savedProducts          SavedProduct[]
+  savedOffers            SavedOffer[]
   authRegistrationEvents AuthRegistrationEvent[]
   authFunnelEvents       AuthFunnelEvent[]
   passwordResetTokens    PasswordResetToken[]
@@ -121,6 +123,7 @@ model Product {
   inventoryItems InventoryItem[]
   offers         Offer[]
   reviewProfiles ReviewProfile[]
+  savedProducts  SavedProduct[]
 
   @@index([brandId])
   @@index([category])
@@ -429,6 +432,7 @@ model Offer {
   pricingRule        PricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
   campaign           Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   inboxItems         UserOfferInbox[]
+  savedOffers        SavedOffer[]
   deliveryLeads      DeliveryLead[]
   analyticsEvents    AnalyticsEvent[]
   commerceModules    ArticleCommerceModule[]
@@ -438,6 +442,32 @@ model Offer {
   @@index([productId])
   @@index([startsAt, endsAt])
   @@index([featured])
+}
+
+model SavedProduct {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt])
+  @@index([productId, createdAt])
+}
+
+model SavedOffer {
+  id        String   @id @default(cuid())
+  userId    String
+  offerId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offer     Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, offerId])
+  @@index([userId, createdAt])
+  @@index([offerId, createdAt])
 }
 
 model UserOfferInbox {
