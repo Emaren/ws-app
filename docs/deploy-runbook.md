@@ -8,7 +8,7 @@ This runbook covers production pull/restart/smoke for `ws-app` on hel1.
 
 ## Preconditions
 
-- Repo path: `/var/www/wheatandstone/ws-app`
+- Repo path: `/var/www/WheatAndStone/ws-app`
 - Services: `wheatandstone-app.service` (active), `wheatandstone-web.service` (legacy alias)
 - Scheduler units: `wheatandstone-fulfillment-automation.service`, `wheatandstone-fulfillment-automation.timer`
 - Branch policy: `main` only
@@ -20,7 +20,7 @@ This runbook covers production pull/restart/smoke for `ws-app` on hel1.
 ## Deploy sequence
 
 ```bash
-cd /var/www/wheatandstone/ws-app
+cd /var/www/WheatAndStone/ws-app
 git fetch --prune origin
 git checkout main
 git pull --ff-only origin main
@@ -60,7 +60,7 @@ sudo systemctl restart wheatandstone-web
 ## Smoke checks
 
 ```bash
-cd /var/www/wheatandstone/ws-app
+cd /var/www/WheatAndStone/ws-app
 BASE_URL=http://127.0.0.1:3010 PUBLIC_URL=https://wheatandstone.ca pnpm run smoke:http
 ```
 

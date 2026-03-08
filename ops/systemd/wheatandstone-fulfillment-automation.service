@@ -5,6 +5,6 @@ Wants=wheatandstone-app.service
 
 [Service]
 Type=oneshot
-WorkingDirectory=/var/www/wheatandstone/ws-app
-EnvironmentFile=/var/www/wheatandstone/ws-app/.env.production
+WorkingDirectory=/var/www/WheatAndStone/ws-app
+EnvironmentFile=/etc/wheatandstone/wheatandstone-web.env
 ExecStart=/usr/bin/env bash -lc 'pnpm automation:fulfillment:run'
