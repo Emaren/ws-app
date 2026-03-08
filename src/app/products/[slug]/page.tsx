@@ -131,6 +131,85 @@ export default async function ProductPage({
           </div>
         </section>
 
+        <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[1.9rem] border border-white/10 bg-black/20 p-5 md:p-6">
+            <div className="text-xs uppercase tracking-[0.28em] opacity-65">Trust signals</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">Why this page matters</h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">Reviews</p>
+                <p className="mt-2 text-3xl font-semibold">{product.reviewCount}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">Buy routes</p>
+                <p className="mt-2 text-3xl font-semibold">{product.trustSignals.buyRouteCount}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">Local stores</p>
+                <p className="mt-2 text-3xl font-semibold">{product.trustSignals.storeCount}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">Delivery stores</p>
+                <p className="mt-2 text-3xl font-semibold">{product.trustSignals.deliveryStoreCount}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.9rem] border border-white/10 bg-black/20 p-5 md:p-6">
+            <div className="text-xs uppercase tracking-[0.28em] opacity-65">Store network</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">Where this product is showing up</h2>
+            {product.storeSummaries.length > 0 ? (
+              <div className="mt-5 space-y-3">
+                {product.storeSummaries.map((store) => (
+                  <div
+                    key={store.slug || store.name}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{store.displayName}</p>
+                        <p className="mt-1 text-sm opacity-70">
+                          {store.locationLabel || "Local network partner"}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm opacity-75">
+                        <p>{store.buyRouteCount} route(s)</p>
+                        <p>{store.liveOfferCount} live offer(s)</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
+                      {store.deliveryEnabled && (
+                        <span className="rounded-full border border-emerald-300/30 bg-emerald-200/10 px-3 py-1 text-emerald-100">
+                          Delivery
+                        </span>
+                      )}
+                      {store.pickupEnabled && (
+                        <span className="rounded-full border border-white/10 px-3 py-1">
+                          Pickup
+                        </span>
+                      )}
+                    </div>
+                    {store.slug ? (
+                      <div className="mt-4">
+                        <Link
+                          href={`/stores/${store.slug}`}
+                          className="inline-flex items-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition hover:bg-white/5"
+                        >
+                          Open Store Page
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm opacity-75">
+                Store-level local coverage will appear here as product-linked inventory and offers grow.
+              </p>
+            )}
+          </div>
+        </section>
+
         {product.buyOptions.length > 0 && (
           <section className="space-y-4">
             <div className="space-y-1">
@@ -185,6 +264,16 @@ export default async function ProductPage({
                       </span>
                     )}
                   </div>
+                  {option.module.business?.slug ? (
+                    <div className="px-2 pb-2">
+                      <Link
+                        href={`/stores/${option.module.business.slug}`}
+                        className="inline-flex items-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition hover:bg-white/5"
+                      >
+                        Open Store Page
+                      </Link>
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -272,6 +361,62 @@ export default async function ProductPage({
             ))}
           </div>
         </section>
+
+        {product.relatedProducts.length > 0 && (
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-[0.28em] opacity-65">Keep exploring</div>
+              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                Related organic alternatives
+              </h2>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {product.relatedProducts.map((related) => (
+                <article
+                  key={related.slug}
+                  className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/25"
+                >
+                  {related.heroImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={related.heroImageUrl}
+                      alt={related.name}
+                      className="h-40 w-full object-cover"
+                    />
+                  ) : null}
+                  <div className="space-y-3 p-5">
+                    <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
+                      {typeof related.featuredReview.score === "number" && (
+                        <span className="rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-amber-100">
+                          {related.featuredReview.score}/100
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-semibold tracking-tight">{related.name}</h3>
+                    <p className="text-sm leading-6 opacity-80">
+                      {related.summary || "Related canonical product page available."}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        href={`/products/${related.slug}`}
+                        className="inline-flex items-center rounded-xl border border-amber-300/35 bg-amber-200/12 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-200/20"
+                      >
+                        Open Product
+                      </Link>
+                      <Link
+                        href={`/articles/${related.featuredReview.articleSlug}`}
+                        className="inline-flex items-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition hover:bg-white/5"
+                      >
+                        Read Review
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

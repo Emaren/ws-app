@@ -62,6 +62,13 @@ function availableInventoryUnits(item: {
   return Math.max(item.quantityOnHand - item.reservedQuantity, 0);
 }
 
+type ProductRouteMetrics = {
+  liveOfferCount: number;
+  buyRouteCount: number;
+  storeCount: number;
+  deliveryStoreCount: number;
+};
+
 type ProductBuyOption = {
   key: string;
   source: "offer" | "inventory";
@@ -137,6 +144,127 @@ export async function listPublicProducts(limit?: number) {
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
+  const productIds = products.map((product) => product.id);
+  const [offerRows, inventoryRows] =
+    productIds.length > 0
+      ? await Promise.all([
+          prisma.offer.findMany({
+            where: {
+              OR: [
+                { productId: { in: productIds } },
+                { inventoryItem: { is: { productId: { in: productIds } } } },
+              ],
+              business: { is: { status: "ACTIVE" } },
+            },
+            select: {
+              id: true,
+              productId: true,
+              inventoryItemId: true,
+              status: true,
+              startsAt: true,
+              endsAt: true,
+              businessId: true,
+              business: {
+                select: {
+                  storeProfile: {
+                    select: {
+                      deliveryEnabled: true,
+                    },
+                  },
+                },
+              },
+              inventoryItem: {
+                select: {
+                  productId: true,
+                },
+              },
+            },
+          }),
+          prisma.inventoryItem.findMany({
+            where: {
+              productId: { in: productIds },
+              isActive: true,
+              business: { is: { status: "ACTIVE" } },
+            },
+            select: {
+              id: true,
+              productId: true,
+              businessId: true,
+              business: {
+                select: {
+                  storeProfile: {
+                    select: {
+                      deliveryEnabled: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        ])
+      : [[], []];
+
+  const metricsByProductId = new Map<
+    string,
+    ProductRouteMetrics & { storeIds: Set<string>; deliveryStoreIds: Set<string> }
+  >();
+  const liveInventoryRouteIds = new Set<string>();
+
+  function metricsForProduct(productId: string) {
+    const existing = metricsByProductId.get(productId);
+    if (existing) {
+      return existing;
+    }
+
+    const created = {
+      liveOfferCount: 0,
+      buyRouteCount: 0,
+      storeCount: 0,
+      deliveryStoreCount: 0,
+      storeIds: new Set<string>(),
+      deliveryStoreIds: new Set<string>(),
+    };
+    metricsByProductId.set(productId, created);
+    return created;
+  }
+
+  for (const offer of offerRows) {
+    if (!isLiveOfferNow(offer)) {
+      continue;
+    }
+
+    const productId = offer.productId || offer.inventoryItem?.productId;
+    if (!productId) {
+      continue;
+    }
+
+    const metrics = metricsForProduct(productId);
+    metrics.liveOfferCount += 1;
+    metrics.buyRouteCount += 1;
+    metrics.storeIds.add(offer.businessId);
+    if (offer.business.storeProfile?.deliveryEnabled) {
+      metrics.deliveryStoreIds.add(offer.businessId);
+    }
+    if (offer.inventoryItemId) {
+      liveInventoryRouteIds.add(offer.inventoryItemId);
+    }
+  }
+
+  for (const item of inventoryRows) {
+    if (!item.productId) {
+      continue;
+    }
+
+    const metrics = metricsForProduct(item.productId);
+    metrics.storeIds.add(item.businessId);
+    if (item.business.storeProfile?.deliveryEnabled) {
+      metrics.deliveryStoreIds.add(item.businessId);
+    }
+    if (!liveInventoryRouteIds.has(item.id)) {
+      metrics.buyRouteCount += 1;
+    }
+  }
+
   const items = products
     .map((product) => {
       const publicReviews = product.reviewProfiles
@@ -148,8 +276,10 @@ export async function listPublicProducts(limit?: number) {
       }
 
       const featuredReview = publicReviews[0];
+      const metrics = metricsByProductId.get(product.id);
 
       return {
+        id: product.id,
         slug: product.slug,
         name: product.name,
         brandName: product.brand?.name ?? null,
@@ -158,6 +288,10 @@ export async function listPublicProducts(limit?: number) {
         summary: buildProductSummary({ summary: product.summary, reviewProfiles: publicReviews }),
         heroImageUrl: product.heroImageUrl || featuredReview.article.coverUrl || null,
         reviewCount: publicReviews.length,
+        buyRouteCount: metrics?.buyRouteCount ?? 0,
+        liveOfferCount: metrics?.liveOfferCount ?? 0,
+        storeCount: metrics?.storeIds.size ?? 0,
+        deliveryStoreCount: metrics?.deliveryStoreIds.size ?? 0,
         featuredReview: {
           articleSlug: featuredReview.article.slug,
           articleTitle: featuredReview.article.title,
@@ -169,6 +303,7 @@ export async function listPublicProducts(limit?: number) {
       };
     })
     .filter(Boolean) as Array<{
+    id: string;
     slug: string;
     name: string;
     brandName: string | null;
@@ -177,6 +312,10 @@ export async function listPublicProducts(limit?: number) {
     summary: string | null;
     heroImageUrl: string | null;
     reviewCount: number;
+    buyRouteCount: number;
+    liveOfferCount: number;
+    storeCount: number;
+    deliveryStoreCount: number;
     featuredReview: {
       articleSlug: string;
       articleTitle: string;
@@ -491,6 +630,139 @@ export async function getPublicProductBySlug(slug: string) {
     .filter(([key]) => !buyOptionKeys.has(key))
     .map(([, spotlight]) => spotlight);
 
+  const storeSummaryMap = new Map<
+    string,
+    {
+      slug: string | null;
+      name: string;
+      displayName: string;
+      locationLabel: string | null;
+      deliveryEnabled: boolean;
+      pickupEnabled: boolean;
+      buyRouteCount: number;
+      liveOfferCount: number;
+    }
+  >();
+
+  for (const option of buyOptions) {
+    const storeSlug = option.module.business?.slug ?? option.module.businessSlug ?? null;
+    const storeName =
+      option.module.business?.storeProfile?.displayName ||
+      option.module.business?.name ||
+      option.module.businessName ||
+      "Local store";
+    const key = storeSlug || option.module.businessId || storeName;
+    const existing =
+      storeSummaryMap.get(key) ??
+      {
+        slug: storeSlug,
+        name: option.module.business?.name || option.module.businessName || storeName,
+        displayName: storeName,
+        locationLabel: option.locationLabel,
+        deliveryEnabled: option.deliveryEnabled,
+        pickupEnabled: option.pickupEnabled,
+        buyRouteCount: 0,
+        liveOfferCount: 0,
+      };
+
+    existing.buyRouteCount += 1;
+    if (option.source === "offer") {
+      existing.liveOfferCount += 1;
+    }
+    if (option.deliveryEnabled) {
+      existing.deliveryEnabled = true;
+    }
+    if (option.pickupEnabled) {
+      existing.pickupEnabled = true;
+    }
+    if (!existing.locationLabel && option.locationLabel) {
+      existing.locationLabel = option.locationLabel;
+    }
+    storeSummaryMap.set(key, existing);
+  }
+
+  let relatedProducts: Array<{
+    slug: string;
+    name: string;
+    summary: string | null;
+    heroImageUrl: string | null;
+    featuredReview: {
+      articleSlug: string;
+      articleTitle: string;
+      score: number | null;
+    };
+  }> = [];
+
+  const relatedCandidates = product.category || product.brandId
+    ? await prisma.product.findMany({
+        where: {
+          id: { not: product.id },
+          OR: [
+            ...(product.category ? [{ category: product.category }] : []),
+            ...(product.brandId ? [{ brandId: product.brandId }] : []),
+          ],
+        },
+        include: {
+          brand: true,
+          reviewProfiles: {
+            include: {
+              article: {
+                select: {
+                  slug: true,
+                  title: true,
+                  excerpt: true,
+                  status: true,
+                  publishedAt: true,
+                  updatedAt: true,
+                  coverUrl: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ updatedAt: "desc" }],
+        take: 6,
+      })
+    : [];
+
+  relatedProducts = relatedCandidates
+    .map((candidate) => {
+      const candidateReviews = candidate.reviewProfiles
+        .filter((review) => isVisibleArticle(review.article))
+        .sort(sortByPublishedAtDesc);
+
+      if (candidateReviews.length === 0) {
+        return null;
+      }
+
+      return {
+        slug: candidate.slug,
+        name: candidate.name,
+        summary: buildProductSummary({
+          summary: candidate.summary,
+          reviewProfiles: candidateReviews,
+        }),
+        heroImageUrl: candidate.heroImageUrl || candidateReviews[0]?.article.coverUrl || null,
+        featuredReview: {
+          articleSlug: candidateReviews[0].article.slug,
+          articleTitle: candidateReviews[0].article.title,
+          score: candidateReviews[0].reviewScore,
+        },
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 3) as Array<{
+    slug: string;
+    name: string;
+    summary: string | null;
+    heroImageUrl: string | null;
+    featuredReview: {
+      articleSlug: string;
+      articleTitle: string;
+      score: number | null;
+    };
+  }>;
+
   return {
     slug: product.slug,
     name: product.name,
@@ -504,5 +776,20 @@ export async function getPublicProductBySlug(slug: string) {
     reviews: publicReviews,
     buyOptions,
     editorialSpotlights,
+    storeSummaries: [...storeSummaryMap.values()].sort((left, right) => {
+      if (right.buyRouteCount !== left.buyRouteCount) {
+        return right.buyRouteCount - left.buyRouteCount;
+      }
+      return left.displayName.localeCompare(right.displayName);
+    }),
+    trustSignals: {
+      buyRouteCount: buyOptions.length,
+      liveOfferCount: buyOptions.filter((option) => option.source === "offer").length,
+      storeCount: storeSummaryMap.size,
+      deliveryStoreCount: [...storeSummaryMap.values()].filter((store) => store.deliveryEnabled).length,
+      editorialSpotlightCount: editorialSpotlights.length,
+      latestReviewPublishedAt: publicReviews[0]?.article.publishedAt ?? null,
+    },
+    relatedProducts,
   };
 }
