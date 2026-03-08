@@ -1,8 +1,7 @@
 import type { DeliveryLeadStatus, Prisma } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
-import { getApiAuthContext } from "@/lib/apiAuth";
+import { businessScopeWhere, requireCommerceManagerAuth } from "@/app/api/admin/commerce/_shared";
 import { prisma } from "@/lib/prisma";
-import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,24 +42,39 @@ function appendStatusNote(existing: string | null, note: string, timestamp: stri
   return `${existing.trim()}\n\n${entry}`;
 }
 
-async function requireStaff(req: NextRequest): Promise<NextResponse | null> {
-  const auth = await getApiAuthContext(req);
-  const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
-
-  if (!auth.token || !isStaff) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+function parseOptionalDate(value: unknown): Date | null | undefined {
+  if (value === undefined) {
+    return undefined;
   }
 
-  return null;
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new Error("fulfillBy must be a valid date");
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new Error("fulfillBy must be a valid date");
+  }
+
+  return parsed;
 }
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const forbiddenResponse = await requireStaff(req);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const auth = await requireCommerceManagerAuth(req);
+  if (auth instanceof NextResponse) {
+    return auth;
   }
 
   const { id } = await params;
@@ -77,19 +91,43 @@ export async function PATCH(
   const payload = body as Record<string, unknown>;
   const nextStatus = parseStatus(payload.status);
   const note = typeof payload.note === "string" ? payload.note.trim() : "";
+  const scopeWhere = businessScopeWhere(auth);
 
-  if (!nextStatus && !note) {
+  let fulfillBy: Date | null | undefined;
+  try {
+    fulfillBy = parseOptionalDate(payload.fulfillBy);
+  } catch (error) {
     return NextResponse.json(
-      { message: "Provide a valid status or note" },
+      { message: error instanceof Error ? error.message : "Invalid fulfillBy" },
       { status: 400 },
     );
   }
 
-  const existing = await prisma.deliveryLead.findUnique({
-    where: { id: leadId },
+  const assignmentRequested = Object.prototype.hasOwnProperty.call(payload, "assignedToUserId");
+  const assignedToUserIdRaw =
+    typeof payload.assignedToUserId === "string" ? payload.assignedToUserId.trim() : payload.assignedToUserId;
+  const assignedToUserId =
+    assignedToUserIdRaw === null || assignedToUserIdRaw === "" ? null : assignedToUserIdRaw;
+
+  if (!nextStatus && !note && !assignmentRequested && fulfillBy === undefined) {
+    return NextResponse.json(
+      { message: "Provide a valid status, note, assignment, or fulfill-by value" },
+      { status: 400 },
+    );
+  }
+
+  const existing = await prisma.deliveryLead.findFirst({
+    where: {
+      id: leadId,
+      business: scopeWhere,
+    },
     select: {
       id: true,
       notes: true,
+      assignedToUserId: true,
+      assignedToName: true,
+      assignedAt: true,
+      fulfillBy: true,
       contactedAt: true,
       fulfilledAt: true,
       cancelledAt: true,
@@ -101,7 +139,8 @@ export async function PATCH(
   }
 
   const now = new Date();
-  const updatePatch: Prisma.DeliveryLeadUpdateInput = {};
+  const updatePatch: Prisma.DeliveryLeadUncheckedUpdateInput = {};
+  const autoNotes: string[] = [];
 
   if (nextStatus) {
     updatePatch.status = nextStatus;
@@ -119,8 +158,63 @@ export async function PATCH(
     }
   }
 
-  if (note) {
-    const nextNotes = appendStatusNote(existing.notes, note, now.toISOString());
+  if (assignmentRequested) {
+    if (assignedToUserId === null) {
+      updatePatch.assignedToUserId = null;
+      updatePatch.assignedToName = null;
+      updatePatch.assignedAt = null;
+
+      if (existing.assignedToUserId) {
+        autoNotes.push("Assignment cleared.");
+      }
+    } else if (typeof assignedToUserId === "string") {
+      const assignee = await prisma.user.findFirst({
+        where: {
+          id: assignedToUserId,
+          role: {
+            in: ["OWNER", "ADMIN", "EDITOR"],
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      if (!assignee) {
+        return NextResponse.json(
+          { message: "Assigned operator was not found" },
+          { status: 400 },
+        );
+      }
+
+      const assigneeName = assignee.name?.trim() || assignee.email;
+      updatePatch.assignedToUserId = assignee.id;
+      updatePatch.assignedToName = assigneeName;
+      updatePatch.assignedAt =
+        existing.assignedToUserId === assignee.id ? existing.assignedAt ?? now : now;
+
+      if (existing.assignedToUserId !== assignee.id) {
+        autoNotes.push(`Assigned to ${assigneeName}.`);
+      }
+    } else {
+      return NextResponse.json({ message: "assignedToUserId must be a string or null" }, { status: 400 });
+    }
+  }
+
+  if (fulfillBy !== undefined) {
+    updatePatch.fulfillBy = fulfillBy;
+    autoNotes.push(
+      fulfillBy
+        ? `Fulfillment target set for ${fulfillBy.toISOString()}.`
+        : "Fulfillment target cleared.",
+    );
+  }
+
+  const combinedNote = [note, ...autoNotes].filter(Boolean).join("\n");
+  if (combinedNote) {
+    const nextNotes = appendStatusNote(existing.notes, combinedNote, now.toISOString());
     updatePatch.notes = nextNotes.slice(0, 2400);
   }
 
@@ -130,6 +224,10 @@ export async function PATCH(
     select: {
       id: true,
       status: true,
+      assignedToUserId: true,
+      assignedAt: true,
+      assignedToName: true,
+      fulfillBy: true,
       requestedAt: true,
       contactedAt: true,
       fulfilledAt: true,

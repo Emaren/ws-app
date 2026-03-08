@@ -3,8 +3,10 @@ import type {
   DeliveryLeadStatus,
   NotificationChannel,
   Prisma,
+  Role,
 } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
+import { businessScopeWhere, requireCommerceManagerAuth } from "@/app/api/admin/commerce/_shared";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { recordAnalyticsEvent } from "@/lib/analytics/server";
 import { grantDeliveryLeadRewards } from "@/lib/localRewards";
@@ -136,15 +138,28 @@ function parseLimit(value: string | null): number {
   return Math.min(parsed, 250);
 }
 
-async function requireStaffLeadAccess(req: NextRequest): Promise<NextResponse | null> {
-  const auth = await getApiAuthContext(req);
-  const isStaff = hasAnyRole(auth.role, RBAC_ROLE_GROUPS.staff);
-
-  if (!auth.token || !isStaff) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+function parseBooleanFlag(value: string | null): boolean {
+  if (!value) {
+    return false;
   }
 
-  return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function normalizeWorkflow(
+  value: string | null,
+): "ALL" | "UNASSIGNED" | "MINE" | "OVERDUE" {
+  const normalized = value?.trim().toUpperCase() ?? "";
+  if (
+    normalized === "UNASSIGNED" ||
+    normalized === "MINE" ||
+    normalized === "OVERDUE"
+  ) {
+    return normalized;
+  }
+
+  return "ALL";
 }
 
 function normalizeSource(value: unknown): DeliveryLeadSource {
@@ -495,9 +510,9 @@ async function upsertRecipientId(
 }
 
 export async function GET(req: NextRequest) {
-  const forbiddenResponse = await requireStaffLeadAccess(req);
-  if (forbiddenResponse) {
-    return forbiddenResponse;
+  const auth = await requireCommerceManagerAuth(req);
+  if (auth instanceof NextResponse) {
+    return auth;
   }
 
   const searchParams = safeSearchParams(req);
@@ -506,21 +521,46 @@ export async function GET(req: NextRequest) {
   const status = normalizeLeadStatus(statusRaw);
   const query = asTrimmedString(searchParams.get("q"), 160);
   const limit = parseLimit(searchParams.get("limit"));
+  const workflow = normalizeWorkflow(searchParams.get("workflow"));
+  const assignedToMe = parseBooleanFlag(searchParams.get("assignedToMe"));
 
   if (statusRaw && !status) {
     return NextResponse.json({ message: "Invalid lead status" }, { status: 400 });
   }
 
-  const where: Prisma.DeliveryLeadWhereInput = {};
+  const scopeWhere = businessScopeWhere(auth);
+  const activeLeadStatuses: DeliveryLeadStatus[] = ["NEW", "CONTACTED", "RESERVED"];
+  const whereClauses: Prisma.DeliveryLeadWhereInput[] = [{ business: scopeWhere }];
 
   if (businessId) {
-    where.businessId = businessId;
+    whereClauses.push({ businessId });
   }
+
   if (status) {
-    where.status = status;
+    whereClauses.push({ status });
   }
+
+  const actorUserId = auth.actorUserId?.trim() || null;
+  if (workflow === "UNASSIGNED") {
+    whereClauses.push({ assignedToUserId: null });
+  } else if (workflow === "MINE" || assignedToMe) {
+    whereClauses.push({
+      assignedToUserId: actorUserId ?? "__unassigned__",
+    });
+  } else if (workflow === "OVERDUE") {
+    whereClauses.push({
+      fulfillBy: {
+        lt: new Date(),
+      },
+      status: {
+        in: activeLeadStatuses,
+      },
+    });
+  }
+
   if (query) {
-    where.OR = [
+    whereClauses.push({
+      OR: [
       { deliveryAddress: { contains: query, mode: "insensitive" } },
       { notes: { contains: query, mode: "insensitive" } },
       { recipient: { is: { name: { contains: query, mode: "insensitive" } } } },
@@ -530,10 +570,14 @@ export async function GET(req: NextRequest) {
       { offer: { is: { title: { contains: query, mode: "insensitive" } } } },
       { business: { is: { name: { contains: query, mode: "insensitive" } } } },
       { business: { is: { slug: { contains: query, mode: "insensitive" } } } },
-    ];
+      ],
+    });
   }
 
-  const [leads, businesses] = await Promise.all([
+  const where: Prisma.DeliveryLeadWhereInput =
+    whereClauses.length === 1 ? whereClauses[0] : { AND: whereClauses };
+
+  const [leads, businesses, operators] = await Promise.all([
     prisma.deliveryLead.findMany({
       where,
       orderBy: [{ requestedAt: "desc" }, { createdAt: "desc" }],
@@ -543,6 +587,9 @@ export async function GET(req: NextRequest) {
         businessId: true,
         status: true,
         source: true,
+        assignedToUserId: true,
+        assignedAt: true,
+        assignedToName: true,
         requestedQty: true,
         unitPriceCents: true,
         totalCents: true,
@@ -586,9 +633,18 @@ export async function GET(req: NextRequest) {
             discountPriceCents: true,
           },
         },
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
       },
     }),
     prisma.business.findMany({
+      where: scopeWhere,
       orderBy: [{ isVerified: "desc" }, { name: "asc" }],
       select: {
         id: true,
@@ -597,9 +653,37 @@ export async function GET(req: NextRequest) {
         status: true,
       },
     }),
+    prisma.user.findMany({
+      where: {
+        role: {
+          in: ["OWNER", "ADMIN", "EDITOR"] satisfies Role[],
+        },
+      },
+      orderBy: [{ name: "asc" }, { email: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    }),
   ]);
 
-  return NextResponse.json({ leads, businesses });
+  return NextResponse.json({
+    viewer: {
+      actorUserId,
+      role: auth.role,
+      isOwnerAdmin: auth.isOwnerAdmin,
+    },
+    leads,
+    businesses,
+    operators: operators.map((operator) => ({
+      id: operator.id,
+      name: operator.name,
+      email: operator.email,
+      role: operator.role,
+    })),
+  });
 }
 
 export async function POST(req: NextRequest) {

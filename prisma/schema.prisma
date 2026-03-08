@@ -25,6 +25,7 @@ model User {
   businessesOwned        Business[]
   notificationRecipients NotificationRecipient[]
   deliveryLeads          DeliveryLead[]
+  assignedDeliveryLeads  DeliveryLead[]          @relation("DeliveryLeadAssignee")
   affiliateClicks        AffiliateClick[]
   analyticsEvents        AnalyticsEvent[]
   rewardLedgerEntries    RewardLedger[]
@@ -429,6 +430,9 @@ model DeliveryLead {
   offerId         String?
   recipientId     String?
   userId          String?
+  assignedToUserId String?
+  assignedAt      DateTime?
+  assignedToName  String?
   source          DeliveryLeadSource     @default(ARTICLE_CTA)
   status          DeliveryLeadStatus     @default(NEW)
   requestedQty    Int                    @default(1)
@@ -448,8 +452,10 @@ model DeliveryLead {
   offer           Offer?                 @relation(fields: [offerId], references: [id], onDelete: SetNull)
   recipient       NotificationRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
   user            User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignee        User?                  @relation("DeliveryLeadAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
 
   @@index([businessId, status])
+  @@index([assignedToUserId, status])
   @@index([requestedAt])
   @@index([offerId])
   @@index([recipientId])

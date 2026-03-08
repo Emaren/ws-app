@@ -20,6 +20,13 @@ type BusinessRecord = {
   status: string;
 };
 
+type OperatorRecord = {
+  id: string;
+  name: string;
+  email: string;
+  role: "OWNER" | "ADMIN" | "EDITOR";
+};
+
 type RecipientRecord = {
   id: string;
   name: string | null;
@@ -33,6 +40,9 @@ type DeliveryLeadRecord = {
   businessId: string;
   status: DeliveryLeadStatus;
   source: string;
+  assignedToUserId: string | null;
+  assignedAt: string | null;
+  assignedToName: string | null;
   requestedQty: number;
   unitPriceCents: number | null;
   totalCents: number | null;
@@ -62,11 +72,23 @@ type DeliveryLeadRecord = {
     title: string;
     discountPriceCents: number | null;
   } | null;
+  assignee: {
+    id: string;
+    name: string;
+    email: string;
+    role: "OWNER" | "ADMIN" | "EDITOR";
+  } | null;
 };
 
 type DeliveryLeadListResponse = {
+  viewer: {
+    actorUserId: string | null;
+    role: string | undefined;
+    isOwnerAdmin: boolean;
+  };
   leads: DeliveryLeadRecord[];
   businesses: BusinessRecord[];
+  operators: OperatorRecord[];
 };
 
 type NotificationJobRecord = {
@@ -120,6 +142,8 @@ type TimelineEntry = {
   status?: NotificationStatus;
 };
 
+type WorkflowFilter = "ALL" | "UNASSIGNED" | "MINE" | "OVERDUE";
+
 const LEAD_STATUSES: readonly DeliveryLeadStatus[] = [
   "NEW",
   "CONTACTED",
@@ -128,6 +152,12 @@ const LEAD_STATUSES: readonly DeliveryLeadStatus[] = [
   "CANCELLED",
   "EXPIRED",
 ];
+
+type FulfillmentConsoleProps = {
+  title?: string;
+  summary?: string;
+  initialBusinessId?: string;
+};
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -220,6 +250,58 @@ function normalizePhoneForTel(phone: string): string {
   return phone.replace(/[\s().-]/g, "");
 }
 
+function toDateTimeLocalValue(iso: string | null): string {
+  if (!iso) return "";
+  const parsed = new Date(iso);
+  if (!Number.isFinite(parsed.getTime())) return "";
+  const offsetMs = parsed.getTimezoneOffset() * 60_000;
+  return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function toIsoDateTime(localValue: string): string | null {
+  const trimmed = localValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isFinite(parsed.getTime())) {
+    throw new Error("Fulfill-by must be a valid date/time");
+  }
+
+  return parsed.toISOString();
+}
+
+function assigneeLabel(lead: DeliveryLeadRecord): string {
+  return lead.assignee?.name || lead.assignedToName || lead.assignee?.email || "Unassigned";
+}
+
+function isLeadOpen(status: DeliveryLeadStatus): boolean {
+  return status === "NEW" || status === "CONTACTED" || status === "RESERVED";
+}
+
+function isLeadOverdue(lead: DeliveryLeadRecord): boolean {
+  if (!lead.fulfillBy || !isLeadOpen(lead.status)) {
+    return false;
+  }
+
+  const dueMs = Date.parse(lead.fulfillBy);
+  return Number.isFinite(dueMs) && dueMs < Date.now();
+}
+
+function dueLabel(lead: DeliveryLeadRecord): string {
+  if (!lead.fulfillBy) {
+    return "No due target";
+  }
+
+  const dueMs = Date.parse(lead.fulfillBy);
+  if (!Number.isFinite(dueMs)) {
+    return "Due date unavailable";
+  }
+
+  return `${isLeadOverdue(lead) ? "Overdue" : "Due"} ${new Date(lead.fulfillBy).toLocaleString()}`;
+}
+
 function itemLabel(lead: DeliveryLeadRecord): string {
   return lead.offer?.title ?? lead.inventoryItem?.name ?? "Delivery request";
 }
@@ -265,6 +347,26 @@ function buildLeadEvents(lead: DeliveryLeadRecord): TimelineEntry[] {
     });
   }
 
+  if (lead.assignedAt && lead.assignedToName) {
+    events.push({
+      id: `${lead.id}-assigned`,
+      at: lead.assignedAt,
+      category: "lead",
+      title: "Lead assigned",
+      detail: `Owner: ${lead.assignedToName}`,
+    });
+  }
+
+  if (lead.fulfillBy) {
+    events.push({
+      id: `${lead.id}-due`,
+      at: lead.fulfillBy,
+      category: "lead",
+      title: isLeadOverdue(lead) ? "Fulfillment target overdue" : "Fulfillment target set",
+      detail: dueLabel(lead),
+    });
+  }
+
   if (lead.fulfilledAt) {
     events.push({
       id: `${lead.id}-fulfilled`,
@@ -288,14 +390,23 @@ function buildLeadEvents(lead: DeliveryLeadRecord): TimelineEntry[] {
   return events;
 }
 
-export default function FulfillmentConsole() {
+export default function FulfillmentConsole({
+  title = "Store Fulfillment Console",
+  summary = "Manage delivery lead statuses, claim owners, set due targets, trigger email/SMS updates, and inspect the lead timeline.",
+  initialBusinessId = "",
+}: FulfillmentConsoleProps) {
+  const [viewerUserId, setViewerUserId] = useState<string | null>(null);
+  const [operators, setOperators] = useState<OperatorRecord[]>([]);
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
   const [leads, setLeads] = useState<DeliveryLeadRecord[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState("");
+  const [selectedBusinessId, setSelectedBusinessId] = useState(initialBusinessId);
   const [statusFilter, setStatusFilter] = useState<"" | DeliveryLeadStatus>("");
+  const [workflowFilter, setWorkflowFilter] = useState<WorkflowFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<DeliveryLeadStatus>("NEW");
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [fulfillByInput, setFulfillByInput] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [notifyMessage, setNotifyMessage] = useState("");
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
@@ -318,6 +429,9 @@ export default function FulfillmentConsole() {
     let fulfilledCount = 0;
     let cancelledCount = 0;
     let expiredCount = 0;
+    let unassignedCount = 0;
+    let overdueCount = 0;
+    let mineCount = 0;
 
     for (const lead of leads) {
       if (lead.status === "NEW") newCount += 1;
@@ -326,6 +440,9 @@ export default function FulfillmentConsole() {
       if (lead.status === "FULFILLED") fulfilledCount += 1;
       if (lead.status === "CANCELLED") cancelledCount += 1;
       if (lead.status === "EXPIRED") expiredCount += 1;
+      if (!lead.assignedToUserId && isLeadOpen(lead.status)) unassignedCount += 1;
+      if (isLeadOverdue(lead)) overdueCount += 1;
+      if (viewerUserId && lead.assignedToUserId === viewerUserId) mineCount += 1;
     }
 
     return {
@@ -336,8 +453,11 @@ export default function FulfillmentConsole() {
       fulfilledCount,
       cancelledCount,
       expiredCount,
+      unassignedCount,
+      overdueCount,
+      mineCount,
     };
-  }, [leads]);
+  }, [leads, viewerUserId]);
 
   async function loadLeads() {
     setLoading(true);
@@ -345,12 +465,14 @@ export default function FulfillmentConsole() {
 
     try {
       const query = new URLSearchParams();
-      query.set("scope", "admin");
       if (selectedBusinessId) {
         query.set("businessId", selectedBusinessId);
       }
       if (statusFilter) {
         query.set("status", statusFilter);
+      }
+      if (workflowFilter !== "ALL") {
+        query.set("workflow", workflowFilter);
       }
       if (searchQuery.trim()) {
         query.set("q", searchQuery.trim());
@@ -362,6 +484,8 @@ export default function FulfillmentConsole() {
 
       setBusinesses(response.businesses);
       setLeads(response.leads);
+      setOperators(response.operators);
+      setViewerUserId(response.viewer.actorUserId);
 
       const hasSelectedBusiness = selectedBusinessId
         ? response.businesses.some((item) => item.id === selectedBusinessId)
@@ -379,6 +503,8 @@ export default function FulfillmentConsole() {
           const firstLead = response.leads.find((item) => item.id === firstLeadId);
           if (firstLead) {
             setSelectedStatus(firstLead.status);
+            setSelectedAssigneeId(firstLead.assignedToUserId ?? "");
+            setFulfillByInput(toDateTimeLocalValue(firstLead.fulfillBy));
             setNotifyMessage(defaultNotifyMessage(firstLead));
           }
         }
@@ -461,9 +587,13 @@ export default function FulfillmentConsole() {
   }
 
   useEffect(() => {
+    setSelectedBusinessId(initialBusinessId);
+  }, [initialBusinessId]);
+
+  useEffect(() => {
     void loadLeads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBusinessId, statusFilter, searchQuery, timelineRefreshToken]);
+  }, [selectedBusinessId, statusFilter, workflowFilter, searchQuery, timelineRefreshToken]);
 
   useEffect(() => {
     if (!selectedLead) {
@@ -471,6 +601,8 @@ export default function FulfillmentConsole() {
     }
 
     setSelectedStatus(selectedLead.status);
+    setSelectedAssigneeId(selectedLead.assignedToUserId ?? "");
+    setFulfillByInput(toDateTimeLocalValue(selectedLead.fulfillBy));
     setNotifyMessage(defaultNotifyMessage(selectedLead));
   }, [selectedLead?.id, selectedLead]);
 
@@ -492,8 +624,11 @@ export default function FulfillmentConsole() {
     setNotice(null);
 
     try {
+      const fulfillBy = toIsoDateTime(fulfillByInput);
       const payload: Record<string, unknown> = {
         status: selectedStatus,
+        assignedToUserId: selectedAssigneeId || null,
+        fulfillBy,
       };
       if (statusNote.trim()) {
         payload.note = statusNote.trim();
@@ -504,7 +639,14 @@ export default function FulfillmentConsole() {
         body: JSON.stringify(payload),
       });
 
-      setNotice(`Lead status updated to ${formatStatusLabel(selectedStatus)}.`);
+      setNotice(
+        `Workflow saved. Status ${formatStatusLabel(selectedStatus)} · owner ${
+          selectedAssigneeId
+            ? operators.find((operator) => operator.id === selectedAssigneeId)?.name ||
+              "assigned"
+            : "cleared"
+        }.`,
+      );
       setStatusNote("");
       setTimelineRefreshToken((value) => value + 1);
     } catch (saveError) {
@@ -512,6 +654,14 @@ export default function FulfillmentConsole() {
     } finally {
       setBusyAction(null);
     }
+  }
+
+  async function claimLead() {
+    if (!selectedLead || !viewerUserId) return;
+    setSelectedAssigneeId(viewerUserId);
+    setStatusNote((prev) =>
+      prev.trim() ? prev : "Claimed from fulfillment board.",
+    );
   }
 
   async function notifyCustomer(channel: Exclude<NotificationChannel, "push">) {
@@ -594,9 +744,9 @@ export default function FulfillmentConsole() {
       <div className="admin-card p-4 md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold md:text-2xl">Store Fulfillment Console</h2>
+            <h2 className="text-xl font-semibold md:text-2xl">{title}</h2>
             <p className="mt-1 text-sm opacity-75">
-              Manage delivery lead statuses, tap-to-call customers, trigger email/SMS updates, and inspect the lead timeline.
+              {summary}
             </p>
           </div>
 
@@ -645,7 +795,21 @@ export default function FulfillmentConsole() {
             </select>
           </label>
 
-          <label className="space-y-1 text-sm sm:col-span-2">
+          <label className="space-y-1 text-sm">
+            <span>Workflow</span>
+            <select
+              value={workflowFilter}
+              onChange={(event) => setWorkflowFilter(event.target.value as WorkflowFilter)}
+              className="admin-surface w-full rounded-xl px-3 py-2"
+            >
+              <option value="ALL">All queues</option>
+              <option value="UNASSIGNED">Unassigned</option>
+              <option value="MINE">Assigned to me</option>
+              <option value="OVERDUE">Overdue</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm">
             <span>Search customer/item/address</span>
             <input
               value={searchQuery}
@@ -668,21 +832,29 @@ export default function FulfillmentConsole() {
         ) : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <div className="admin-card rounded-xl p-4 xl:col-span-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="admin-card rounded-xl p-4">
           <p className="text-xs uppercase tracking-wide opacity-70">Open leads</p>
           <p className="mt-1 text-2xl font-semibold">
             {leadStats.newCount + leadStats.contactedCount + leadStats.reservedCount}
           </p>
         </div>
-        <div className="admin-card rounded-xl p-4 xl:col-span-2">
+        <div className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Unassigned</p>
+          <p className="mt-1 text-2xl font-semibold">{leadStats.unassignedCount}</p>
+        </div>
+        <div className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Overdue</p>
+          <p className="mt-1 text-2xl font-semibold">{leadStats.overdueCount}</p>
+        </div>
+        <div className="admin-card rounded-xl p-4">
           <p className="text-xs uppercase tracking-wide opacity-70">Fulfilled</p>
           <p className="mt-1 text-2xl font-semibold">{leadStats.fulfilledCount}</p>
         </div>
-        <div className="admin-card rounded-xl p-4 xl:col-span-2">
-          <p className="text-xs uppercase tracking-wide opacity-70">Cancelled / Expired</p>
+        <div className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">My queue / Cancelled / Expired</p>
           <p className="mt-1 text-2xl font-semibold">
-            {leadStats.cancelledCount + leadStats.expiredCount}
+            {leadStats.mineCount} / {leadStats.cancelledCount + leadStats.expiredCount}
           </p>
         </div>
       </div>
@@ -726,6 +898,9 @@ export default function FulfillmentConsole() {
                     <p className="mt-1 text-xs opacity-80">{itemLabel(lead)}</p>
                     <p className="mt-1 text-xs opacity-70">
                       Qty {lead.requestedQty} · {centsToDollars(lead.totalCents)} · {new Date(lead.requestedAt).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs opacity-70">
+                      Owner: {assigneeLabel(lead)} · {dueLabel(lead)}
                     </p>
                     <p className="mt-1 line-clamp-2 text-xs opacity-70">{lead.deliveryAddress || "No address"}</p>
 
@@ -773,9 +948,28 @@ export default function FulfillmentConsole() {
                   <p className="mt-1 text-xs opacity-70">
                     Email: {selectedLead.recipient?.email || "-"} · Phone: {selectedLead.recipient?.phone || "-"}
                   </p>
+                  <p className="mt-1 text-xs opacity-70">
+                    Owner: {assigneeLabel(selectedLead)} · {dueLabel(selectedLead)}
+                  </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="space-y-1 text-sm">
+                    <span>Owner</span>
+                    <select
+                      value={selectedAssigneeId}
+                      onChange={(event) => setSelectedAssigneeId(event.target.value)}
+                      className="admin-surface w-full rounded-xl px-3 py-2"
+                    >
+                      <option value="">Unassigned</option>
+                      {operators.map((operator) => (
+                        <option key={operator.id} value={operator.id}>
+                          {operator.name} · {operator.role}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
                   <label className="space-y-1 text-sm">
                     <span>Status</span>
                     <select
@@ -793,16 +987,53 @@ export default function FulfillmentConsole() {
                     </select>
                   </label>
 
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => void saveLeadStatus()}
-                      disabled={busyAction !== null}
-                      className="w-full rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
-                    >
-                      {busyAction === "status-save" ? "Saving..." : "Save Status"}
-                    </button>
-                  </div>
+                  <label className="space-y-1 text-sm">
+                    <span>Fulfill by</span>
+                    <input
+                      type="datetime-local"
+                      value={fulfillByInput}
+                      onChange={(event) => setFulfillByInput(event.target.value)}
+                      className="admin-surface w-full rounded-xl px-3 py-2"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => void saveLeadStatus()}
+                    disabled={busyAction !== null}
+                    className="rounded-xl border border-amber-300/40 bg-amber-200/20 px-4 py-2 text-sm font-medium transition hover:bg-amber-200/30 disabled:opacity-60"
+                  >
+                    {busyAction === "status-save" ? "Saving..." : "Save Workflow"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void claimLead()}
+                    disabled={busyAction !== null || !viewerUserId}
+                    className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
+                  >
+                    Claim Lead
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssigneeId("")}
+                    disabled={busyAction !== null}
+                    className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
+                  >
+                    Clear Owner
+                  </button>
+                </div>
+
+                <div className="grid gap-2 text-xs opacity-75 sm:grid-cols-3">
+                  <p>
+                    Assigned{" "}
+                    {selectedLead.assignedAt
+                      ? new Date(selectedLead.assignedAt).toLocaleString()
+                      : "not yet"}
+                  </p>
+                  <p>Requested {new Date(selectedLead.requestedAt).toLocaleString()}</p>
+                  <p>{selectedLead.notes ? "Lead has internal notes" : "No internal notes yet"}</p>
                 </div>
 
                 <label className="space-y-1 text-sm">
