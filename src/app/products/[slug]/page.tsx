@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ArticleCommerceModuleView from "@/components/article/ArticleCommerceModuleView";
-import { buildContributorPublicSlug, resolveContributorDisplayName } from "@/lib/contributorIdentity";
+import {
+  resolveContributorDisplayName,
+  resolveContributorPublicSlug,
+} from "@/lib/contributorIdentity";
 import { getPublicProductBySlug } from "@/lib/publicProducts";
 
 export const dynamic = "force-dynamic";
@@ -331,19 +334,14 @@ export default async function ProductPage({
                   <h3 className="text-xl font-semibold tracking-tight">{review.article.title}</h3>
                   <p className="text-sm opacity-65">
                     By{" "}
-                    {review.article.author?.id ? (
-                      <Link
-                        href={`/community/contributors/${buildContributorPublicSlug(
-                          review.article.author.name,
-                          review.article.author.id,
-                        )}`}
-                        className="underline-offset-4 hover:underline"
-                      >
-                        {resolveContributorDisplayName(review.article.author.name)}
-                      </Link>
-                    ) : (
-                      resolveContributorDisplayName(review.article.author?.name)
-                    )}
+                    <Link
+                      href={`/community/contributors/${resolveContributorPublicSlug(
+                        review.article.author,
+                      )}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {resolveContributorDisplayName(review.article.author?.name)}
+                    </Link>
                   </p>
                   <p className="text-sm leading-6 opacity-80">
                     {review.verdict || review.article.excerpt || "Linked review available."}

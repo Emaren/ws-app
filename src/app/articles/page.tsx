@@ -2,7 +2,10 @@
 import type { ArticleStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { buildContributorPublicSlug, resolveContributorDisplayName } from "@/lib/contributorIdentity";
+import {
+  resolveContributorDisplayName,
+  resolveContributorPublicSlug,
+} from "@/lib/contributorIdentity";
 
 type ArticlePricingBadge = {
   offerTitle: string;
@@ -172,9 +175,7 @@ export default async function ArticlesPage(
         {items.map((a) => {
           const pricingBadge = pricingByArticleSlug.get(a.slug.toLowerCase());
           const contributorName = resolveContributorDisplayName(a.author?.name);
-          const contributorSlug = a.author?.id
-            ? buildContributorPublicSlug(a.author.name, a.author.id)
-            : null;
+          const contributorSlug = resolveContributorPublicSlug(a.author);
 
           return (
             <article key={a.slug} className="border rounded-2xl p-5">
@@ -186,16 +187,12 @@ export default async function ArticlesPage(
               </Link>
               <div className="mt-2 text-sm opacity-60">
                 By{" "}
-                {contributorSlug ? (
-                  <Link
-                    href={`/community/contributors/${contributorSlug}`}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {contributorName}
-                  </Link>
-                ) : (
-                  contributorName
-                )}
+                <Link
+                  href={`/community/contributors/${contributorSlug}`}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {contributorName}
+                </Link>
               </div>
               {a.excerpt && <p className="mt-2 opacity-80">{a.excerpt}</p>}
 

@@ -1,3 +1,6 @@
+export const PUBLIC_TEAM_CONTRIBUTOR_NAME = "Wheat & Stone Team";
+export const PUBLIC_TEAM_CONTRIBUTOR_SLUG = "wheat-and-stone-team";
+
 function slugifyContributorSegment(input: string): string {
   return input
     .toLowerCase()
@@ -10,11 +13,11 @@ function slugifyContributorSegment(input: string): string {
 
 export function resolveContributorDisplayName(name: string | null | undefined): string {
   if (typeof name !== "string") {
-    return "Wheat & Stone Team";
+    return PUBLIC_TEAM_CONTRIBUTOR_NAME;
   }
 
   const trimmed = name.trim();
-  return trimmed || "Wheat & Stone Team";
+  return trimmed || PUBLIC_TEAM_CONTRIBUTOR_NAME;
 }
 
 export function buildContributorPublicSlug(
@@ -23,4 +26,15 @@ export function buildContributorPublicSlug(
 ): string {
   const base = slugifyContributorSegment(resolveContributorDisplayName(name)) || "contributor";
   return `${base}-${contributorId.slice(-6).toLowerCase()}`;
+}
+
+export function resolveContributorPublicSlug(input?: {
+  id?: string | null;
+  name?: string | null;
+} | null): string {
+  if (!input?.id) {
+    return PUBLIC_TEAM_CONTRIBUTOR_SLUG;
+  }
+
+  return buildContributorPublicSlug(input.name, input.id);
 }

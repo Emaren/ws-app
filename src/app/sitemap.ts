@@ -2,7 +2,10 @@ import type { MetadataRoute } from "next";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
-import { buildContributorPublicSlug } from "@/lib/contributorIdentity";
+import {
+  buildContributorPublicSlug,
+  PUBLIC_TEAM_CONTRIBUTOR_SLUG,
+} from "@/lib/contributorIdentity";
 
 const BASE_URL = "https://wheatandstone.ca";
 
@@ -94,26 +97,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ],
   };
 
-  const contributors = await prisma.user.findMany({
-    where: {
-      articles: {
-        some: publicVisibilityWhere,
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      updatedAt: true,
-      articles: {
-        where: publicVisibilityWhere,
-        select: {
-          updatedAt: true,
-          createdAt: true,
-          publishedAt: true,
+  const [contributors, unattributedArticleCount] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        articles: {
+          some: publicVisibilityWhere,
         },
       },
-    },
-  });
+      select: {
+        id: true,
+        name: true,
+        updatedAt: true,
+        articles: {
+          where: publicVisibilityWhere,
+          select: {
+            updatedAt: true,
+            createdAt: true,
+            publishedAt: true,
+          },
+        },
+      },
+    }),
+    prisma.article.count({
+      where: {
+        AND: [
+          publicVisibilityWhere,
+          {
+            OR: [{ authorId: null }, { author: { is: null } }],
+          },
+        ],
+      },
+    }),
+  ]);
 
   const contributorEntries: MetadataRoute.Sitemap = contributors.map((contributor) => {
     const articleDates = contributor.articles
@@ -134,6 +149,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.65,
     };
   });
+
+  if (unattributedArticleCount > 0) {
+    contributorEntries.push({
+      url: `${BASE_URL}/community/contributors/${PUBLIC_TEAM_CONTRIBUTOR_SLUG}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.65,
+    });
+  }
 
   return [...staticEntries, ...articleEntries, ...productEntries, ...contributorEntries];
 }

@@ -1,6 +1,11 @@
 import { Prisma, type RewardDirection, type RewardToken, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { buildContributorPublicSlug, resolveContributorDisplayName } from "@/lib/contributorIdentity";
+import {
+  buildContributorPublicSlug,
+  PUBLIC_TEAM_CONTRIBUTOR_NAME,
+  PUBLIC_TEAM_CONTRIBUTOR_SLUG,
+  resolveContributorDisplayName,
+} from "@/lib/contributorIdentity";
 import { describeRewardReason } from "@/lib/rewardPresentation";
 
 const LEGACY_VISIBLE_STATUSES = ["DRAFT", "REVIEW"] as const;
@@ -73,6 +78,9 @@ type ContributorQueryRow = Prisma.UserGetPayload<{
     };
   };
 }>;
+
+type ContributorArticleRow = ContributorQueryRow["articles"][number];
+type ContributorRewardRow = ContributorQueryRow["rewardLedgerEntries"][number];
 
 type ContributorRewardEntry = {
   id: string;
@@ -233,11 +241,18 @@ function roleLabel(role: Role): string {
   }
 }
 
-function buildContributor(row: ContributorQueryRow): PublicContributor | null {
-  const name = resolveContributorDisplayName(row.name);
-  const slug = buildContributorPublicSlug(row.name, row.id);
+function buildContributorFromData(input: {
+  id: string;
+  name: string | null;
+  role: Role;
+  articles: ContributorArticleRow[];
+  rewardLedgerEntries: ContributorRewardRow[];
+  publicSlug?: string;
+}): PublicContributor | null {
+  const name = resolveContributorDisplayName(input.name);
+  const slug = input.publicSlug || buildContributorPublicSlug(input.name, input.id);
 
-  const reviews: ContributorReview[] = row.articles.map((article) => ({
+  const reviews: ContributorReview[] = input.articles.map((article) => ({
     id: article.id,
     slug: article.slug,
     title: article.title,
@@ -291,7 +306,7 @@ function buildContributor(row: ContributorQueryRow): PublicContributor | null {
     }
   }
 
-  const recentRewards = row.rewardLedgerEntries.slice(0, 8).map((entry) => ({
+  const recentRewards = input.rewardLedgerEntries.slice(0, 8).map((entry) => ({
     id: entry.id,
     token: entry.token,
     direction: entry.direction,
@@ -302,12 +317,12 @@ function buildContributor(row: ContributorQueryRow): PublicContributor | null {
   }));
 
   const wheatBalance = Math.round(
-    row.rewardLedgerEntries
+    input.rewardLedgerEntries
       .filter((entry) => entry.token === "WHEAT")
       .reduce((sum, entry) => sum + signedRewardAmount(entry), 0) * 100,
   ) / 100;
   const stoneBalance = Math.round(
-    row.rewardLedgerEntries
+    input.rewardLedgerEntries
       .filter((entry) => entry.token === "STONE")
       .reduce((sum, entry) => sum + signedRewardAmount(entry), 0) * 100,
   ) / 100;
@@ -344,10 +359,10 @@ function buildContributor(row: ContributorQueryRow): PublicContributor | null {
     `${name} is building trusted organic review coverage inside the Wheat & Stone network.`;
 
   return {
-    id: row.id,
+    id: input.id,
     slug,
     name,
-    role: row.role,
+    role: input.role,
     summary,
     publishedReviewCount: reviews.length,
     averageScore,
@@ -375,74 +390,144 @@ function buildContributor(row: ContributorQueryRow): PublicContributor | null {
   };
 }
 
+function buildContributor(row: ContributorQueryRow): PublicContributor | null {
+  return buildContributorFromData({
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    articles: row.articles,
+    rewardLedgerEntries: row.rewardLedgerEntries,
+  });
+}
+
 export async function listPublicContributors(limit?: number): Promise<PublicContributor[]> {
-  const rows = await prisma.user.findMany({
-    where: {
-      articles: {
-        some: PUBLIC_ARTICLE_WHERE,
+  const [rows, unattributedArticles] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        articles: {
+          some: PUBLIC_ARTICLE_WHERE,
+        },
       },
-    },
-    select: {
-      id: true,
-      name: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-      articles: {
-        where: PUBLIC_ARTICLE_WHERE,
-        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          excerpt: true,
-          coverUrl: true,
-          publishedAt: true,
-          updatedAt: true,
-          createdAt: true,
-          likeCount: true,
-          wowCount: true,
-          hmmCount: true,
-          reviewProfile: {
-            select: {
-              reviewScore: true,
-              verdict: true,
-              category: true,
-              productName: true,
-              product: {
-                select: {
-                  slug: true,
-                  name: true,
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        articles: {
+          where: PUBLIC_ARTICLE_WHERE,
+          orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            excerpt: true,
+            coverUrl: true,
+            publishedAt: true,
+            updatedAt: true,
+            createdAt: true,
+            likeCount: true,
+            wowCount: true,
+            hmmCount: true,
+            reviewProfile: {
+              select: {
+                reviewScore: true,
+                verdict: true,
+                category: true,
+                productName: true,
+                product: {
+                  select: {
+                    slug: true,
+                    name: true,
+                  },
                 },
               },
             },
-          },
-          _count: {
-            select: {
-              affiliateClicks: true,
-              commerceModules: true,
+            _count: {
+              select: {
+                affiliateClicks: true,
+                commerceModules: true,
+              },
             },
           },
         },
-      },
-      rewardLedgerEntries: {
-        orderBy: [{ createdAt: "desc" }],
-        select: {
-          id: true,
-          token: true,
-          direction: true,
-          amount: true,
-          reason: true,
-          createdAt: true,
+        rewardLedgerEntries: {
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            token: true,
+            direction: true,
+            amount: true,
+            reason: true,
+            createdAt: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.article.findMany({
+      where: {
+        AND: [
+          PUBLIC_ARTICLE_WHERE,
+          {
+            OR: [{ authorId: null }, { author: { is: null } }],
+          },
+        ],
+      },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        coverUrl: true,
+        publishedAt: true,
+        updatedAt: true,
+        createdAt: true,
+        likeCount: true,
+        wowCount: true,
+        hmmCount: true,
+        reviewProfile: {
+          select: {
+            reviewScore: true,
+            verdict: true,
+            category: true,
+            productName: true,
+            product: {
+              select: {
+                slug: true,
+                name: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            affiliateClicks: true,
+            commerceModules: true,
+          },
+        },
+      },
+    }),
+  ]);
 
   const contributors = rows
     .map(buildContributor)
     .filter((value): value is PublicContributor => Boolean(value))
-    .sort((left, right) => {
+
+  const teamContributor =
+    unattributedArticles.length > 0
+      ? buildContributorFromData({
+          id: "team",
+          name: PUBLIC_TEAM_CONTRIBUTOR_NAME,
+          role: "EDITOR",
+          articles: unattributedArticles,
+          rewardLedgerEntries: [],
+          publicSlug: PUBLIC_TEAM_CONTRIBUTOR_SLUG,
+        })
+      : null;
+
+  const rankedContributors = [...contributors, ...(teamContributor ? [teamContributor] : [])].sort(
+    (left, right) => {
       if (right.communityRank !== left.communityRank) {
         return right.communityRank - left.communityRank;
       }
@@ -450,9 +535,10 @@ export async function listPublicContributors(limit?: number): Promise<PublicCont
       const rightTime = right.latestPublishedAt?.getTime() ?? 0;
       const leftTime = left.latestPublishedAt?.getTime() ?? 0;
       return rightTime - leftTime;
-    });
+    },
+  );
 
-  return typeof limit === "number" ? contributors.slice(0, limit) : contributors;
+  return typeof limit === "number" ? rankedContributors.slice(0, limit) : rankedContributors;
 }
 
 export async function getPublicContributorBySlug(
