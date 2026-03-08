@@ -658,10 +658,54 @@ export default function FulfillmentConsole({
 
   async function claimLead() {
     if (!selectedLead || !viewerUserId) return;
-    setSelectedAssigneeId(viewerUserId);
-    setStatusNote((prev) =>
-      prev.trim() ? prev : "Claimed from fulfillment board.",
-    );
+
+    setBusyAction("claim-lead");
+    setError(null);
+    setNotice(null);
+
+    try {
+      await requestJson(`/api/delivery-leads/${encodeURIComponent(selectedLead.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          assignedToUserId: viewerUserId,
+          note: "Lead claimed from fulfillment board.",
+        }),
+      });
+
+      setSelectedAssigneeId(viewerUserId);
+      setNotice("Lead claimed.");
+      setTimelineRefreshToken((value) => value + 1);
+    } catch (claimError) {
+      setError(claimError instanceof Error ? claimError.message : String(claimError));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function clearLeadOwner() {
+    if (!selectedLead) return;
+
+    setBusyAction("clear-owner");
+    setError(null);
+    setNotice(null);
+
+    try {
+      await requestJson(`/api/delivery-leads/${encodeURIComponent(selectedLead.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          assignedToUserId: null,
+          note: "Lead owner cleared from fulfillment board.",
+        }),
+      });
+
+      setSelectedAssigneeId("");
+      setNotice("Lead owner cleared.");
+      setTimelineRefreshToken((value) => value + 1);
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : String(clearError));
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function notifyCustomer(channel: Exclude<NotificationChannel, "push">) {
@@ -1013,15 +1057,15 @@ export default function FulfillmentConsole({
                     disabled={busyAction !== null || !viewerUserId}
                     className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
                   >
-                    Claim Lead
+                    {busyAction === "claim-lead" ? "Claiming..." : "Claim Lead"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedAssigneeId("")}
+                    onClick={() => void clearLeadOwner()}
                     disabled={busyAction !== null}
                     className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
                   >
-                    Clear Owner
+                    {busyAction === "clear-owner" ? "Clearing..." : "Clear Owner"}
                   </button>
                 </div>
 
