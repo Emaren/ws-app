@@ -9,6 +9,8 @@ type AdminUsersPayload = {
     usersInView: number;
     anonymousEventsTracked: number;
     memberEventsTracked: number;
+    registrationAttempts: number;
+    registrationFailures: number;
     wsApiUsers: number;
     wsApiOnlyUsers: number;
     linkedWallets: number;
@@ -188,6 +190,8 @@ type AdminUsersPayload = {
     authHistory: {
       registrations: Array<{
         id: string;
+        userId: string | null;
+        email: string | null;
         method: string;
         status: string;
         failureCode: string | null;
@@ -232,6 +236,26 @@ type AdminUsersPayload = {
     email: string;
     name: string;
     role: string;
+  }>;
+  recentRegistrationAttempts: Array<{
+    id: string;
+    userId: string | null;
+    email: string | null;
+    method: string;
+    status: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+    createdAt: string;
+  }>;
+  recentRegistrationFailures: Array<{
+    id: string;
+    userId: string | null;
+    email: string | null;
+    method: string;
+    status: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+    createdAt: string;
   }>;
   recentMemberActivity: Array<{
     id: string;
@@ -1042,6 +1066,49 @@ export default function AdminUsersControlTower() {
       </section>
 
       <section className="grid gap-4 2xl:grid-cols-2">
+        <article className="admin-card p-4 md:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] opacity-65">Signup attempts</p>
+              <h4 className="mt-1 text-lg font-semibold">Recent registration history</h4>
+            </div>
+            <span className="text-xs opacity-70">
+              {payload?.totals.registrationAttempts ?? 0} attempts ·{" "}
+              {payload?.totals.registrationFailures ?? 0} failures
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {payload?.recentRegistrationAttempts.length ? (
+              payload.recentRegistrationAttempts.map((event) => (
+                <div
+                  key={event.id}
+                  className={`rounded-xl border px-3 py-3 text-sm ${
+                    event.status === "FAILURE"
+                      ? "border-rose-500/25 bg-rose-500/10"
+                      : "border-emerald-500/20 bg-emerald-500/5"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">
+                      {event.email || "Unknown email"} · {event.method}
+                    </p>
+                    <span className="text-xs opacity-65">{formatDateTime(event.createdAt)}</span>
+                  </div>
+                  <p className="mt-1 opacity-75">
+                    {event.status}
+                    {event.failureCode ? ` · ${event.failureCode}` : ""}
+                    {event.failureMessage ? ` · ${event.failureMessage}` : ""}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
+                No registration attempts are in view yet.
+              </div>
+            )}
+          </div>
+        </article>
+
         <article className="admin-card p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>

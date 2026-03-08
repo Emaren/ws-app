@@ -22,6 +22,7 @@ import { historyLabel } from "@/lib/userExperience";
 const WS_API_TIMEOUT_MS = 10_000;
 const RECENT_ACTIVITY_LIMIT = 18;
 const RECENT_ANONYMOUS_ACTIVITY_LIMIT = 60;
+const RECENT_REGISTRATION_ATTEMPT_LIMIT = 24;
 const TRACKED_TOKEN_SYMBOLS = parseTrackedTokenSymbols();
 
 type RewardBalanceMap = Record<string, number>;
@@ -500,6 +501,7 @@ export async function getAdminUserIntelligence(input: {
     reactionTypeCounts,
     reactionScopeCounts,
     localRewardBalanceRows,
+    registrationAttemptRows,
     localUserCount,
     wsApiUsers,
     wsApiWalletLinks,
@@ -668,6 +670,28 @@ export async function getAdminUserIntelligence(input: {
         amount: true,
       },
     }),
+    prisma.authRegistrationEvent.findMany({
+      where: query
+        ? {
+            email: {
+              contains: query,
+              mode: "insensitive",
+            },
+          }
+        : undefined,
+      orderBy: [{ createdAt: "desc" }],
+      take: RECENT_REGISTRATION_ATTEMPT_LIMIT,
+      select: {
+        id: true,
+        userId: true,
+        email: true,
+        method: true,
+        status: true,
+        failureCode: true,
+        failureMessage: true,
+        createdAt: true,
+      },
+    }),
     prisma.user.count(),
     fetchWsApiJson<Array<{ id: string; email: string; name: string; role: string }>>(
       "/users",
@@ -747,6 +771,58 @@ export async function getAdminUserIntelligence(input: {
     localRewardBalancesByUser.set(row.userId, existing);
   }
 
+  const registrationAttemptsByEmail = new Map<
+    string,
+    Array<{
+      id: string;
+      userId: string | null;
+      email: string | null;
+      method: string;
+      status: string;
+      failureCode: string | null;
+      failureMessage: string | null;
+      createdAt: string;
+    }>
+  >();
+  const registrationAttemptsByUserId = new Map<
+    string,
+    Array<{
+      id: string;
+      userId: string | null;
+      email: string | null;
+      method: string;
+      status: string;
+      failureCode: string | null;
+      failureMessage: string | null;
+      createdAt: string;
+    }>
+  >();
+  for (const event of registrationAttemptRows) {
+    const serialized = {
+      id: event.id,
+      userId: event.userId,
+      email: event.email,
+      method: event.method,
+      status: event.status,
+      failureCode: event.failureCode,
+      failureMessage: event.failureMessage,
+      createdAt: event.createdAt.toISOString(),
+    };
+
+    if (event.email) {
+      const key = event.email.toLowerCase();
+      const existing = registrationAttemptsByEmail.get(key) ?? [];
+      existing.push(serialized);
+      registrationAttemptsByEmail.set(key, existing);
+    }
+
+    if (event.userId) {
+      const existing = registrationAttemptsByUserId.get(event.userId) ?? [];
+      existing.push(serialized);
+      registrationAttemptsByUserId.set(event.userId, existing);
+    }
+  }
+
   const remoteRewardBalancesByUser = new Map<string, RewardBalanceMap>();
   for (const row of wsApiRewardReport?.byUser ?? []) {
     const existing = remoteRewardBalancesByUser.get(row.userId) ?? {};
@@ -792,6 +868,25 @@ export async function getAdminUserIntelligence(input: {
       subscriptionByUserId.get(user.id) ??
       subscriptionByEmail.get(user.email.toLowerCase()) ??
       null;
+    const registrationHistory = [
+      ...user.authRegistrationEvents.map((event) => ({
+        id: event.id,
+        userId: user.id,
+        email: user.email,
+        method: event.method,
+        status: event.status,
+        failureCode: event.failureCode,
+        failureMessage: event.failureMessage,
+        createdAt: event.createdAt.toISOString(),
+      })),
+      ...(registrationAttemptsByUserId.get(user.id) ?? []),
+      ...(registrationAttemptsByEmail.get(user.email.toLowerCase()) ?? []),
+    ]
+      .filter(
+        (event, index, array) => array.findIndex((candidate) => candidate.id === event.id) === index,
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 12);
     const wsApiIdentity = wsApiUserByEmail.get(user.email.toLowerCase()) ?? null;
     const wallet = walletByUserId.get(user.id) ?? (wsApiIdentity ? walletByUserId.get(wsApiIdentity.id) ?? null : null);
 
@@ -915,14 +1010,7 @@ export async function getAdminUserIntelligence(input: {
         inventoryItem: lead.inventoryItem,
       })),
       authHistory: {
-        registrations: user.authRegistrationEvents.map((event) => ({
-          id: event.id,
-          method: event.method,
-          status: event.status,
-          failureCode: event.failureCode,
-          failureMessage: event.failureMessage,
-          createdAt: event.createdAt.toISOString(),
-        })),
+        registrations: registrationHistory,
         funnel: user.authFunnelEvents.map((event) => ({
           id: event.id,
           stage: event.stage,
@@ -954,6 +1042,19 @@ export async function getAdminUserIntelligence(input: {
   const wsApiOnlyUsers = (wsApiUsers ?? []).filter(
     (user) => !localEmailSet.has(user.email.toLowerCase()),
   );
+  const recentRegistrationAttempts = registrationAttemptRows.map((event) => ({
+    id: event.id,
+    userId: event.userId,
+    email: event.email,
+    method: event.method,
+    status: event.status,
+    failureCode: event.failureCode,
+    failureMessage: event.failureMessage,
+    createdAt: event.createdAt.toISOString(),
+  }));
+  const recentRegistrationFailures = recentRegistrationAttempts.filter(
+    (event) => event.status === "FAILURE",
+  );
 
   return {
     generatedAt: new Date().toISOString(),
@@ -974,12 +1075,16 @@ export async function getAdminUserIntelligence(input: {
       usersInView: userPayload.length,
       anonymousEventsTracked: anonymousActivityRows.length,
       memberEventsTracked: memberActivityRows.length,
+      registrationAttempts: recentRegistrationAttempts.length,
+      registrationFailures: recentRegistrationFailures.length,
       wsApiUsers: wsApiUsers?.length ?? 0,
       wsApiOnlyUsers: wsApiOnlyUsers.length,
       linkedWallets: walletByUserId.size,
     },
     users: userPayload,
     wsApiOnlyUsers,
+    recentRegistrationAttempts,
+    recentRegistrationFailures,
     recentMemberActivity: memberActivityRows.map((event) => ({
       id: event.id,
       eventType: event.eventType,
