@@ -527,7 +527,7 @@ export default function AdminUsersControlTower() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <section className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
         <div className="admin-card p-3 md:p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -614,14 +614,14 @@ export default function AdminUsersControlTower() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {selectedUser ? (
             <>
               <section className="admin-card overflow-hidden p-4 md:p-6">
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="flex items-start gap-4">
+                <div className="min-w-0 space-y-5">
+                  <div className="min-w-0 space-y-4">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="flex min-w-0 items-start gap-4">
                         {selectedUser.experience.profileImageUrl ? (
                           <img
                             src={selectedUser.experience.profileImageUrl}
@@ -634,9 +634,11 @@ export default function AdminUsersControlTower() {
                           </div>
                         )}
 
-                        <div className="space-y-2">
+                        <div className="min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-2xl font-semibold">{selectedUser.name}</h3>
+                            <h3 className="break-words text-2xl font-semibold">
+                              {selectedUser.name}
+                            </h3>
                             <span
                               className={`rounded-full border px-2.5 py-1 text-xs font-medium ${roleTone(selectedUser.role)}`}
                             >
@@ -648,7 +650,7 @@ export default function AdminUsersControlTower() {
                               </span>
                             ) : null}
                           </div>
-                          <p className="text-sm opacity-75">{selectedUser.email}</p>
+                          <p className="break-all text-sm opacity-75">{selectedUser.email}</p>
                           <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] opacity-65">
                             <span>Joined {formatDateTime(selectedUser.registeredAt)}</span>
                             <span>Last seen {formatDateTime(selectedUser.experience.lastSeenAt)}</span>
@@ -657,10 +659,10 @@ export default function AdminUsersControlTower() {
                         </div>
                       </div>
 
-                      <div className="grid min-w-[230px] gap-2 text-sm">
+                      <div className="grid gap-2 text-sm sm:grid-cols-2 xl:min-w-[320px] xl:max-w-[360px]">
                         <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                           <p className="text-xs uppercase tracking-[0.16em] opacity-65">Experience now</p>
-                          <p className="mt-1 font-medium">
+                          <p className="mt-1 break-words font-medium">
                             {selectedUser.experience.theme} / {selectedUser.experience.skin} /{" "}
                             {selectedUser.experience.siteVersion}
                           </p>
@@ -674,7 +676,7 @@ export default function AdminUsersControlTower() {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+                    <div className="grid gap-3 xl:grid-cols-2">
                       <div className="admin-surface rounded-2xl p-4">
                         <p className="text-xs uppercase tracking-[0.16em] opacity-65">Last login</p>
                         <p className="mt-2 text-lg font-semibold">{formatDateTime(selectedUser.lastAuthAt)}</p>
@@ -711,8 +713,8 @@ export default function AdminUsersControlTower() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 2xl:grid-cols-2">
-                      <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-xs uppercase tracking-[0.16em] opacity-65">Identity</p>
@@ -720,33 +722,41 @@ export default function AdminUsersControlTower() {
                           </div>
                         </div>
                         <dl className="mt-4 space-y-3 text-sm">
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Registered via</dt>
-                            <dd className="font-medium">{selectedUser.registeredVia}</dd>
+                            <dd className="break-words font-medium sm:text-right">
+                              {selectedUser.registeredVia}
+                            </dd>
                           </div>
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Current theme</dt>
-                            <dd className="font-medium">{selectedUser.experience.theme}</dd>
+                            <dd className="break-words font-medium sm:text-right">
+                              {selectedUser.experience.theme}
+                            </dd>
                           </div>
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Current skin</dt>
-                            <dd className="font-medium">{selectedUser.experience.skin}</dd>
+                            <dd className="break-words font-medium sm:text-right">
+                              {selectedUser.experience.skin}
+                            </dd>
                           </div>
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Current version</dt>
-                            <dd className="font-medium">{selectedUser.experience.siteVersion}</dd>
+                            <dd className="break-words font-medium sm:text-right">
+                              {selectedUser.experience.siteVersion}
+                            </dd>
                           </div>
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Digest mode</dt>
-                            <dd className="font-medium">
+                            <dd className="break-words font-medium sm:text-right">
                               {selectedUser.experience.personalDigestEnabled
                                 ? `On · every ${selectedUser.experience.digestCadenceHours}h`
                                 : "Paused"}
                             </dd>
                           </div>
-                          <div className="flex items-center justify-between gap-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <dt className="opacity-70">Subscription</dt>
-                            <dd className="font-medium">
+                            <dd className="break-words font-medium sm:text-right">
                               {selectedUser.subscription
                                 ? `${selectedUser.subscription.plan} · ${selectedUser.subscription.status}`
                                 : "Free"}
@@ -755,14 +765,14 @@ export default function AdminUsersControlTower() {
                         </dl>
                       </article>
 
-                      <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                      <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-xs uppercase tracking-[0.16em] opacity-65">Token rail</p>
                             <h4 className="mt-1 text-lg font-semibold">Wallet and balances</h4>
                           </div>
                         </div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           {payload?.preferenceCatalog.trackedTokens.map((token) => (
                             <div
                               key={token}
@@ -792,8 +802,8 @@ export default function AdminUsersControlTower() {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.16em] opacity-65">Preference history</p>
                       <h4 className="mt-1 text-lg font-semibold">Theme, skin, version, digest changes</h4>
                       <div className="mt-4 space-y-2">
@@ -826,7 +836,7 @@ export default function AdminUsersControlTower() {
                       </div>
                     </article>
 
-                    <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.16em] opacity-65">Event mix</p>
                       <h4 className="mt-1 text-lg font-semibold">Interaction totals</h4>
                       <div className="mt-4 grid gap-2">
@@ -845,8 +855,8 @@ export default function AdminUsersControlTower() {
                 </div>
               </section>
 
-              <section className="grid gap-4 2xl:grid-cols-2">
-                <article className="admin-card p-4 md:p-5">
+              <section className="grid gap-4 xl:grid-cols-2">
+                <article className="admin-card min-w-0 p-4 md:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.16em] opacity-65">Saved intent</p>
@@ -922,7 +932,7 @@ export default function AdminUsersControlTower() {
                   </div>
                 </article>
 
-                <article className="admin-card p-4 md:p-5">
+                <article className="admin-card min-w-0 p-4 md:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.16em] opacity-65">Behavior</p>
@@ -968,8 +978,8 @@ export default function AdminUsersControlTower() {
                 </article>
               </section>
 
-              <section className="grid gap-4 2xl:grid-cols-3">
-                <article className="admin-card p-4 md:p-5">
+              <section className="grid gap-4 xl:grid-cols-2">
+                <article className="admin-card min-w-0 p-4 md:p-5">
                   <p className="text-xs uppercase tracking-[0.16em] opacity-65">Rewards</p>
                   <h4 className="mt-1 text-lg font-semibold">Recent token ledger</h4>
                   <div className="mt-4 space-y-2">
@@ -999,7 +1009,7 @@ export default function AdminUsersControlTower() {
                   </div>
                 </article>
 
-                <article className="admin-card p-4 md:p-5">
+                <article className="admin-card min-w-0 p-4 md:p-5">
                   <p className="text-xs uppercase tracking-[0.16em] opacity-65">Delivery</p>
                   <h4 className="mt-1 text-lg font-semibold">Recent commerce actions</h4>
                   <div className="mt-4 space-y-2">
@@ -1028,7 +1038,7 @@ export default function AdminUsersControlTower() {
                   </div>
                 </article>
 
-                <article className="admin-card p-4 md:p-5">
+                <article className="admin-card min-w-0 p-4 md:p-5">
                   <p className="text-xs uppercase tracking-[0.16em] opacity-65">Identity events</p>
                   <h4 className="mt-1 text-lg font-semibold">Auth and account trail</h4>
                   <div className="mt-4 space-y-2">
@@ -1065,8 +1075,8 @@ export default function AdminUsersControlTower() {
         </div>
       </section>
 
-      <section className="grid gap-4 2xl:grid-cols-2">
-        <article className="admin-card p-4 md:p-5">
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="admin-card min-w-0 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.16em] opacity-65">Signup attempts</p>
@@ -1109,7 +1119,7 @@ export default function AdminUsersControlTower() {
           </div>
         </article>
 
-        <article className="admin-card p-4 md:p-5">
+        <article className="admin-card min-w-0 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.16em] opacity-65">Member activity</p>
@@ -1138,7 +1148,7 @@ export default function AdminUsersControlTower() {
           </div>
         </article>
 
-        <article className="admin-card p-4 md:p-5">
+        <article className="admin-card min-w-0 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.16em] opacity-65">Visitor stream</p>
