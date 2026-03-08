@@ -146,7 +146,7 @@ export default function DesktopActions({
           </div>
 
           {session?.user?.id ? (
-            <TokenBalancesInline userId={session.user.wsApiUserId ?? session.user.id} />
+            <TokenBalancesInline userId={session.user.id} />
           ) : null}
 
           {walletAddressLabel ? (

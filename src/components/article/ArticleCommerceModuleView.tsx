@@ -90,10 +90,12 @@ function sizeProps(sizePreset: string | null | undefined) {
 
 export default function ArticleCommerceModuleView({
   articleSlug,
+  returnPath,
   module,
   compact = false,
 }: {
   articleSlug: string;
+  returnPath?: string;
   module: ArticleCommerceRenderableModule;
   compact?: boolean;
 }) {
@@ -162,6 +164,7 @@ export default function ArticleCommerceModuleView({
               offerTitle: offerTitle ?? undefined,
               inventoryItemId: inventoryItemId ?? undefined,
               inventoryItemName: inventoryItemName ?? undefined,
+              returnPath,
             }}
             {...dimensions}
           />

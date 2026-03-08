@@ -6,6 +6,7 @@ import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
+import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ActionLinks from "@/components/site/ActionLinks";
 import SocialIconsRow from "@/components/site/SocialIconsRow";
 
@@ -168,6 +169,9 @@ export default async function ArticlePage({
         articleSlug={article.slug}
         sourceContext="article_page"
       />
+      <div className="ws-container mb-6">
+        <DeliveryCheckoutNotice />
+      </div>
       <ArticleView
         article={article}
         variant="full"

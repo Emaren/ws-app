@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/billing/stripe";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,6 +17,7 @@ type DeliveryCheckoutRequestBody = {
   articleSlug?: string;
   businessSlug?: string;
   businessName?: string;
+  leadId?: string;
   offerId?: string;
   inventoryItemId?: string;
   customerName?: string;
@@ -154,8 +156,59 @@ export async function POST(req: Request) {
     const customerName = asTrimmedString(body.customerName, 120);
     const customerPhone = asTrimmedString(body.customerPhone, 40);
     const deliveryAddress = asTrimmedString(body.deliveryAddress, 300);
+    const leadId = asTrimmedString(body.leadId, 64);
     if (!deliveryAddress) {
       return NextResponse.json({ error: "Delivery address is required for checkout." }, { status: 400 });
+    }
+
+    if (leadId) {
+      const lead = await prisma.deliveryLead.findUnique({
+        where: { id: leadId },
+        select: {
+          id: true,
+          business: {
+            select: {
+              slug: true,
+              name: true,
+            },
+          },
+          offerId: true,
+          inventoryItemId: true,
+        },
+      });
+
+      if (!lead) {
+        return NextResponse.json({ error: "Lead not found for checkout." }, { status: 404 });
+      }
+
+      const requestedBusinessSlug = asTrimmedString(body.businessSlug, 120);
+      const requestedOfferId = asTrimmedString(body.offerId, 64);
+      const requestedInventoryItemId = asTrimmedString(body.inventoryItemId, 64);
+
+      if (requestedBusinessSlug && lead.business.slug && requestedBusinessSlug !== lead.business.slug) {
+        return NextResponse.json(
+          { error: "Lead business does not match checkout request." },
+          { status: 400 },
+        );
+      }
+
+      if (requestedOfferId && lead.offerId && requestedOfferId !== lead.offerId) {
+        return NextResponse.json(
+          { error: "Lead offer does not match checkout request." },
+          { status: 400 },
+        );
+      }
+
+      if (
+        requestedInventoryItemId &&
+        lead.inventoryItemId &&
+        requestedInventoryItemId !== lead.inventoryItemId
+      ) {
+        return NextResponse.json(
+          { error: "Lead inventory item does not match checkout request." },
+          { status: 400 },
+        );
+      }
     }
 
     const origin =
@@ -206,6 +259,7 @@ export async function POST(req: Request) {
         articleSlug: asTrimmedString(body.articleSlug, 120) ?? "",
         businessSlug: asTrimmedString(body.businessSlug, 120) ?? "",
         businessName: asTrimmedString(body.businessName, 120) ?? "",
+        leadId: leadId ?? "",
         offerId: asTrimmedString(body.offerId, 64) ?? "",
         inventoryItemId: asTrimmedString(body.inventoryItemId, 64) ?? "",
         customerName: customerName ?? "",

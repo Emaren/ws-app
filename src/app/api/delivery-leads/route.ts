@@ -7,6 +7,7 @@ import type {
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { recordAnalyticsEvent } from "@/lib/analytics/server";
+import { grantDeliveryLeadRewards } from "@/lib/localRewards";
 import { prisma } from "@/lib/prisma";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import { safeSearchParams } from "@/lib/safeRequestUrl";
@@ -646,6 +647,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const rewardEntries = await grantDeliveryLeadRewards({
+      leadId: lead.id,
+      businessId: resolvedTarget.businessId,
+      userId: auth.userId ?? null,
+      articleSlug: parsed.articleSlug,
+      offerId: resolvedTarget.offerId,
+      inventoryItemId: resolvedTarget.inventoryItemId,
+      requestedQty: parsed.requestedQty,
+    });
+
     void recordAnalyticsEvent({
       eventType: "DELIVERY_CTA",
       request: req,
@@ -697,6 +708,11 @@ export async function POST(req: NextRequest) {
         businessName: resolvedTarget.businessName,
         offerTitle: resolvedTarget.offerTitle,
         inventoryItemName: resolvedTarget.inventoryItemName,
+        rewardEntries: rewardEntries.map((entry) => ({
+          token: entry.token,
+          amount: entry.amount,
+          reason: entry.reason,
+        })),
       },
       { status: 201 },
     );

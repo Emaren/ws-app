@@ -63,7 +63,7 @@ export default async function AccountPage() {
         </dl>
 
         <TokenBalancesCard
-          userId={session.user.wsApiUserId ?? session.user.id}
+          userId={session.user.id}
           trackedTokens={trackedTokens}
         />
 

@@ -190,7 +190,7 @@ export default function MobileMenu({
             ) : null}
             {session?.user?.id ? (
               <div className="mt-2">
-                <TokenBalancesInline userId={session.user.wsApiUserId ?? session.user.id} />
+                <TokenBalancesInline userId={session.user.id} />
               </div>
             ) : null}
           </div>

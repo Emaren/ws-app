@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ArticleCommerceModuleView from "@/components/article/ArticleCommerceModuleView";
 import { getPublicProductBySlug } from "@/lib/publicProducts";
 
@@ -64,6 +65,8 @@ export default async function ProductPage({
   return (
     <main className="ws-container py-8 md:py-10">
       <div className="space-y-8">
+        <DeliveryCheckoutNotice />
+
         <section className="overflow-hidden rounded-[2.25rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.16),_rgba(10,10,10,0.96)_58%)]">
           {product.heroImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -149,6 +152,7 @@ export default async function ProductPage({
                 >
                   <ArticleCommerceModuleView
                     articleSlug={option.articleSlug}
+                    returnPath={`/products/${product.slug}`}
                     module={option.module}
                   />
                   <div className="flex flex-wrap gap-2 px-2 pb-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
@@ -201,6 +205,7 @@ export default async function ProductPage({
                 <ArticleCommerceModuleView
                   key={spotlight.module.id}
                   articleSlug={spotlight.articleSlug}
+                  returnPath={`/products/${product.slug}`}
                   module={spotlight.module}
                 />
               ))}

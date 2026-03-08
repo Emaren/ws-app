@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type RewardLedgerEntry = {
+  balance?: unknown;
   token?: unknown;
   amount?: unknown;
   payoutStatus?: unknown;
@@ -68,8 +69,8 @@ export default function TokenBalancesInline({
         setLoading(true);
         setError(false);
         const endpoint = userId
-          ? `/api/rewards/ledger?userId=${encodeURIComponent(userId)}`
-          : "/api/rewards/ledger";
+          ? `/api/rewards/balances?userId=${encodeURIComponent(userId)}`
+          : "/api/rewards/balances";
         const response = await fetch(endpoint, {
           method: "GET",
           cache: "no-store",
@@ -78,13 +79,23 @@ export default function TokenBalancesInline({
         const payload = await response.json().catch(() => null);
         if (!active) return;
 
-        if (!response.ok || !Array.isArray(payload)) {
+        const entries =
+          payload &&
+          typeof payload === "object" &&
+          "balances" in payload &&
+          Array.isArray(payload.balances)
+            ? (payload.balances as RewardLedgerEntry[])
+            : Array.isArray(payload)
+              ? payload
+              : null;
+
+        if (!response.ok || !entries) {
           setEntries([]);
           setError(true);
           return;
         }
 
-        setEntries(payload);
+        setEntries(entries);
       } catch {
         if (!active) return;
         setEntries([]);
@@ -117,7 +128,10 @@ export default function TokenBalancesInline({
         typeof entry.payoutStatus === "string" ? entry.payoutStatus.trim().toUpperCase() : "";
       if (payoutStatus === "VOID") continue;
 
-      totals.set(symbol, (totals.get(symbol) || 0) + toNumber(entry.amount));
+      totals.set(
+        symbol,
+        (totals.get(symbol) || 0) + toNumber(entry.balance ?? entry.amount),
+      );
     }
 
     return [...totals.entries()].map(([symbol, balance]) => ({ symbol, balance }));

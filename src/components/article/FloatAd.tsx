@@ -26,6 +26,7 @@ const DELIVERY_LEAD_SOURCES: readonly DeliveryLeadSource[] = [
 type DeliveryLeadContext = {
   source?: DeliveryLeadSource;
   articleSlug?: string;
+  returnPath?: string;
   businessSlug?: string;
   businessName?: string;
   offerId?: string;
@@ -60,6 +61,17 @@ type ParsedDeliveryOrder = {
   items: ParsedDeliveryOrderItem[];
   totalQty: number;
   totalCents: number;
+};
+
+type DeliveryLeadResponse = {
+  id: string;
+  status: string;
+  requestedAt: string;
+  rewardEntries?: Array<{
+    token?: string;
+    amount?: number;
+    reason?: string;
+  }>;
 };
 
 const DEFAULT_DELIVERY_FORM_STATE: DeliveryLeadFormState = {
@@ -195,6 +207,31 @@ function buildMailtoHref({
 }): string {
   const params = new URLSearchParams({ subject, body });
   return `mailto:${to}?${params.toString()}`;
+}
+
+function formatRewardNotice(
+  entries: DeliveryLeadResponse["rewardEntries"],
+): string | null {
+  if (!entries || entries.length === 0) {
+    return null;
+  }
+
+  const parts = entries
+    .map((entry) => {
+      const token = entry?.token?.trim().toUpperCase();
+      const amount = typeof entry?.amount === "number" ? entry.amount : null;
+      if (!token || amount === null || !Number.isFinite(amount)) {
+        return null;
+      }
+      return `+${amount} $${token}`;
+    })
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return `${parts.join(" and ")} added to your balance.`;
 }
 
 type FloatAdProps = {
@@ -535,7 +572,7 @@ export default function FloatAd({
     };
   }
 
-  async function createDeliveryLead(parsedOrder: ParsedDeliveryOrder) {
+  async function createDeliveryLead(parsedOrder: ParsedDeliveryOrder): Promise<DeliveryLeadResponse> {
     const validation = validateLeadFields();
     if (!validation) {
       throw new Error("Please complete required contact and address details.");
@@ -577,6 +614,8 @@ export default function FloatAd({
           : `Delivery request failed (${response.status})`;
       throw new Error(message);
     }
+
+    return (payload ?? null) as DeliveryLeadResponse;
   }
 
   async function submitDeliveryLead(event: React.FormEvent<HTMLFormElement>) {
@@ -594,9 +633,14 @@ export default function FloatAd({
     setSuccessMessage(null);
 
     try {
-      await createDeliveryLead(parsedOrder.value);
+      const lead = await createDeliveryLead(parsedOrder.value);
+      const rewardNotice = formatRewardNotice(lead.rewardEntries);
 
-      setSuccessMessage("Request sent. Wheat & Stone will contact you shortly.");
+      setSuccessMessage(
+        rewardNotice
+          ? `Request sent. Wheat & Stone will contact you shortly. ${rewardNotice}`
+          : "Request sent. Wheat & Stone will contact you shortly.",
+      );
       setFormState(DEFAULT_DELIVERY_FORM_STATE);
       setOrderItems([createOrderItem(contextItemName)]);
       window.setTimeout(() => {
@@ -631,11 +675,13 @@ export default function FloatAd({
     setSuccessMessage(null);
 
     try {
-      await createDeliveryLead(parsedOrder.value);
+      const lead = await createDeliveryLead(parsedOrder.value);
 
-      const fallbackPath = deliveryLeadContext?.articleSlug
-        ? `/articles/${deliveryLeadContext.articleSlug}`
-        : "/";
+      const fallbackPath =
+        deliveryLeadContext?.returnPath ||
+        (deliveryLeadContext?.articleSlug
+          ? `/articles/${deliveryLeadContext.articleSlug}`
+          : "/");
       const checkoutResponse = await fetch("/api/checkout/delivery", {
         method: "POST",
         headers: {
@@ -647,6 +693,7 @@ export default function FloatAd({
           articleSlug: deliveryLeadContext?.articleSlug ?? null,
           businessSlug: deliveryLeadContext?.businessSlug ?? null,
           businessName: contextBusinessName,
+          leadId: lead.id,
           offerId: deliveryLeadContext?.offerId ?? null,
           inventoryItemId: deliveryLeadContext?.inventoryItemId ?? null,
           customerName: formState.name.trim() || null,

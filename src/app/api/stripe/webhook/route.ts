@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient, getStripeWebhookSecret } from "@/lib/billing/stripe";
 import { syncEntitlementFromStripeSubscription } from "@/lib/billing/entitlements";
+import { grantDeliveryCheckoutRewards } from "@/lib/localRewards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -66,6 +67,75 @@ async function syncBySubscriptionId({
   });
 }
 
+async function syncDeliveryCheckout({
+  checkoutSession,
+}: {
+  checkoutSession: Stripe.Checkout.Session;
+}): Promise<void> {
+  const leadId = readMetadataValue(checkoutSession.metadata?.leadId);
+  if (!leadId) {
+    return;
+  }
+
+  const lead = await prisma.deliveryLead.findUnique({
+    where: { id: leadId },
+    select: {
+      id: true,
+      businessId: true,
+      userId: true,
+      notes: true,
+      status: true,
+      offerId: true,
+      inventoryItemId: true,
+    },
+  });
+
+  if (!lead) {
+    return;
+  }
+
+  const articleSlug = readMetadataValue(checkoutSession.metadata?.articleSlug);
+  const articleAuthor = articleSlug
+    ? await prisma.article.findUnique({
+        where: { slug: articleSlug },
+        select: { authorId: true },
+      })
+    : null;
+
+  const summary = readMetadataValue(checkoutSession.metadata?.orderSummary);
+  const deliveryAddress = readMetadataValue(checkoutSession.metadata?.deliveryAddress);
+  const noteLines = [
+    lead.notes?.trim() || null,
+    `Stripe checkout completed: ${checkoutSession.id}`,
+    summary ? `Order summary: ${summary}` : null,
+    deliveryAddress ? `Delivery address: ${deliveryAddress}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  await prisma.deliveryLead.update({
+    where: { id: lead.id },
+    data: {
+      status: lead.status === "FULFILLED" ? lead.status : "RESERVED",
+      contactedAt: lead.status === "NEW" ? new Date() : undefined,
+      notes: noteLines.slice(0, 1200) || null,
+    },
+  });
+
+  await grantDeliveryCheckoutRewards({
+    leadId: lead.id,
+    checkoutSessionId: checkoutSession.id,
+    businessId: lead.businessId,
+    userId: lead.userId,
+    contributorUserId: articleAuthor?.authorId ?? null,
+    articleSlug,
+    offerId: lead.offerId,
+    inventoryItemId: lead.inventoryItemId,
+    totalCents:
+      typeof checkoutSession.amount_total === "number" ? checkoutSession.amount_total : null,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const stripe = getStripeClient();
@@ -85,6 +155,10 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
+        const checkoutFlow = readMetadataValue(checkoutSession.metadata?.checkoutFlow);
+        if (checkoutFlow === "delivery") {
+          await syncDeliveryCheckout({ checkoutSession });
+        }
         const subscriptionId =
           typeof checkoutSession.subscription === "string"
             ? checkoutSession.subscription

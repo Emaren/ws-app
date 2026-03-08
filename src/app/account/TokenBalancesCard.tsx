@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type RewardLedgerEntry = {
+  balance?: unknown;
   token?: unknown;
   amount?: unknown;
   payoutStatus?: unknown;
@@ -44,7 +45,7 @@ function sumTokenBalances(entries: RewardLedgerEntry[], trackedTokens: string[])
       typeof entry.payoutStatus === "string" ? entry.payoutStatus.trim().toUpperCase() : "";
     if (payoutStatus === "VOID") continue;
 
-    const amount = toTokenAmount(entry.amount);
+    const amount = toTokenAmount(entry.balance ?? entry.amount);
     totals.set(symbol, (totals.get(symbol) || 0) + amount);
   }
 
@@ -78,8 +79,8 @@ export default function TokenBalancesCard({
         setLoading(true);
         setError(null);
         const endpoint = userId
-          ? `/api/rewards/ledger?userId=${encodeURIComponent(userId)}`
-          : "/api/rewards/ledger";
+          ? `/api/rewards/balances?userId=${encodeURIComponent(userId)}`
+          : "/api/rewards/balances";
         const response = await fetch(endpoint, {
           method: "GET",
           cache: "no-store",
@@ -98,7 +99,14 @@ export default function TokenBalancesCard({
           return;
         }
 
-        if (Array.isArray(payload)) {
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "balances" in payload &&
+          Array.isArray(payload.balances)
+        ) {
+          setEntries(payload.balances as RewardLedgerEntry[]);
+        } else if (Array.isArray(payload)) {
           setEntries(payload);
         } else {
           setEntries([]);
