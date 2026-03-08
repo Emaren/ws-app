@@ -7,6 +7,11 @@ import { getPublicProductBySlug } from "@/lib/publicProducts";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function money(cents: number | null): string {
+  if (cents === null || !Number.isFinite(cents)) return "-";
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -91,6 +96,11 @@ export default async function ProductPage({
                   {product.organicStatus}
                 </span>
               )}
+              {product.buyOptions.length > 0 && (
+                <span className="rounded-full border border-emerald-300/30 bg-emerald-200/10 px-3 py-1 text-emerald-100">
+                  {product.buyOptions.length} live buy route{product.buyOptions.length === 1 ? "" : "s"}
+                </span>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -118,17 +128,76 @@ export default async function ProductPage({
           </div>
         </section>
 
-        {product.spotlights.length > 0 && (
+        {product.buyOptions.length > 0 && (
           <section className="space-y-4">
             <div className="space-y-1">
               <div className="text-xs uppercase tracking-[0.28em] opacity-65">Where To Buy</div>
               <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                Live store and offer spotlights
+                Live local buy network
+              </h2>
+              <p className="max-w-3xl text-sm leading-6 opacity-75">
+                These cards are no longer article-only promos. They are tied directly to this product,
+                which means Wheat & Stone can surface real local availability from the product page itself.
+              </p>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              {product.buyOptions.map((option) => (
+                <article
+                  key={option.key}
+                  className="space-y-3 rounded-[1.8rem] border border-white/10 bg-black/20 p-3"
+                >
+                  <ArticleCommerceModuleView
+                    articleSlug={option.articleSlug}
+                    module={option.module}
+                  />
+                  <div className="flex flex-wrap gap-2 px-2 pb-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
+                    <span className="rounded-full border border-neutral-700 px-3 py-1">
+                      {option.source === "offer" ? "Live offer" : "Inventory route"}
+                    </span>
+                    {option.locationLabel && (
+                      <span className="rounded-full border border-neutral-700 px-3 py-1">
+                        {option.locationLabel}
+                      </span>
+                    )}
+                    {option.deliveryEnabled && (
+                      <span className="rounded-full border border-emerald-300/30 bg-emerald-200/10 px-3 py-1 text-emerald-100">
+                        Delivery
+                      </span>
+                    )}
+                    {option.pickupEnabled && (
+                      <span className="rounded-full border border-neutral-700 px-3 py-1">
+                        Pickup
+                      </span>
+                    )}
+                    {typeof option.availableUnits === "number" && (
+                      <span className="rounded-full border border-neutral-700 px-3 py-1">
+                        {option.availableUnits} available
+                      </span>
+                    )}
+                    {option.compareAtCents !== null && (
+                      <span className="rounded-full border border-neutral-700 px-3 py-1">
+                        Compare at {money(option.compareAtCents)}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {product.editorialSpotlights.length > 0 && (
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-[0.28em] opacity-65">Editorial Layer</div>
+              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                Review-linked store spotlights
               </h2>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
-              {product.spotlights.map((spotlight) => (
+              {product.editorialSpotlights.map((spotlight) => (
                 <ArticleCommerceModuleView
                   key={spotlight.module.id}
                   articleSlug={spotlight.articleSlug}

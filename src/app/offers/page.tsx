@@ -54,6 +54,22 @@ export default async function OffersPage() {
           slug: true,
         },
       },
+      product: {
+        select: {
+          slug: true,
+          name: true,
+        },
+      },
+      inventoryItem: {
+        select: {
+          product: {
+            select: {
+              slug: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
     orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
     take: 24,
@@ -73,6 +89,16 @@ export default async function OffersPage() {
       status: string;
       startsAt: Date | null;
       endsAt: Date | null;
+      product: {
+        slug: string;
+        name: string;
+      } | null;
+      inventoryItem: {
+        product: {
+          slug: string;
+          name: string;
+        } | null;
+      } | null;
     };
     business: {
       id: string;
@@ -111,6 +137,22 @@ export default async function OffersPage() {
               status: true,
               startsAt: true,
               endsAt: true,
+              product: {
+                select: {
+                  slug: true,
+                  name: true,
+                },
+              },
+              inventoryItem: {
+                select: {
+                  product: {
+                    select: {
+                      slug: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
           business: {
@@ -163,31 +205,44 @@ export default async function OffersPage() {
               </p>
             ) : (
               <ul className="grid gap-3 md:grid-cols-2">
-                {inboxItems.map((item) => (
-                  <li key={item.id} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold">{item.offer.title}</p>
-                      <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-                        {item.offer.badgeText ?? "Offer"}
-                      </span>
-                    </div>
-                    <p className="text-sm opacity-80">{item.offer.description ?? "No description"}</p>
-                    <p className="text-sm">
-                      {item.business.name} · {money(item.offer.discountPriceCents)}
-                    </p>
-                    <p className="text-xs opacity-70">
-                      Assigned: {localDate(item.assignedAt)} · Expires: {localDate(item.expiresAt)}
-                    </p>
-                    {item.offer.ctaUrl ? (
-                      <a
-                        href={item.offer.ctaUrl}
-                        className="inline-flex items-center rounded-lg border border-amber-300/50 bg-amber-300/15 px-3 py-1.5 text-xs font-medium hover:bg-amber-300/25"
-                      >
-                        Claim Offer
-                      </a>
-                    ) : null}
-                  </li>
-                ))}
+                {inboxItems.map((item) => {
+                  const product =
+                    item.offer.product ?? item.offer.inventoryItem?.product ?? null;
+
+                  return (
+                    <li key={item.id} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold">{item.offer.title}</p>
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                          {item.offer.badgeText ?? "Offer"}
+                        </span>
+                      </div>
+                      <p className="text-sm opacity-80">{item.offer.description ?? "No description"}</p>
+                      <p className="text-sm">
+                        {item.business.name} · {money(item.offer.discountPriceCents)}
+                      </p>
+                      {product ? (
+                        <Link
+                          href={`/products/${product.slug}`}
+                          className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-amber-100"
+                        >
+                          {product.name}
+                        </Link>
+                      ) : null}
+                      <p className="text-xs opacity-70">
+                        Assigned: {localDate(item.assignedAt)} · Expires: {localDate(item.expiresAt)}
+                      </p>
+                      {item.offer.ctaUrl ? (
+                        <a
+                          href={item.offer.ctaUrl}
+                          className="inline-flex items-center rounded-lg border border-amber-300/50 bg-amber-300/15 px-3 py-1.5 text-xs font-medium hover:bg-amber-300/25"
+                        >
+                          Claim Offer
+                        </a>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -203,23 +258,35 @@ export default async function OffersPage() {
             <p className="text-sm opacity-70">No live offers found.</p>
           ) : (
             <ul className="grid gap-3 md:grid-cols-2">
-              {liveOffers.map((offer) => (
-                <li key={offer.id} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold">{offer.title}</p>
-                    <span className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] opacity-80">
-                      {offer.badgeText ?? offer.status}
-                    </span>
-                  </div>
-                  <p className="text-sm opacity-80">{offer.description ?? "No description"}</p>
-                  <p className="text-sm">
-                    {offer.business.name} · {money(offer.discountPriceCents)}
-                  </p>
-                  <p className="text-xs opacity-70">
-                    Starts: {localDate(offer.startsAt)} · Ends: {localDate(offer.endsAt)}
-                  </p>
-                </li>
-              ))}
+              {liveOffers.map((offer) => {
+                const product = offer.product ?? offer.inventoryItem?.product ?? null;
+
+                return (
+                  <li key={offer.id} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold">{offer.title}</p>
+                      <span className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] opacity-80">
+                        {offer.badgeText ?? offer.status}
+                      </span>
+                    </div>
+                    <p className="text-sm opacity-80">{offer.description ?? "No description"}</p>
+                    <p className="text-sm">
+                      {offer.business.name} · {money(offer.discountPriceCents)}
+                    </p>
+                    {product ? (
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-amber-100"
+                      >
+                        {product.name}
+                      </Link>
+                    ) : null}
+                    <p className="text-xs opacity-70">
+                      Starts: {localDate(offer.startsAt)} · Ends: {localDate(offer.endsAt)}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

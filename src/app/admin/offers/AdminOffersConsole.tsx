@@ -12,6 +12,10 @@ type BusinessRecord = {
 type OfferRecord = {
   id: string;
   businessId: string;
+  businessName: string;
+  productId: string | null;
+  productSlug: string | null;
+  productName: string | null;
   title: string;
   status: string;
   startsAt: string | null;
@@ -40,6 +44,14 @@ type CoverageResponse = {
   generatedAt: string;
   scope: CoverageScope;
   businesses: BusinessRecord[];
+  products: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    brandName: string | null;
+    category: string | null;
+    reviewCount: number;
+  }>;
   offers: OfferRecord[];
   users: UserCoverage[];
   summary: {
@@ -96,6 +108,7 @@ export default function AdminOffersConsole() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [emailTargetsRaw, setEmailTargetsRaw] = useState("");
   const [newOfferBusinessId, setNewOfferBusinessId] = useState("");
+  const [newOfferProductId, setNewOfferProductId] = useState("");
   const [newOfferTitle, setNewOfferTitle] = useState("");
   const [newOfferDescription, setNewOfferDescription] = useState("");
   const [newOfferBadge, setNewOfferBadge] = useState("Fresh Offer");
@@ -106,6 +119,7 @@ export default function AdminOffersConsole() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const offers = coverage?.offers ?? [];
+  const products = coverage?.products ?? [];
   const users = coverage?.users ?? [];
 
   const offersByBusiness = useMemo(() => {
@@ -153,6 +167,9 @@ export default function AdminOffersConsole() {
       const preferredBusinessId =
         nextBusinessId || data.businesses[0]?.id || "";
       setNewOfferBusinessId(preferredBusinessId);
+      if (!newOfferProductId && data.products.length === 1) {
+        setNewOfferProductId(data.products[0]?.id ?? "");
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     } finally {
@@ -260,6 +277,7 @@ export default function AdminOffersConsole() {
     try {
       const payload = {
         businessId: newOfferBusinessId,
+        productId: newOfferProductId || null,
         title: newOfferTitle.trim(),
         description: newOfferDescription.trim() || null,
         badgeText: newOfferBadge.trim() || null,
@@ -415,6 +433,24 @@ export default function AdminOffersConsole() {
                 className="admin-surface w-full rounded-xl px-3 py-2"
                 placeholder="Homesteader Weekend Special"
               />
+            </label>
+
+            <label className="space-y-1 text-sm block">
+              <span>Canonical product</span>
+              <select
+                value={newOfferProductId}
+                onChange={(event) => setNewOfferProductId(event.target.value)}
+                className="admin-surface w-full rounded-xl px-3 py-2"
+              >
+                <option value="">No product link</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                    {product.brandName ? ` • ${product.brandName}` : ""}
+                    {product.category ? ` • ${product.category}` : ""}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <div className="grid gap-2 sm:grid-cols-2">
@@ -642,6 +678,7 @@ export default function AdminOffersConsole() {
               <tr className="text-left">
                 <th className="px-3 py-2">Offer</th>
                 <th className="px-3 py-2">Business</th>
+                <th className="px-3 py-2">Product</th>
                 <th className="px-3 py-2">Price</th>
                 <th className="px-3 py-2">Window</th>
               </tr>
@@ -653,7 +690,10 @@ export default function AdminOffersConsole() {
                     <p className="font-medium">{offer.title}</p>
                     <p className="text-xs opacity-65">{offer.badgeText ?? offer.status}</p>
                   </td>
-                  <td className="px-3 py-2 text-xs opacity-80">{offer.businessId}</td>
+                  <td className="px-3 py-2 text-xs opacity-80">{offer.businessName}</td>
+                  <td className="px-3 py-2 text-xs opacity-80">
+                    {offer.productName ?? "Unlinked"}
+                  </td>
                   <td className="px-3 py-2">{money(offer.discountPriceCents)}</td>
                   <td className="px-3 py-2 text-xs opacity-75">
                     {localDate(offer.startsAt)}

@@ -63,6 +63,10 @@ export async function POST(req: NextRequest) {
 
   const businessId =
     typeof body.businessId === "string" ? body.businessId.trim() : "";
+  const productId =
+    typeof body.productId === "string" && body.productId.trim()
+      ? body.productId.trim()
+      : null;
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const description =
     typeof body.description === "string" ? body.description.trim() : null;
@@ -102,6 +106,7 @@ export async function POST(req: NextRequest) {
   let endsAt: Date | null = null;
   let discountPriceCents: number | null = null;
   let unitsTotal: number | null = null;
+  let inventoryItemId: string | null = null;
 
   try {
     startsAt = parseOptionalDate(body.startsAt, "startsAt");
@@ -111,6 +116,10 @@ export async function POST(req: NextRequest) {
       "discountPriceCents",
     );
     unitsTotal = parseOptionalInt(body.unitsTotal, "unitsTotal");
+    inventoryItemId =
+      typeof body.inventoryItemId === "string" && body.inventoryItemId.trim()
+        ? body.inventoryItemId.trim()
+        : null;
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Invalid payload" },
@@ -140,9 +149,57 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const product = productId
+    ? await prisma.product.findUnique({
+        where: { id: productId },
+        select: { id: true, name: true },
+      })
+    : null;
+
+  if (productId && !product) {
+    return NextResponse.json(
+      { message: "Selected product does not exist" },
+      { status: 404 },
+    );
+  }
+
+  const inventoryItem = inventoryItemId
+    ? await prisma.inventoryItem.findUnique({
+        where: { id: inventoryItemId },
+        select: {
+          id: true,
+          businessId: true,
+          productId: true,
+        },
+      })
+    : null;
+
+  if (inventoryItemId && !inventoryItem) {
+    return NextResponse.json(
+      { message: "Selected inventory item does not exist" },
+      { status: 404 },
+    );
+  }
+
+  if (inventoryItem && inventoryItem.businessId !== business.id) {
+    return NextResponse.json(
+      { message: "inventoryItemId must belong to the selected business" },
+      { status: 400 },
+    );
+  }
+
+  if (productId && inventoryItem?.productId && inventoryItem.productId !== productId) {
+    return NextResponse.json(
+      { message: "Selected inventory item is linked to a different product" },
+      { status: 400 },
+    );
+  }
+
   const created = await prisma.offer.create({
     data: {
       businessId: business.id,
+      inventoryItemId: inventoryItem?.id ?? null,
+      productId: product?.id ?? inventoryItem?.productId ?? null,
       title,
       description,
       status,
@@ -158,6 +215,13 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       businessId: true,
+      product: {
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+        },
+      },
       title: true,
       status: true,
       badgeText: true,

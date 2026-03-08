@@ -116,6 +116,8 @@ model Product {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   brand         Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  inventoryItems InventoryItem[]
+  offers         Offer[]
   reviewProfiles ReviewProfile[]
 
   @@index([brandId])
@@ -245,6 +247,7 @@ model StoreProfile {
 model InventoryItem {
   id                String         @id @default(cuid())
   businessId        String
+  productId         String?
   sku               String?
   name              String
   description       String?
@@ -262,6 +265,7 @@ model InventoryItem {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   business          Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product           Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
   pricingRules      PricingRule[]
   offers            Offer[]
   deliveryLeads     DeliveryLead[]
@@ -270,6 +274,7 @@ model InventoryItem {
 
   @@unique([businessId, sku])
   @@index([businessId, isActive])
+  @@index([productId])
   @@index([expiresAt])
 }
 
@@ -305,6 +310,7 @@ model Offer {
   id                 String         @id @default(cuid())
   businessId         String
   inventoryItemId    String?
+  productId          String?
   pricingRuleId      String?
   campaignId         String?
   title              String
@@ -323,6 +329,7 @@ model Offer {
   updatedAt          DateTime       @updatedAt
   business           Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   inventoryItem      InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  product            Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
   pricingRule        PricingRule?   @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
   campaign           Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   inboxItems         UserOfferInbox[]
@@ -332,6 +339,7 @@ model Offer {
 
   @@unique([businessId, couponCode])
   @@index([businessId, status])
+  @@index([productId])
   @@index([startsAt, endsAt])
   @@index([featured])
 }

@@ -32,6 +32,7 @@ type OfferOption = {
   status: string;
   featured: boolean;
   discountPriceCents: number | null;
+  productName: string | null;
 };
 
 type InventoryOption = {
@@ -40,6 +41,7 @@ type InventoryOption = {
   name: string;
   priceCents: number;
   imageUrl: string | null;
+  productName: string | null;
 };
 
 type OptionsResponse = {
@@ -426,7 +428,12 @@ export default function CommerceModulesFields({ value, onChange }: Props) {
                     <option value="">None</option>
                     {filteredOffers.map((offer) => (
                       <option key={offer.id} value={offer.id}>
-                        {offer.title} • {offer.status} • {formatMoney(offer.discountPriceCents)}
+                        {offer.title}
+                        {offer.productName ? ` • ${offer.productName}` : ""}
+                        {" • "}
+                        {offer.status}
+                        {" • "}
+                        {formatMoney(offer.discountPriceCents)}
                       </option>
                     ))}
                   </select>
@@ -451,7 +458,10 @@ export default function CommerceModulesFields({ value, onChange }: Props) {
                     <option value="">None</option>
                     {filteredInventory.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.name} • {formatMoney(item.priceCents)}
+                        {item.name}
+                        {item.productName ? ` • ${item.productName}` : ""}
+                        {" • "}
+                        {formatMoney(item.priceCents)}
                       </option>
                     ))}
                   </select>

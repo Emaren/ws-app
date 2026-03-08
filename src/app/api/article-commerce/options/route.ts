@@ -43,6 +43,11 @@ export async function GET(req: NextRequest) {
         status: true,
         featured: true,
         discountPriceCents: true,
+        product: {
+          select: {
+            name: true,
+          },
+        },
       },
     }),
     prisma.inventoryItem.findMany({
@@ -54,13 +59,24 @@ export async function GET(req: NextRequest) {
         name: true,
         priceCents: true,
         imageUrl: true,
+        product: {
+          select: {
+            name: true,
+          },
+        },
       },
     }),
   ]);
 
   return NextResponse.json({
     businesses,
-    offers,
-    inventoryItems,
+    offers: offers.map((offer) => ({
+      ...offer,
+      productName: offer.product?.name ?? null,
+    })),
+    inventoryItems: inventoryItems.map((item) => ({
+      ...item,
+      productName: item.product?.name ?? null,
+    })),
   });
 }

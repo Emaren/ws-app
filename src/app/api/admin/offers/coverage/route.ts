@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
           managedBusinessIds: [],
         },
         businesses: [],
+        products: [],
         offers: [],
         users: [],
         summary: {
@@ -67,18 +68,49 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const [wsUsers, businesses, offers, inbox, recipients] = await Promise.all([
+    const [wsUsers, businesses, products, offers, inbox, recipients] = await Promise.all([
       listWsApiUsers(auth.accessToken),
       prisma.business.findMany({
         where: scopedBusinessIds ? { id: { in: scopedBusinessIds } } : undefined,
         select: { id: true, slug: true, name: true, status: true },
         orderBy: { name: "asc" },
       }),
+      prisma.product.findMany({
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          category: true,
+          brand: {
+            select: {
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              reviewProfiles: true,
+            },
+          },
+        },
+        orderBy: [{ name: "asc" }],
+      }),
       prisma.offer.findMany({
         where: scopedBusinessIds ? { businessId: { in: scopedBusinessIds } } : undefined,
         select: {
           id: true,
           businessId: true,
+          business: {
+            select: {
+              name: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+            },
+          },
           title: true,
           status: true,
           startsAt: true,
@@ -226,7 +258,21 @@ export async function GET(req: NextRequest) {
         managedBusinessIds: auth.managedBusinessIds ?? businesses.map((business) => business.id),
       },
       businesses,
-      offers,
+      products: products.map((product) => ({
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        brandName: product.brand?.name ?? null,
+        category: product.category,
+        reviewCount: product._count.reviewProfiles,
+      })),
+      offers: offers.map((offer) => ({
+        ...offer,
+        businessName: offer.business.name,
+        productId: offer.product?.id ?? null,
+        productSlug: offer.product?.slug ?? null,
+        productName: offer.product?.name ?? null,
+      })),
       users: userCoverage,
       summary: {
         totalUsers: userCoverage.length,
