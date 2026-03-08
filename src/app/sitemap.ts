@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
+import { buildContributorPublicSlug } from "@/lib/contributorIdentity";
 
 const BASE_URL = "https://wheatandstone.ca";
 
@@ -10,6 +12,7 @@ const STATIC_ROUTES = [
   "/offers",
   "/map",
   "/community",
+  "/community/contributors",
   "/articles",
   "/products",
   "/about",
@@ -79,5 +82,58 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     }));
 
-  return [...staticEntries, ...articleEntries, ...productEntries];
+  const publicVisibilityWhere: Prisma.ArticleWhereInput = {
+    OR: [
+      { status: "PUBLISHED" },
+      {
+        AND: [
+          { status: { in: ["DRAFT", "REVIEW"] } },
+          { publishedAt: { not: null } },
+        ],
+      },
+    ],
+  };
+
+  const contributors = await prisma.user.findMany({
+    where: {
+      articles: {
+        some: publicVisibilityWhere,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      updatedAt: true,
+      articles: {
+        where: publicVisibilityWhere,
+        select: {
+          updatedAt: true,
+          createdAt: true,
+          publishedAt: true,
+        },
+      },
+    },
+  });
+
+  const contributorEntries: MetadataRoute.Sitemap = contributors.map((contributor) => {
+    const articleDates = contributor.articles
+      .flatMap((article) => [article.updatedAt, article.publishedAt, article.createdAt])
+      .filter((value): value is Date => value instanceof Date);
+    const lastModified = articleDates.reduce<Date>(
+      (latest, current) => (current.getTime() > latest.getTime() ? current : latest),
+      contributor.updatedAt,
+    );
+
+    return {
+      url: `${BASE_URL}/community/contributors/${buildContributorPublicSlug(
+        contributor.name,
+        contributor.id,
+      )}`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.65,
+    };
+  });
+
+  return [...staticEntries, ...articleEntries, ...productEntries, ...contributorEntries];
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ArticleCommerceModuleView from "@/components/article/ArticleCommerceModuleView";
+import { buildContributorPublicSlug, resolveContributorDisplayName } from "@/lib/contributorIdentity";
 import { getPublicProductBySlug } from "@/lib/publicProducts";
 
 export const dynamic = "force-dynamic";
@@ -312,10 +313,7 @@ export default async function ProductPage({
 
           <div className="grid gap-4">
             {product.reviews.map((review) => (
-              <article
-                key={review.id}
-                className="rounded-[1.75rem] border border-neutral-800 bg-black/30 p-5"
-              >
+              <article key={review.id} className="rounded-[1.75rem] border border-neutral-800 bg-black/30 p-5">
                 <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-70">
                   {typeof review.score === "number" && (
                     <span className="rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-amber-100">
@@ -331,6 +329,22 @@ export default async function ProductPage({
 
                 <div className="mt-3 space-y-3">
                   <h3 className="text-xl font-semibold tracking-tight">{review.article.title}</h3>
+                  <p className="text-sm opacity-65">
+                    By{" "}
+                    {review.article.author?.id ? (
+                      <Link
+                        href={`/community/contributors/${buildContributorPublicSlug(
+                          review.article.author.name,
+                          review.article.author.id,
+                        )}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {resolveContributorDisplayName(review.article.author.name)}
+                      </Link>
+                    ) : (
+                      resolveContributorDisplayName(review.article.author?.name)
+                    )}
+                  </p>
                   <p className="text-sm leading-6 opacity-80">
                     {review.verdict || review.article.excerpt || "Linked review available."}
                   </p>

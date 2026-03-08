@@ -136,6 +136,12 @@ export async function listPublicProducts(limit?: number) {
               publishedAt: true,
               updatedAt: true,
               coverUrl: true,
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -338,6 +344,12 @@ export async function getPublicProductBySlug(slug: string) {
         include: {
           article: {
             include: {
+              author: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
               commerceModules: {
                 where: { isEnabled: true },
                 orderBy: [{ placement: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
@@ -379,6 +391,12 @@ export async function getPublicProductBySlug(slug: string) {
         publishedAt: review.article.publishedAt,
         updatedAt: review.article.updatedAt,
         coverUrl: review.article.coverUrl,
+        author: review.article.author
+          ? {
+              id: review.article.author.id,
+              name: review.article.author.name,
+            }
+          : null,
       },
       commerceModules: review.article.commerceModules,
     }));

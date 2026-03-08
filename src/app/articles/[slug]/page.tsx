@@ -116,6 +116,12 @@ export default async function ArticlePage({
   const article = await prisma.article.findUnique({
     where: { slug },
     include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       reviewProfile: {
         include: {
           product: {

@@ -19,6 +19,12 @@ export async function getLatestArticle() {
       { createdAt: "desc" },   // fallback if publishedAt is null/missing
     ],
     include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       reviewProfile: {
         include: {
           product: {

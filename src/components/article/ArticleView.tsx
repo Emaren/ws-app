@@ -1,6 +1,7 @@
 // src/components/article/ArticleView.tsx
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
+import { buildContributorPublicSlug, resolveContributorDisplayName } from "@/lib/contributorIdentity";
 import {
   buildAffiliatePairFromReviewProfile,
   type ReviewComparisonPair,
@@ -20,6 +21,12 @@ type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
             brand: true;
           };
         };
+      };
+    };
+    author: {
+      select: {
+        id: true;
+        name: true;
       };
     };
     commerceModules: {
@@ -99,6 +106,10 @@ export default function ArticleView({
 
   const comparisonPair =
     buildAffiliatePairFromReviewProfile(article.reviewProfile) || legacyAffiliatePair(article);
+  const contributorName = resolveContributorDisplayName(article.author?.name);
+  const contributorSlug = article.author?.id
+    ? buildContributorPublicSlug(article.author.name, article.author.id)
+    : null;
 
   if (variant === "summary") {
     return (
@@ -158,6 +169,19 @@ export default function ArticleView({
               ? publishedAtUTC ?? formatUTC(article.publishedAt)
               : "Unpublished"}
           </div>
+          <div className="text-sm opacity-60">
+            By{" "}
+            {contributorSlug ? (
+              <Link
+                href={`/community/contributors/${contributorSlug}`}
+                className="underline-offset-4 hover:underline"
+              >
+                {contributorName}
+              </Link>
+            ) : (
+              contributorName
+            )}
+          </div>
         </div>
       </article>
     );
@@ -174,7 +198,17 @@ export default function ArticleView({
             </h1>
             <div className="mt-2 text-sm">
               <div className="opacity-75">
-                Author: {(article as any).contributor ?? "Wheat & Stone Team"}
+                Author:{" "}
+                {contributorSlug ? (
+                  <Link
+                    href={`/community/contributors/${contributorSlug}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {contributorName}
+                  </Link>
+                ) : (
+                  contributorName
+                )}
               </div>
               <div className="opacity-60">
                 {article.publishedAt ? (
