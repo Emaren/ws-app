@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
+import {
+  archiveSavedProductMatchAssignmentsForProduct,
+  runSavedProductMatchAutomation,
+} from "@/lib/savedOfferAutomation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -104,6 +108,26 @@ export async function POST(req: NextRequest) {
         productId: itemId,
       },
     });
+
+    const matchResult = await runSavedProductMatchAutomation({
+      source: "SAVE_EVENT",
+      actorUserId: auth.userId,
+      actorEmail: auth.email ?? null,
+      productId: itemId,
+      userId: auth.userId,
+      wsApiAccessToken:
+        typeof auth.token.wsApiAccessToken === "string"
+          ? auth.token.wsApiAccessToken.trim()
+          : null,
+      now: new Date(),
+    });
+
+    return NextResponse.json({
+      saved: true,
+      savedCount: await savedCount(kind, itemId),
+      matchedOffersCreated: matchResult.created,
+      matchedOffersReactivated: matchResult.reactivated,
+    });
   } else {
     await prisma.savedOffer.upsert({
       where: {
@@ -152,6 +176,10 @@ export async function DELETE(req: NextRequest) {
         userId: auth.userId,
         productId: itemId,
       },
+    });
+    await archiveSavedProductMatchAssignmentsForProduct({
+      userId: auth.userId,
+      productId: itemId,
     });
   } else {
     await prisma.savedOffer.deleteMany({

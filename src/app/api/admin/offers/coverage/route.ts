@@ -64,11 +64,15 @@ export async function GET(req: NextRequest) {
           usersWithOffers: 0,
           zeroOfferUsers: 0,
           activeBadgeTotal: 0,
+          savedProductSignals: 0,
+          savedOfferSignals: 0,
+          activeSavedMatchAssignments: 0,
+          usersWithSavedMatches: 0,
         },
       });
     }
 
-    const [wsUsers, businesses, products, offers, inbox, recipients] = await Promise.all([
+    const [wsUsers, businesses, products, offers, inbox, recipients, savedProductSignals, savedOfferSignals, savedMatchAssignments] = await Promise.all([
       listWsApiUsers(auth.accessToken),
       prisma.business.findMany({
         where: scopedBusinessIds ? { id: { in: scopedBusinessIds } } : undefined,
@@ -149,6 +153,23 @@ export async function GET(req: NextRequest) {
         select: {
           email: true,
           userId: true,
+        },
+      }),
+      prisma.savedProduct.count(),
+      prisma.savedOffer.count(),
+      prisma.userOfferInbox.findMany({
+        where: {
+          ...(scopedBusinessIds ? { businessId: { in: scopedBusinessIds } } : {}),
+          status: { in: ["ACTIVE", "SEEN"] },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          metadata: {
+            path: ["source"],
+            equals: "saved-product-match",
+          },
+        },
+        select: {
+          userExternalId: true,
+          userEmail: true,
         },
       }),
     ]);
@@ -250,6 +271,11 @@ export async function GET(req: NextRequest) {
       (total, user) => total + user.offerBadgeCount,
       0,
     );
+    const usersWithSavedMatches = new Set(
+      savedMatchAssignments.flatMap((assignment) =>
+        [assignment.userExternalId, assignment.userEmail.toLowerCase()].filter(Boolean),
+      ),
+    ).size;
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
@@ -279,6 +305,10 @@ export async function GET(req: NextRequest) {
         usersWithOffers: userCoverage.length - zeroOfferUsers,
         zeroOfferUsers,
         activeBadgeTotal,
+        savedProductSignals,
+        savedOfferSignals,
+        activeSavedMatchAssignments: savedMatchAssignments.length,
+        usersWithSavedMatches,
       },
     });
   } catch (error) {

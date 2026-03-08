@@ -59,6 +59,10 @@ type CoverageResponse = {
     usersWithOffers: number;
     zeroOfferUsers: number;
     activeBadgeTotal: number;
+    savedProductSignals: number;
+    savedOfferSignals: number;
+    activeSavedMatchAssignments: number;
+    usersWithSavedMatches: number;
   };
 };
 
@@ -290,13 +294,21 @@ export default function AdminOffersConsole() {
 
       const result = await requestJson<{
         offer?: { id: string; title: string };
+        savedMatch?: {
+          created: number;
+          reactivated: number;
+        } | null;
       }>("/api/admin/offers/create", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       setNotice(
-        `Created offer "${result.offer?.title ?? newOfferTitle.trim()}" and set it live.`,
+        `Created offer "${result.offer?.title ?? newOfferTitle.trim()}" and set it live.${
+          result.savedMatch
+            ? ` Saved-match automation created ${result.savedMatch.created} and reactivated ${result.savedMatch.reactivated} member alerts.`
+            : ""
+        }`,
       );
 
       setNewOfferTitle("");
@@ -310,6 +322,36 @@ export default function AdminOffersConsole() {
       }
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : String(createError));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function runSavedMatchAutomation() {
+    setError(null);
+    setNotice(null);
+    setBusyAction("saved-match-run");
+
+    try {
+      const result = await requestJson<{
+        created: number;
+        reactivated: number;
+        existingActive: number;
+        notificationQueuedCount: number;
+      }>("/api/admin/offers/match-saved", {
+        method: "POST",
+        body: JSON.stringify({
+          businessId: selectedBusinessId || null,
+          offerId: selectedOfferId || null,
+        }),
+      });
+
+      setNotice(
+        `Saved-match automation created ${result.created} alerts, reactivated ${result.reactivated}, preserved ${result.existingActive} active matches, and queued ${result.notificationQueuedCount} email attempt(s).`,
+      );
+      await loadCoverage(selectedBusinessId);
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : String(runError));
     } finally {
       setBusyAction(null);
     }
@@ -334,6 +376,14 @@ export default function AdminOffersConsole() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={() => void runSavedMatchAutomation()}
+              className="rounded-xl border border-sky-300/35 bg-sky-200/10 px-3 py-2 text-sm transition hover:bg-sky-200/20 disabled:opacity-60"
+              disabled={loading || bulkBusy}
+            >
+              {busyAction === "saved-match-run" ? "Running saved-match..." : "Run Saved-Match Automation"}
+            </button>
             <select
               value={selectedBusinessId}
               onChange={(event) => {
@@ -379,7 +429,7 @@ export default function AdminOffersConsole() {
         ) : null}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
         <article className="admin-card rounded-xl p-4">
           <p className="text-xs uppercase tracking-wide opacity-70">Users</p>
           <p className="mt-1 text-2xl font-semibold">{coverage?.summary.totalUsers ?? 0}</p>
@@ -397,6 +447,22 @@ export default function AdminOffersConsole() {
         <article className="admin-card rounded-xl p-4">
           <p className="text-xs uppercase tracking-wide opacity-70">Total Badge Count</p>
           <p className="mt-1 text-2xl font-semibold">{coverage?.summary.activeBadgeTotal ?? 0}</p>
+        </article>
+        <article className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Saved Products</p>
+          <p className="mt-1 text-2xl font-semibold">{coverage?.summary.savedProductSignals ?? 0}</p>
+        </article>
+        <article className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Saved Offers</p>
+          <p className="mt-1 text-2xl font-semibold">{coverage?.summary.savedOfferSignals ?? 0}</p>
+        </article>
+        <article className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Active Saved Matches</p>
+          <p className="mt-1 text-2xl font-semibold">{coverage?.summary.activeSavedMatchAssignments ?? 0}</p>
+        </article>
+        <article className="admin-card rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide opacity-70">Users With Saved Matches</p>
+          <p className="mt-1 text-2xl font-semibold">{coverage?.summary.usersWithSavedMatches ?? 0}</p>
         </article>
       </div>
 

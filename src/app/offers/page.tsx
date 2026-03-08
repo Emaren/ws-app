@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import SaveToggleButton from "@/components/community/SaveToggleButton";
@@ -5,6 +6,7 @@ import { authOptions } from "@/lib/authOptions";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { listSavedOfferIdsForUser } from "@/lib/savedCollections";
+import { readSavedProductMatchMetadata } from "@/lib/savedOfferAutomation";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +92,7 @@ export default async function OffersPage() {
     id: string;
     assignedAt: Date;
     expiresAt: Date | null;
+    metadata: Prisma.JsonValue | null;
       offer: {
         id: string;
         title: string;
@@ -139,7 +142,11 @@ export default async function OffersPage() {
             { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
           ],
         },
-        include: {
+        select: {
+          id: true,
+          assignedAt: true,
+          expiresAt: true,
+          metadata: true,
           offer: {
             select: {
               id: true,
@@ -189,6 +196,11 @@ export default async function OffersPage() {
     }
   }
 
+  const savedMatchInboxCount = inboxItems.filter((item) => {
+    const metadata = readSavedProductMatchMetadata(item.metadata);
+    return Boolean(metadata.matchedProductId);
+  }).length;
+
   return (
     <main className="ws-container py-8 md:py-10 space-y-5">
       <section className="ws-article rounded-2xl border border-black/10 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.04] p-5 md:p-7 space-y-5">
@@ -210,6 +222,11 @@ export default async function OffersPage() {
               Saved offers: {savedOfferIds.size}
             </span>
           ) : null}
+          {session?.user ? (
+            <span className="rounded-full border border-amber-300/30 bg-amber-200/10 px-3 py-1 text-xs font-semibold text-amber-100">
+              Saved-product matches: {savedMatchInboxCount}
+            </span>
+          ) : null}
           {isOffersManager ? (
             <Link
               href="/admin/offers"
@@ -223,6 +240,9 @@ export default async function OffersPage() {
         {session?.user ? (
           <section className="space-y-3">
             <h2 className="text-lg md:text-2xl font-semibold">Assigned To You</h2>
+            <p className="text-sm opacity-75">
+              Saved-product matches are labeled below, so you can tell when the system surfaced an offer because you showed intent earlier.
+            </p>
             {inboxItems.length === 0 ? (
               <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                 Your offers box is empty right now. Admin can backfill from the Offers Command Center.
@@ -232,14 +252,23 @@ export default async function OffersPage() {
                 {inboxItems.map((item) => {
                   const product =
                     item.offer.product ?? item.offer.inventoryItem?.product ?? null;
+                  const matchMetadata = readSavedProductMatchMetadata(item.metadata);
+                  const isSavedMatch = Boolean(matchMetadata.matchedProductId);
 
                   return (
                     <li key={item.id} className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-semibold">{item.offer.title}</p>
-                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">
-                          {item.offer.badgeText ?? "Offer"}
-                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {isSavedMatch ? (
+                            <span className="rounded-full border border-sky-300/30 bg-sky-200/10 px-2 py-0.5 text-[11px] font-semibold text-sky-100">
+                              Saved-product match
+                            </span>
+                          ) : null}
+                          <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                            {item.offer.badgeText ?? "Offer"}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-sm opacity-80">{item.offer.description ?? "No description"}</p>
                       <p className="text-sm">
@@ -252,6 +281,11 @@ export default async function OffersPage() {
                         >
                           {product.name}
                         </Link>
+                      ) : null}
+                      {isSavedMatch && matchMetadata.matchedProductName ? (
+                        <p className="text-xs text-sky-100/85">
+                          Matched because you saved {matchMetadata.matchedProductName}.
+                        </p>
                       ) : null}
                       <p className="text-xs opacity-70">
                         Assigned: {localDate(item.assignedAt)} · Expires: {localDate(item.expiresAt)}

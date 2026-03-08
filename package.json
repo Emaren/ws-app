@@ -32,6 +32,7 @@
     "products:backfill": "node scripts/backfill-product-graph.mjs",
     "commerce:seed:pilot": "node scripts/seed-product-commerce-pilot.mjs",
     "automation:fulfillment:run": "node scripts/run-fulfillment-automation.mjs",
+    "automation:saved-match:run": "node scripts/run-saved-offer-match.mjs",
     "studio:dev": "prisma studio",
     "studio:prod": "prisma studio --hostname 127.0.0.1 --port 5556 --browser none",
     "prepare": "husky",

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { runSavedProductMatchAutomation } from "@/lib/savedOfferAutomation";
 import {
   asRecord,
   businessScopeWhere,
@@ -183,9 +184,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const savedMatch =
+      created.status === "LIVE" && created.productId
+        ? await runSavedProductMatchAutomation({
+            source: "OFFER_PUBLISHED",
+            actorUserId: auth.actorUserId,
+            actorEmail: null,
+            offerId: created.id,
+            now: new Date(),
+          })
+        : null;
+
     return NextResponse.json({
       ok: true,
       offer: created,
+      savedMatch,
     });
   } catch (error) {
     return NextResponse.json(

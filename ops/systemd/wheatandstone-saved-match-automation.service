@@ -1,0 +1,10 @@
+[Unit]
+Description=Wheat & Stone saved-product offer match scheduler
+After=network.target wheatandstone-app.service
+Wants=wheatandstone-app.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/WheatAndStone/ws-app
+EnvironmentFile=/etc/wheatandstone/wheatandstone-web.env
+ExecStart=/usr/bin/env bash -lc 'pnpm automation:saved-match:run'

@@ -56,6 +56,7 @@ export default function SaveToggleButton({
   const [saved, setSaved] = useState(initialSaved);
   const [count, setCount] = useState(initialCount);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   if (!isAuthenticated) {
@@ -82,6 +83,7 @@ export default function SaveToggleButton({
         disabled={isPending}
         onClick={() => {
           setError(null);
+          setNotice(null);
           const nextSaved = !saved;
 
           startTransition(async () => {
@@ -98,7 +100,13 @@ export default function SaveToggleButton({
               });
 
               const payload = (await response.json().catch(() => null)) as
-                | { saved?: boolean; savedCount?: number; message?: string }
+                | {
+                    saved?: boolean;
+                    savedCount?: number;
+                    matchedOffersCreated?: number;
+                    matchedOffersReactivated?: number;
+                    message?: string;
+                  }
                 | null;
 
               if (!response.ok) {
@@ -110,6 +118,15 @@ export default function SaveToggleButton({
                 setCount(payload.savedCount);
               } else {
                 setCount((current) => Math.max(0, current + (nextSaved ? 1 : -1)));
+              }
+
+              const matchedCreated = payload?.matchedOffersCreated ?? 0;
+              const matchedReactivated = payload?.matchedOffersReactivated ?? 0;
+              const matchedTotal = matchedCreated + matchedReactivated;
+              if (nextSaved && matchedTotal > 0) {
+                setNotice(
+                  `${matchedTotal} live offer ${matchedTotal === 1 ? "match" : "matches"} added to your offer box.`,
+                );
               }
 
               if (refreshOnChange) {
@@ -129,6 +146,7 @@ export default function SaveToggleButton({
         {showCount ? ` · ${count}` : ""}
       </button>
 
+      {notice ? <p className="text-xs text-emerald-300/90">{notice}</p> : null}
       {error ? <p className="text-xs text-rose-300/90">{error}</p> : null}
     </div>
   );

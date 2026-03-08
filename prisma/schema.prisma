@@ -32,6 +32,8 @@ model User {
   rewardLedgerEntries    RewardLedger[]
   savedProducts          SavedProduct[]
   savedOffers            SavedOffer[]
+  savedOfferAlertsEnabled Boolean                 @default(true)
+  savedOfferEmailAlertsEnabled Boolean            @default(false)
   authRegistrationEvents AuthRegistrationEvent[]
   authFunnelEvents       AuthFunnelEvent[]
   passwordResetTokens    PasswordResetToken[]

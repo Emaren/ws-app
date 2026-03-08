@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Wheat & Stone saved-product offer matching every 30 minutes
+
+[Timer]
+OnBootSec=8min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=wheatandstone-saved-match-automation.service
+
+[Install]
+WantedBy=timers.target

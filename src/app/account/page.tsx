@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { normalizeAppRole, roleBadgePrefix } from "@/lib/rbac";
 import AccountActivityCard from "./AccountActivityCard";
+import OfferAlertSignalsCard from "./OfferAlertSignalsCard";
 import SavedCollectionsCard from "./SavedCollectionsCard";
 import SignOutButton from "./SignOutButton";
 import TokenBalancesCard from "./TokenBalancesCard";
@@ -70,6 +71,8 @@ export default async function AccountPage() {
         />
 
         <SavedCollectionsCard userId={session.user.id} />
+
+        <OfferAlertSignalsCard userId={session.user.id} />
 
         <AccountActivityCard userId={session.user.id} />
 

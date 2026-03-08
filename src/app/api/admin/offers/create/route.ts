@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { runSavedProductMatchAutomation } from "@/lib/savedOfferAutomation";
 import { requireOffersManagerWsToken } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -233,8 +234,21 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const savedMatch =
+    created.status === "LIVE" && created.product?.id
+      ? await runSavedProductMatchAutomation({
+          source: "OFFER_PUBLISHED",
+          actorUserId: auth.actorExternalId,
+          actorEmail: auth.actorEmail,
+          offerId: created.id,
+          wsApiAccessToken: auth.accessToken,
+          now: new Date(),
+        })
+      : null;
+
   return NextResponse.json({
     ok: true,
     offer: created,
+    savedMatch,
   });
 }
