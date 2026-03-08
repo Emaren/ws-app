@@ -10,6 +10,7 @@ import {
   isPubliclyVisibleArticle,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +43,10 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const article = await prisma.article.findUnique({ where: { slug } });
+  const article = await prisma.article.findUnique({
+    where: { slug },
+    include: { reviewProfile: true },
+  });
   if (!article) return notFound();
 
   const status = normalizeArticleStatus(article.status);
@@ -94,6 +98,11 @@ export async function PATCH(
       status: true,
       authorId: true,
       publishedAt: true,
+      reviewProfile: {
+        select: {
+          id: true,
+        },
+      },
     },
   });
   if (!existing) {
@@ -115,6 +124,7 @@ export async function PATCH(
     coverUrl,
     content,
     status,
+    reviewProfile,
   }: {
     title?: string;
     slug?: string;
@@ -122,7 +132,14 @@ export async function PATCH(
     coverUrl?: string | null;
     content?: string;
     status?: string;
+    reviewProfile?: unknown;
   } = body || {};
+
+  const hasReviewProfilePatch = Object.prototype.hasOwnProperty.call(body ?? {}, "reviewProfile");
+  const normalizedReviewProfile = normalizeReviewProfileInput(reviewProfile);
+  if (hasReviewProfilePatch && normalizedReviewProfile.error) {
+    return badRequest(normalizedReviewProfile.error);
+  }
 
   const nextStatus = status === undefined ? undefined : normalizeArticleStatus(status);
   if (status !== undefined && !nextStatus) {
@@ -187,6 +204,20 @@ export async function PATCH(
   if (nextStatus) {
     patch.status = nextStatus;
     patch.publishedAt = derivePublishedAtPatch(existing.publishedAt, nextStatus);
+  }
+
+  if (hasReviewProfilePatch) {
+    if (normalizedReviewProfile.data) {
+      patch.reviewProfile = existing.reviewProfile
+        ? {
+            update: normalizedReviewProfile.data,
+          }
+        : {
+            create: normalizedReviewProfile.data,
+          };
+    } else if (existing.reviewProfile) {
+      patch.reviewProfile = { delete: true };
+    }
   }
 
   if (Object.keys(patch).length === 0) {

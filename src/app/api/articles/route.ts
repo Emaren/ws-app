@@ -5,6 +5,7 @@ import {
   canSetCreateStatus,
   normalizeArticleStatus,
 } from "@/lib/articleLifecycle";
+import { normalizeReviewProfileInput } from "@/lib/reviewProfile";
 import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import { prisma } from "@/lib/prisma";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
         excerpt?: string;
         coverUrl?: string;
         status?: string;
+        reviewProfile?: unknown;
       }
     | null;
 
@@ -159,6 +161,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const normalizedReviewProfile = normalizeReviewProfileInput(body.reviewProfile);
+  if (normalizedReviewProfile.error) {
+    return NextResponse.json({ message: normalizedReviewProfile.error }, { status: 400 });
+  }
+
   const article = await prisma.article.create({
     data: {
       title: body.title.trim(),
@@ -169,6 +176,11 @@ export async function POST(req: NextRequest) {
       slug,
       authorId: auth.userId,
       publishedAt: status === "PUBLISHED" ? new Date() : null,
+      reviewProfile: normalizedReviewProfile.data
+        ? {
+            create: normalizedReviewProfile.data,
+          }
+        : undefined,
     },
     select: {
       id: true,

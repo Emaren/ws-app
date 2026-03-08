@@ -3,13 +3,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ReviewProfileFields from "@/components/admin/ReviewProfileFields";
 import RichEditor from "@/components/editor/RichEditor";
+import {
+  emptyReviewProfileDraft,
+  reviewProfilePayloadFromDraft,
+} from "@/lib/reviewProfile";
 
 export default function NewArticle() {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState(""); // HTML from the rich editor
+  const [reviewProfile, setReviewProfile] = useState(emptyReviewProfileDraft);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,7 +25,11 @@ export default function NewArticle() {
     const res = await fetch("/api/articles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({
+        title,
+        content,
+        reviewProfile: reviewProfilePayloadFromDraft(reviewProfile),
+      }),
     });
 
     setLoading(false);
@@ -42,7 +52,7 @@ export default function NewArticle() {
       <div className="admin-card p-4 md:p-6">
         <h2 className="text-xl font-semibold md:text-2xl">New Article</h2>
         <p className="mt-1 text-sm opacity-75">
-          Write rich review content for mobile and desktop readers.
+          Write rich review content and start capturing reusable product data.
         </p>
       </div>
 
@@ -67,6 +77,13 @@ export default function NewArticle() {
         <div className="overflow-hidden rounded-xl border">
           <RichEditor value={content} onChange={setContent} />
         </div>
+
+        <ReviewProfileFields
+          value={reviewProfile}
+          onChange={(field, nextValue) =>
+            setReviewProfile((current) => ({ ...current, [field]: nextValue }))
+          }
+        />
 
         <button
           type="submit"

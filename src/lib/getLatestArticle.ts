@@ -18,5 +18,8 @@ export async function getLatestArticle() {
       { publishedAt: "desc" }, // prefer newest by published date
       { createdAt: "desc" },   // fallback if publishedAt is null/missing
     ],
+    include: {
+      reviewProfile: true,
+    },
   });
 }

@@ -32,6 +32,29 @@ export default async function EditArticlePage(
       status: true,
       publishedAt: true, // Date | null
       authorId: true,
+      reviewProfile: {
+        select: {
+          productName: true,
+          brandName: true,
+          category: true,
+          reviewScore: true,
+          verdict: true,
+          organicStatus: true,
+          recommendedFor: true,
+          avoidFor: true,
+          localAvailability: true,
+          conventionalTitle: true,
+          conventionalHref: true,
+          conventionalImageSrc: true,
+          conventionalBadge: true,
+          conventionalPriceHint: true,
+          organicTitle: true,
+          organicHref: true,
+          organicImageSrc: true,
+          organicBadge: true,
+          organicPriceHint: true,
+        },
+      },
     },
   });
 
@@ -54,7 +77,7 @@ export default async function EditArticlePage(
       <div className="admin-card p-4 md:p-6">
         <h2 className="text-xl font-semibold md:text-2xl">Edit Article</h2>
         <p className="mt-1 text-sm opacity-75">
-          Update content, lifecycle status, and publishing metadata.
+          Update content, lifecycle status, publishing metadata, and structured review data.
         </p>
       </div>
       <Editor initialArticle={uiArticle} />

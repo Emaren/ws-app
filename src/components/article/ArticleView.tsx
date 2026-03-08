@@ -1,13 +1,22 @@
 // src/components/article/ArticleView.tsx
-import type { Article } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
+import {
+  buildAffiliatePairFromReviewProfile,
+  type ReviewComparisonPair,
+} from "@/lib/reviewProfile";
 import ArticleBody from "./ArticleBody";
 import ReactionsBar from "./ReactionsBar";
 import AffiliatePair from "./AffiliatePair";
 import ArticleHeaderArt from "./ArticleHeaderArt";
+import ReviewScorecard from "./ReviewScorecard";
+
+type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
+  include: { reviewProfile: true };
+}>;
 
 type Props = {
-  article?: Article | null;
+  article?: ArticleWithReviewProfile | null;
   variant: "summary" | "full";
   publishedAtUTC?: string;
   publishedAtISOString?: string;
@@ -20,6 +29,36 @@ const formatUTC = (dt?: Date | string | null) => {
   const [date, time] = iso.split("T");
   return `${date} ${time.slice(0, 5)} UTC`;
 };
+
+function legacyAffiliatePair(article: ArticleWithReviewProfile): ReviewComparisonPair | null {
+  const fingerprint = `${article.slug} ${article.title}`.toLowerCase();
+  if (
+    !fingerprint.includes("avalon") ||
+    !fingerprint.includes("chocolate") ||
+    !fingerprint.includes("milk")
+  ) {
+    return null;
+  }
+
+  // Transitional fallback so the original flagship review keeps its comparison module
+  // until the structured fields are filled in from the editor.
+  return {
+    left: {
+      title: "NESQUICK CHOCOLATE POWDER 44.9OZ (2.81LBS)",
+      href: "https://www.amazon.ca/dp/B09FTPGQ3B?tag=wheatandstone-20",
+      imageSrc: "/NQ.png",
+      badge: "Beast System",
+      priceHint: "From $34.60",
+    },
+    right: {
+      title: "Avalon Organic Chocolate Milk",
+      href: "mailto:tony@wheatandstone.ca?subject=Chocolate Milk Order&body=Hi%20Tony,%20I’d%20like%20to%20order%20Avalon%20Organic%20Chocolate%20Milk.%20Please%20send%20me%20the%20details.",
+      imageSrc: "/AV.png",
+      badge: "Health Pick",
+      priceHint: "From $5.79",
+    },
+  };
+}
 
 export default function ArticleView({
   article,
@@ -36,6 +75,9 @@ export default function ArticleView({
       </div>
     );
   }
+
+  const comparisonPair =
+    buildAffiliatePairFromReviewProfile(article.reviewProfile) || legacyAffiliatePair(article);
 
   if (variant === "summary") {
     return (
@@ -59,6 +101,27 @@ export default function ArticleView({
           >
             {article.title ?? "Untitled"}
           </Link>
+          {(article.reviewProfile?.productName ||
+            article.reviewProfile?.category ||
+            typeof article.reviewProfile?.reviewScore === "number") && (
+            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] opacity-70">
+              {typeof article.reviewProfile?.reviewScore === "number" && (
+                <span className="rounded-full border border-amber-300/30 px-2.5 py-1 text-amber-100">
+                  {article.reviewProfile.reviewScore}/100
+                </span>
+              )}
+              {article.reviewProfile?.category && (
+                <span className="rounded-full border border-neutral-700 px-2.5 py-1">
+                  {article.reviewProfile.category}
+                </span>
+              )}
+              {article.reviewProfile?.productName && (
+                <span className="rounded-full border border-neutral-700 px-2.5 py-1">
+                  {article.reviewProfile.productName}
+                </span>
+              )}
+            </div>
+          )}
           {article.excerpt && (
             <p className="opacity-80 leading-relaxed">{article.excerpt}</p>
           )}
@@ -102,6 +165,7 @@ export default function ArticleView({
       {/* Hero */}
       <div className="ws-container">
         <div className="ws-article overflow-x-clip">
+          <ReviewScorecard profile={article.reviewProfile} />
           <ArticleHeaderArt
             title={article.title}
             slug={article.slug}
@@ -140,42 +204,31 @@ export default function ArticleView({
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="ws-container">
-        <div className="ws-article overflow-x-clip">
-          <hr className="adbay-rule my-6 md:my-8" />
-        </div>
-      </div>
+      {comparisonPair && (
+        <>
+          <div className="ws-container">
+            <div className="ws-article overflow-x-clip">
+              <hr className="adbay-rule my-6 md:my-8" />
+            </div>
+          </div>
 
-      {/* Affiliate pair */}
-      <div className="ws-container">
-        <div className="ws-article overflow-x-clip">
-          <AffiliatePair
-            articleSlug={article.slug}
-            left={{
-              title: "NESQUICK CHOCOLATE POWDER 44.9OZ (2.81LBS)",
-              href: "https://www.amazon.ca/dp/B09FTPGQ3B?tag=wheatandstone-20",
-              imageSrc: "/NQ.png",
-              badge: "Beast System",
-              priceHint: "From $34.60",
-            }}
-            right={{
-              title: "Avalon Organic Chocolate Milk",
-              href: "mailto:tony@wheatandstone.ca?subject=Chocolate Milk Order&body=Hi%20Tony,%20I’d%20like%20to%20order%20Avalon%20Organic%20Chocolate%20Milk.%20Please%20send%20me%20the%20details.",
-              imageSrc: "/AV.png",
-              badge: "Health Pick",
-              priceHint: "From $5.79",
-            }}
-          />
-        </div>
-      </div>
+          <div className="ws-container">
+            <div className="ws-article overflow-x-clip">
+              <AffiliatePair
+                articleSlug={article.slug}
+                left={comparisonPair.left}
+                right={comparisonPair.right}
+              />
+            </div>
+          </div>
 
-      {/* End rule */}
-      <div className="ws-container">
-        <div className="ws-article overflow-x-clip">
-          <hr className="adbay-rule" />
-        </div>
-      </div>
+          <div className="ws-container">
+            <div className="ws-article overflow-x-clip">
+              <hr className="adbay-rule" />
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

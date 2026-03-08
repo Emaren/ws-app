@@ -112,7 +112,10 @@ export default async function ArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = await prisma.article.findUnique({ where: { slug } });
+  const article = await prisma.article.findUnique({
+    where: { slug },
+    include: { reviewProfile: true },
+  });
   const status = normalizeArticleStatus(article?.status);
 
   if (!article || !status || !isPubliclyVisibleArticle(status, article.publishedAt)) {

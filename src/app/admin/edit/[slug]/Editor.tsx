@@ -4,7 +4,14 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ArticleStatus } from "@prisma/client";
+import ReviewProfileFields from "@/components/admin/ReviewProfileFields";
 import RichEditor from "@/components/editor/RichEditor";
+import {
+  reviewProfileDraftFromRecord,
+  reviewProfilePayloadFromDraft,
+  type ReviewProfileDraft,
+  type ReviewProfileInput,
+} from "@/lib/reviewProfile";
 
 type EditableArticle = {
   id: string;
@@ -15,6 +22,7 @@ type EditableArticle = {
   content: string;
   status: ArticleStatus;
   publishedAt: string | null; // ISO string
+  reviewProfile: ReviewProfileInput | null;
 };
 
 // ----- utils
@@ -68,6 +76,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
   const [coverUrl, setCoverUrl] = useState(initialArticle.coverUrl ?? "");
   const [content, setContent] = useState(initialArticle.content ?? "");
   const [status, setStatus] = useState<ArticleStatus>(initialArticle.status);
+  const [reviewProfile, setReviewProfile] = useState<ReviewProfileDraft>(
+    reviewProfileDraftFromRecord(initialArticle.reviewProfile),
+  );
 
   // Prevent rapid double-submits
   const submittingRef = useRef(false);
@@ -82,14 +93,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
     setCoverUrl(initialArticle.coverUrl ?? "");
     setContent(initialArticle.content ?? "");
     setStatus(initialArticle.status);
+    setReviewProfile(reviewProfileDraftFromRecord(initialArticle.reviewProfile));
   }, [
-    initialArticle.id,
-    initialArticle.slug,
-    initialArticle.title,
-    initialArticle.excerpt,
-    initialArticle.coverUrl,
-    initialArticle.content,
-    initialArticle.status,
+    initialArticle,
   ]);
 
   // Cmd/Ctrl+S to save
@@ -103,7 +109,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [title, slug, excerpt, coverUrl, content, status]);
+  }, [title, slug, excerpt, coverUrl, content, status, reviewProfile]);
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
@@ -127,6 +133,7 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
           coverUrl: coverUrl || null,
           content, // full HTML from RichField (TinyMCE)
           status,
+          reviewProfile: reviewProfilePayloadFromDraft(reviewProfile),
         }),
       });
 
@@ -233,6 +240,13 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
       <div className="border rounded-xl overflow-hidden">
         <RichEditor value={content} onChange={setContent} />
       </div>
+
+      <ReviewProfileFields
+        value={reviewProfile}
+        onChange={(field, nextValue) =>
+          setReviewProfile((current) => ({ ...current, [field]: nextValue }))
+        }
+      />
 
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Status:</span>
