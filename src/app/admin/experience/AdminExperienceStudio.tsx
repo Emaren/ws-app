@@ -487,16 +487,16 @@ export default function AdminExperienceStudio() {
           </article>
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <article className="admin-card p-4 md:p-5">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="space-y-3">
+            <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="min-w-0 space-y-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] opacity-65">Upload mockup</p>
                   <h3 className="mt-1 text-lg font-semibold">Assign static PNG to a real route target</h3>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                   <label className="block">
                     <span className="text-xs uppercase tracking-[0.16em] opacity-65">Experience pack</span>
                     <select
@@ -599,7 +599,7 @@ export default function AdminExperienceStudio() {
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+              <div className="h-fit rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
                 <p className="text-xs uppercase tracking-[0.18em] opacity-65">How it works</p>
                 <div className="mt-3 space-y-3 opacity-80">
                   <p>1. Create a named pack for the overall visual direction.</p>
@@ -613,8 +613,8 @@ export default function AdminExperienceStudio() {
 
           {selectedPack ? (
             <article className="admin-card p-4 md:p-5">
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="space-y-3">
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="min-w-0 space-y-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] opacity-65">Selected pack</p>
                     <h3 className="mt-1 text-2xl font-semibold">{selectedPack.name}</h3>
@@ -644,7 +644,7 @@ export default function AdminExperienceStudio() {
                     />
                   </label>
 
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3 xl:grid-cols-2">
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.16em] opacity-65">Status</span>
                       <select
@@ -702,7 +702,7 @@ export default function AdminExperienceStudio() {
                   </button>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+                <div className="h-fit space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
                   <p className="text-xs uppercase tracking-[0.18em] opacity-65">Pack telemetry</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-white/10 px-3 py-3">
