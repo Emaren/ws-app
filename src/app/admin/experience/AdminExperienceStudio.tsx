@@ -96,6 +96,7 @@ export default function AdminExperienceStudio() {
     viewportLabel: "desktop",
   });
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [coverUploadTarget, setCoverUploadTarget] = useState<"draft" | "selected" | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -172,6 +173,46 @@ export default function AdminExperienceStudio() {
         await load();
       } catch (createError) {
         setError(createError instanceof Error ? createError.message : String(createError));
+      }
+    });
+  };
+
+  const uploadCoverImage = (file: File, target: "draft" | "selected") => {
+    startTransition(async () => {
+      try {
+        setError(null);
+        setNotice(null);
+        setCoverUploadTarget(target);
+
+        const formData = new FormData();
+        formData.set("packSlug", target === "draft" ? packDraft.slug || packDraft.name : selectedPack?.slug || selectedPack?.name || "");
+        formData.set("file", file);
+
+        const uploaded = await requestJson<{
+          imageUrl: string;
+          originalFilename: string | null;
+          fileSizeBytes: number;
+        }>("/api/admin/experience/assets", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (target === "draft") {
+          setPackDraft((current) => ({
+            ...current,
+            coverImageUrl: uploaded.imageUrl,
+          }));
+        } else {
+          updateSelectedPack({
+            coverImageUrl: uploaded.imageUrl,
+          });
+        }
+
+        setNotice("Cover image uploaded.");
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : String(uploadError));
+      } finally {
+        setCoverUploadTarget(null);
       }
     });
   };
@@ -364,20 +405,50 @@ export default function AdminExperienceStudio() {
                 />
               </label>
 
-              <label className="block">
-                <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image URL</span>
-                <input
-                  value={packDraft.coverImageUrl}
-                  onChange={(event) =>
-                    setPackDraft((current) => ({
-                      ...current,
-                      coverImageUrl: event.target.value,
-                    }))
-                  }
-                  placeholder="/uploads/experience-studio/pack-cover.png"
-                  className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
+              <div className="block">
+                <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image</span>
+                <span className="mt-2 block">
+                  <label className="group block cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) {
+                          return;
+                        }
+                        uploadCoverImage(file, "draft");
+                        event.target.value = "";
+                      }}
+                    />
+                    <span className="admin-surface flex min-h-[72px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-3 transition group-hover:border-amber-300/35 group-hover:bg-white/[0.05]">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm">
+                          {packDraft.coverImageUrl || "Click to select a cover image"}
+                        </span>
+                        <span className="mt-1 block text-xs opacity-65">
+                          {coverUploadTarget === "draft"
+                            ? "Uploading cover image…"
+                            : "PNG, JPG, or WEBP. Click anywhere in this field to browse files."}
+                        </span>
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-75">
+                        Browse
+                      </span>
+                    </span>
+                  </label>
+                </span>
+              </div>
+
+              {packDraft.coverImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={packDraft.coverImageUrl}
+                  alt="Draft pack cover"
+                  className="h-40 w-full rounded-2xl border border-white/10 object-cover"
                 />
-              </label>
+              ) : null}
 
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.16em] opacity-65">Status</span>
@@ -695,17 +766,51 @@ export default function AdminExperienceStudio() {
                       </select>
                     </label>
 
-                    <label className="block">
-                      <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image URL</span>
-                      <input
-                        value={selectedPack.coverImageUrl ?? ""}
-                        onChange={(event) =>
-                          updateSelectedPack({ coverImageUrl: event.target.value })
-                        }
-                        className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
-                      />
-                    </label>
+                    <div className="block">
+                      <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image</span>
+                      <span className="mt-2 block">
+                        <label className="group block cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="sr-only"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) {
+                                return;
+                              }
+                              uploadCoverImage(file, "selected");
+                              event.target.value = "";
+                            }}
+                          />
+                          <span className="admin-surface flex min-h-[72px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-3 transition group-hover:border-sky-300/35 group-hover:bg-white/[0.05]">
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm">
+                                {selectedPack.coverImageUrl || "Click to select a cover image"}
+                              </span>
+                              <span className="mt-1 block text-xs opacity-65">
+                                {coverUploadTarget === "selected"
+                                  ? "Uploading cover image…"
+                                  : "PNG, JPG, or WEBP. Click anywhere in this field to browse files."}
+                              </span>
+                            </span>
+                            <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-75">
+                              Browse
+                            </span>
+                          </span>
+                        </label>
+                      </span>
+                    </div>
                   </div>
+
+                  {selectedPack.coverImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={selectedPack.coverImageUrl}
+                      alt={`${selectedPack.name} cover`}
+                      className="h-44 w-full rounded-2xl border border-white/10 object-cover"
+                    />
+                  ) : null}
 
                   <label className="flex items-center gap-3 rounded-xl border border-white/10 px-3 py-3">
                     <input

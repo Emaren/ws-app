@@ -47,6 +47,47 @@ function uploadUrlForFilename(filename: string): string {
   return `/${[...EXPERIENCE_UPLOAD_SUBDIR, filename].join("/")}`;
 }
 
+function extensionForExperienceImageType(contentType: string): string {
+  return contentType === "image/png"
+    ? "png"
+    : contentType === "image/webp"
+      ? "webp"
+      : "jpg";
+}
+
+async function storeExperienceImageFile(input: {
+  file: File;
+  stem: string;
+}): Promise<{
+  imageUrl: string;
+  originalFilename: string | null;
+  fileSizeBytes: number;
+}> {
+  if (!SUPPORTED_IMAGE_TYPES.has(input.file.type)) {
+    throw new Error("Upload must be PNG, JPG, or WEBP");
+  }
+
+  if (input.file.size <= 0 || input.file.size > EXPERIENCE_UPLOAD_MAX_BYTES) {
+    throw new Error("Upload must be between 1 byte and 12 MB");
+  }
+
+  await ensureUploadsRootDir();
+
+  const safeStem = slugifyExperienceValue(input.stem) || "experience-image";
+  const extension = extensionForExperienceImageType(input.file.type);
+  const filename = `${safeStem}-${Date.now()}-${randomUUID().slice(0, 8)}.${extension}`;
+  const filePath = path.join(uploadsRootDir(), filename);
+  const bytes = Buffer.from(await input.file.arrayBuffer());
+
+  await writeFile(filePath, bytes);
+
+  return {
+    imageUrl: uploadUrlForFilename(filename),
+    originalFilename: input.file.name?.trim() || null,
+    fileSizeBytes: bytes.byteLength,
+  };
+}
+
 function statusFilterForPreview() {
   return {
     in: [ExperiencePackStatus.PREVIEWABLE, ExperiencePackStatus.SELECTABLE],
@@ -261,34 +302,26 @@ export async function storeExperienceMockupFile(input: {
   originalFilename: string | null;
   fileSizeBytes: number;
 }> {
-  if (!SUPPORTED_IMAGE_TYPES.has(input.file.type)) {
-    throw new Error("Upload must be PNG, JPG, or WEBP");
-  }
-
-  if (input.file.size <= 0 || input.file.size > EXPERIENCE_UPLOAD_MAX_BYTES) {
-    throw new Error("Upload must be between 1 byte and 12 MB");
-  }
-
-  await ensureUploadsRootDir();
-
-  const extension =
-    input.file.type === "image/png"
-      ? "png"
-      : input.file.type === "image/webp"
-        ? "webp"
-        : "jpg";
   const safePackSlug = slugifyExperienceValue(input.packSlug) || "experience-pack";
-  const filename = `${safePackSlug}-${input.routeKey}-${Date.now()}-${randomUUID().slice(0, 8)}.${extension}`;
-  const filePath = path.join(uploadsRootDir(), filename);
-  const bytes = Buffer.from(await input.file.arrayBuffer());
+  return storeExperienceImageFile({
+    file: input.file,
+    stem: `${safePackSlug}-${input.routeKey}`,
+  });
+}
 
-  await writeFile(filePath, bytes);
-
-  return {
-    imageUrl: uploadUrlForFilename(filename),
-    originalFilename: input.file.name?.trim() || null,
-    fileSizeBytes: bytes.byteLength,
-  };
+export async function storeExperienceCoverFile(input: {
+  packSlugHint: string | null | undefined;
+  file: File;
+}): Promise<{
+  imageUrl: string;
+  originalFilename: string | null;
+  fileSizeBytes: number;
+}> {
+  const safePackSlug = slugifyExperienceValue(input.packSlugHint ?? "") || "experience-pack";
+  return storeExperienceImageFile({
+    file: input.file,
+    stem: `${safePackSlug}-cover`,
+  });
 }
 
 export async function upsertExperiencePackPage(input: {
