@@ -162,7 +162,7 @@ export default function PwaClient() {
 
     const registerWorker = () => {
       void window.navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { updateViaCache: "none" })
         .then(wireRegistration)
         .catch((error) => console.warn("sw registration failed", error));
     };

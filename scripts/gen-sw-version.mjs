@@ -17,7 +17,6 @@ function safeGitShort() {
 
 const root = path.resolve(process.cwd());
 const pub = path.join(root, "public");
-const swPath = path.join(pub, "sw.js");
 const swVerPath = path.join(pub, "sw-version.js");
 
 const sha = safeGitShort();
@@ -33,14 +32,5 @@ fs.writeFileSync(
   `// generated\nself.__WS_VERSION__=${JSON.stringify(version)};\n`,
   "utf8",
 );
-
-// 2) FORCE the service worker to update by changing sw.js every deploy
-// (If sw.js doesn't exist, we still write sw-version.js; sw.js stamping is best-effort)
-if (fs.existsSync(swPath)) {
-  const src = fs.readFileSync(swPath, "utf8");
-  const stamp = `// WS_BUILD_ID=${version}\n`;
-  const next = src.replace(/^\/\/ WS_BUILD_ID=.*\n/m, "").replace(/^/, stamp);
-  fs.writeFileSync(swPath, next, "utf8");
-}
 
 console.log(`sw-version: ${version}`);
