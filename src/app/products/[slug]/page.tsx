@@ -256,12 +256,13 @@ export default async function ProductPage({
               {product.buyOptions.map((option) => (
                 <article
                   key={option.key}
-                  className="space-y-3 rounded-[1.8rem] border border-white/10 bg-black/20 p-3"
+                  className="space-y-3 overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/20 p-3"
                 >
                   <ArticleCommerceModuleView
                     articleSlug={option.articleSlug}
                     returnPath={`/products/${product.slug}`}
                     module={option.module}
+                    compact
                   />
                   <div className="flex flex-wrap gap-2 px-2 pb-2 text-[11px] uppercase tracking-[0.18em] opacity-75">
                     <span className="rounded-full border border-neutral-700 px-3 py-1">
@@ -320,12 +321,17 @@ export default async function ProductPage({
 
             <div className="grid gap-5 lg:grid-cols-2">
               {product.editorialSpotlights.map((spotlight) => (
-                <ArticleCommerceModuleView
+                <div
                   key={spotlight.module.id}
-                  articleSlug={spotlight.articleSlug}
-                  returnPath={`/products/${product.slug}`}
-                  module={spotlight.module}
-                />
+                  className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/20 p-3"
+                >
+                  <ArticleCommerceModuleView
+                    articleSlug={spotlight.articleSlug}
+                    returnPath={`/products/${product.slug}`}
+                    module={spotlight.module}
+                    compact
+                  />
+                </div>
               ))}
             </div>
           </section>

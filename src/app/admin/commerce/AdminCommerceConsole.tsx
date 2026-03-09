@@ -864,7 +864,7 @@ export default function AdminCommerceConsole() {
         </article>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="admin-card space-y-4 p-4 md:p-5">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
@@ -1014,7 +1014,7 @@ export default function AdminCommerceConsole() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         <div className="admin-card space-y-3 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -1115,7 +1115,7 @@ export default function AdminCommerceConsole() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.15fr_1fr]">
         <div className="admin-card space-y-4 p-4 md:p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="space-y-1">
@@ -1761,7 +1761,7 @@ export default function AdminCommerceConsole() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         <div className="admin-card space-y-3 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>

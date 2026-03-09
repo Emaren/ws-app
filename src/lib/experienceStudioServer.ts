@@ -15,7 +15,7 @@ import {
 } from "@/lib/experienceStudio";
 
 const EXPERIENCE_UPLOAD_SUBDIR = ["uploads", "experience-studio"];
-const EXPERIENCE_UPLOAD_MAX_BYTES = 12 * 1024 * 1024;
+const EXPERIENCE_UPLOAD_MAX_BYTES = 30 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const STATUS_SET = new Set<ExperiencePackStatus>(
   EXPERIENCE_PACK_STATUS_OPTIONS.map((option) => option.value),
@@ -68,7 +68,7 @@ async function storeExperienceImageFile(input: {
   }
 
   if (input.file.size <= 0 || input.file.size > EXPERIENCE_UPLOAD_MAX_BYTES) {
-    throw new Error("Upload must be between 1 byte and 12 MB");
+    throw new Error("Upload must be between 1 byte and 30 MB");
   }
 
   await ensureUploadsRootDir();

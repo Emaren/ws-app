@@ -64,9 +64,11 @@ async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Pro
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const message =
-      payload && typeof payload === "object" && "message" in payload
-        ? String(payload.message)
-        : `Request failed (${response.status})`;
+      response.status === 413
+        ? "Upload rejected by the server because the file is too large."
+        : payload && typeof payload === "object" && "message" in payload
+          ? String(payload.message)
+          : `Request failed (${response.status})`;
     throw new Error(message);
   }
   return payload as T;
