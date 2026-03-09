@@ -439,6 +439,10 @@ export default function FloatAd({
     marginLeft: isLeft ? 0 : 16,
     marginRight: isLeft ? 20 : 0,
     marginBottom: 6,
+    width: w != null ? `${w}px` : undefined,
+    height: h != null ? `${h}px` : undefined,
+    boxSizing: "border-box",
+    lineHeight: 0,
 
     // text wrap
     shapeOutside: computedShapeOutside as React.CSSProperties["shapeOutside"],
@@ -455,9 +459,11 @@ export default function FloatAd({
   const floatStyleAny = floatStyle as React.CSSProperties & Record<string, unknown>;
   floatStyleAny.WebkitShapeOutside = computedShapeOutside;
   floatStyleAny.WebkitShapeMargin = `${shapeMargin}px`;
+  floatStyleAny["--nudgeY"] = `${nudgeY}px`;
+  floatStyleAny["--scale"] = scale;
   if (shape === "image") {
-    floatStyleAny.shapeImageThreshold = shapeThreshold;
-    floatStyleAny.WebkitShapeImageThreshold = shapeThreshold;
+    floatStyleAny.shapeImageThreshold = `${shapeThreshold}`;
+    floatStyleAny.WebkitShapeImageThreshold = `${shapeThreshold}`;
   }
 
   function openDeliveryDialog() {
@@ -796,7 +802,10 @@ export default function FloatAd({
             decoding="async"
             draggable={false}
             style={{
+              width: "100%",
+              height: "100%",
               zIndex: 0,
+              objectFit: imgFit,
               position: "relative",
               transform: "translateY(var(--nudgeY)) scale(var(--scale))",
               transformOrigin: "50% 50%",
