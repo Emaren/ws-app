@@ -29,6 +29,7 @@ const socialImageAlt = "Wheat & Stone featured organic review card";
 
 export const metadata: Metadata = {
   metadataBase: siteOrigin,
+  applicationName: "Wheat & Stone",
   title: "Wheat & Stone",
   description:
     "Health, Heritage, and Truth in Every Bite. The premier health site for Grande Prairie and area.",
@@ -94,7 +95,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   colorScheme: "light dark",
-  themeColor: "#202123",
+  themeColor: "#110c09",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

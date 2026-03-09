@@ -11,7 +11,7 @@ export const metadata = {
   },
 };
 
-export default async function ExperiencePreviewPage(
+export default async function ExperiencePreviewAppPage(
   props: { params: Promise<{ packSlug: string; routeKey: string }> },
 ) {
   const { packSlug, routeKey } = await props.params;
@@ -21,5 +21,5 @@ export default async function ExperiencePreviewPage(
     notFound();
   }
 
-  return <ExperiencePreviewSurface preview={preview} routeKey={routeKey} mode="framed" />;
+  return <ExperiencePreviewSurface preview={preview} routeKey={routeKey} mode="immersive" />;
 }

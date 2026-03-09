@@ -1,3 +1,4 @@
+import { ExperiencePackStatus } from "@prisma/client";
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireOwnerAdmin } from "../_shared";
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       id: true,
       slug: true,
       coverImageUrl: true,
+      status: true,
     },
   });
 
@@ -86,11 +88,14 @@ export async function POST(req: NextRequest) {
       isPublished: true,
     });
 
-    if (!pack.coverImageUrl) {
+    if (!pack.coverImageUrl || pack.status === ExperiencePackStatus.DRAFT) {
       await prisma.experiencePack.update({
         where: { id: pack.id },
         data: {
-          coverImageUrl: stored.imageUrl,
+          ...(pack.coverImageUrl ? {} : { coverImageUrl: stored.imageUrl }),
+          ...(pack.status === ExperiencePackStatus.DRAFT
+            ? { status: ExperiencePackStatus.PREVIEWABLE }
+            : {}),
         },
       });
 

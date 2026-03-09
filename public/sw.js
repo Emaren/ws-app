@@ -13,6 +13,8 @@ const RUNTIME_CACHE = `${VERSION}:runtime`;
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
+  "/",
+  "/?source=pwa",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -39,6 +41,9 @@ self.addEventListener("activate", (event) => {
           .filter((key) => !key.startsWith(VERSION))
           .map((staleKey) => caches.delete(staleKey)),
       );
+      if ("navigationPreload" in self.registration) {
+        await self.registration.navigationPreload.enable();
+      }
       await self.clients.claim();
     })(),
   );
@@ -74,6 +79,15 @@ function shouldHandleRequest(request) {
 
 function isStaticAsset(pathname) {
   return /\.(?:js|css|png|jpg|jpeg|svg|webp|gif|ico|woff2?)$/i.test(pathname);
+}
+
+function shouldBypassNavigationCache(pathname) {
+  return (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register")
+  );
 }
 
 self.addEventListener("push", (event) => {
@@ -138,7 +152,23 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
+        if (shouldBypassNavigationCache(url.pathname)) {
+          try {
+            return await fetch(request);
+          } catch {
+            const offlinePage = await caches.match(OFFLINE_URL);
+            if (offlinePage) return offlinePage;
+            return Response.error();
+          }
+        }
+
         try {
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse) {
+            const cache = await caches.open(RUNTIME_CACHE);
+            cache.put(request, preloadResponse.clone());
+            return preloadResponse;
+          }
           const networkResponse = await fetch(request);
           const cache = await caches.open(RUNTIME_CACHE);
           cache.put(request, networkResponse.clone());

@@ -59,6 +59,10 @@ function formatBytes(value: number | null | undefined): string {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function buildImmersivePreviewHref(previewHref: string): string {
+  return `${previewHref.replace(/\/$/, "")}/app`;
+}
+
 async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
   const payload = await response.json().catch(() => null);
@@ -613,15 +617,32 @@ export default function AdminExperienceStudio() {
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
                   <p className="text-xs uppercase tracking-[0.16em] opacity-60">Preview route</p>
-                  <p className="mt-2 font-medium">
-                    {pendingPreviewHref ?? "Create or select a pack to generate the preview URL"}
-                  </p>
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] opacity-55">
+                        Standard review view
+                      </p>
+                      <p className="mt-1 font-medium">
+                        {pendingPreviewHref ?? "Create or select a pack to generate the preview URL"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] opacity-55">
+                        Full-screen app view
+                      </p>
+                      <p className="mt-1 font-medium">
+                        {pendingPreviewHref
+                          ? buildImmersivePreviewHref(pendingPreviewHref)
+                          : "Create or select a pack to generate the immersive preview URL"}
+                      </p>
+                    </div>
+                  </div>
                   <p className="mt-2 opacity-75">
                     {!uploadRoute
                       ? "Pick a route target to see where the preview will live and which real page it represents."
                       : uploadRoute.pathname === "/"
                         ? `This mockup will preview at ${pendingPreviewHref ?? "-"} and represents the live homepage /. The route key is home, but there is no /home page.`
-                        : `This mockup will preview at ${pendingPreviewHref ?? "-"} and represents the live page ${uploadRoute.pathname}.`}
+                        : `This mockup will preview at ${pendingPreviewHref ?? "-"} and represents the live page ${uploadRoute.pathname}. The /app version removes the explanation chrome so you can feel the page full-screen.`}
                   </p>
                 </div>
 
@@ -688,12 +709,20 @@ export default function AdminExperienceStudio() {
                     The uploaded image becomes a live preview page immediately.
                   </span>
                   {latestPreview ? (
-                    <a
-                      href={latestPreview.href}
-                      className="inline-flex items-center rounded-xl border border-amber-300/35 bg-amber-200/12 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-200/18"
-                    >
-                      Open latest preview
-                    </a>
+                    <>
+                      <a
+                        href={latestPreview.href}
+                        className="inline-flex items-center rounded-xl border border-amber-300/35 bg-amber-200/12 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-200/18"
+                      >
+                        Open latest preview
+                      </a>
+                      <a
+                        href={buildImmersivePreviewHref(latestPreview.href)}
+                        className="inline-flex items-center rounded-xl border border-white/15 px-4 py-2 text-sm font-medium transition hover:bg-white/5"
+                      >
+                        Open full-screen view
+                      </a>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -900,12 +929,20 @@ export default function AdminExperienceStudio() {
                               {page.routeLabel} · {page.pathname}
                             </p>
                           </div>
-                          <a
-                            href={page.previewHref}
-                            className="rounded-full border border-amber-300/35 bg-amber-200/12 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-200/20"
-                          >
-                            Open preview
-                          </a>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={page.previewHref}
+                              className="rounded-full border border-amber-300/35 bg-amber-200/12 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-200/20"
+                            >
+                              Open preview
+                            </a>
+                            <a
+                              href={buildImmersivePreviewHref(page.previewHref)}
+                              className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium transition hover:bg-white/5"
+                            >
+                              Full screen
+                            </a>
+                          </div>
                         </div>
 
                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] opacity-60">
