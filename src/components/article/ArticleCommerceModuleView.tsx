@@ -133,7 +133,7 @@ export default function ArticleCommerceModuleView({
       .filter(Boolean)
       .join(" ");
   const side = module.side === "LEFT" ? "left" : "right";
-  const dimensions = sizeProps(module.sizePreset);
+  const dimensions = sizeProps(compact ? "COMPACT" : module.sizePreset);
 
   return (
     <aside
