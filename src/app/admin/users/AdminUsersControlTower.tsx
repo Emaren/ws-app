@@ -713,7 +713,7 @@ export default function AdminUsersControlTower() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="space-y-4">
                       <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div>
@@ -772,7 +772,7 @@ export default function AdminUsersControlTower() {
                             <h4 className="mt-1 text-lg font-semibold">Wallet and balances</h4>
                           </div>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           {payload?.preferenceCatalog.trackedTokens.map((token) => (
                             <div
                               key={token}
@@ -802,7 +802,7 @@ export default function AdminUsersControlTower() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="space-y-4">
                     <article className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.16em] opacity-65">Preference history</p>
                       <h4 className="mt-1 text-lg font-semibold">Theme, skin, version, digest changes</h4>
@@ -855,7 +855,7 @@ export default function AdminUsersControlTower() {
                 </div>
               </section>
 
-              <section className="grid gap-4 xl:grid-cols-2">
+              <section className="space-y-4">
                 <article className="admin-card min-w-0 p-4 md:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -978,65 +978,67 @@ export default function AdminUsersControlTower() {
                 </article>
               </section>
 
-              <section className="grid gap-4 xl:grid-cols-2">
-                <article className="admin-card min-w-0 p-4 md:p-5">
-                  <p className="text-xs uppercase tracking-[0.16em] opacity-65">Rewards</p>
-                  <h4 className="mt-1 text-lg font-semibold">Recent token ledger</h4>
-                  <div className="mt-4 space-y-2">
-                    {selectedUser.recentRewards.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
-                        No reward entries yet.
-                      </div>
-                    ) : (
-                      selectedUser.recentRewards.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="rounded-xl border border-white/10 px-3 py-3 text-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-medium">
-                              {entry.direction === "DEBIT" ? "-" : "+"}
-                              {formatTokenAmount(entry.amount)} {entry.token}
-                            </p>
-                            <span className="text-xs opacity-65">
-                              {formatDateTime(entry.createdAt)}
-                            </span>
-                          </div>
-                          <p className="mt-1 opacity-75">{entry.reason}</p>
+              <section className="space-y-4">
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <article className="admin-card min-w-0 p-4 md:p-5">
+                    <p className="text-xs uppercase tracking-[0.16em] opacity-65">Rewards</p>
+                    <h4 className="mt-1 text-lg font-semibold">Recent token ledger</h4>
+                    <div className="mt-4 space-y-2">
+                      {selectedUser.recentRewards.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
+                          No reward entries yet.
                         </div>
-                      ))
-                    )}
-                  </div>
-                </article>
+                      ) : (
+                        selectedUser.recentRewards.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="rounded-xl border border-white/10 px-3 py-3 text-sm"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-medium">
+                                {entry.direction === "DEBIT" ? "-" : "+"}
+                                {formatTokenAmount(entry.amount)} {entry.token}
+                              </p>
+                              <span className="text-xs opacity-65">
+                                {formatDateTime(entry.createdAt)}
+                              </span>
+                            </div>
+                            <p className="mt-1 opacity-75">{entry.reason}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </article>
 
-                <article className="admin-card min-w-0 p-4 md:p-5">
-                  <p className="text-xs uppercase tracking-[0.16em] opacity-65">Delivery</p>
-                  <h4 className="mt-1 text-lg font-semibold">Recent commerce actions</h4>
-                  <div className="mt-4 space-y-2">
-                    {selectedUser.recentDeliveryLeads.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
-                        No delivery requests yet.
-                      </div>
-                    ) : (
-                      selectedUser.recentDeliveryLeads.map((lead) => (
-                        <div
-                          key={lead.id}
-                          className="rounded-xl border border-white/10 px-3 py-3 text-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-medium">
-                              {lead.inventoryItem?.name || lead.offer?.title || lead.business.name}
-                            </p>
-                            <span className="text-xs opacity-65">{lead.status}</span>
-                          </div>
-                          <p className="mt-1 opacity-75">
-                            {lead.business.name} · {formatMoney(lead.totalCents)}
-                          </p>
+                  <article className="admin-card min-w-0 p-4 md:p-5">
+                    <p className="text-xs uppercase tracking-[0.16em] opacity-65">Delivery</p>
+                    <h4 className="mt-1 text-lg font-semibold">Recent commerce actions</h4>
+                    <div className="mt-4 space-y-2">
+                      {selectedUser.recentDeliveryLeads.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
+                          No delivery requests yet.
                         </div>
-                      ))
-                    )}
-                  </div>
-                </article>
+                      ) : (
+                        selectedUser.recentDeliveryLeads.map((lead) => (
+                          <div
+                            key={lead.id}
+                            className="rounded-xl border border-white/10 px-3 py-3 text-sm"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-medium">
+                                {lead.inventoryItem?.name || lead.offer?.title || lead.business.name}
+                              </p>
+                              <span className="text-xs opacity-65">{lead.status}</span>
+                            </div>
+                            <p className="mt-1 opacity-75">
+                              {lead.business.name} · {formatMoney(lead.totalCents)}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </article>
+                </div>
 
                 <article className="admin-card min-w-0 p-4 md:p-5">
                   <p className="text-xs uppercase tracking-[0.16em] opacity-65">Identity events</p>
@@ -1075,78 +1077,80 @@ export default function AdminUsersControlTower() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <article className="admin-card min-w-0 p-4 md:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] opacity-65">Signup attempts</p>
-              <h4 className="mt-1 text-lg font-semibold">Recent registration history</h4>
+      <section className="space-y-4">
+        <div className="grid gap-4 xl:grid-cols-2">
+          <article className="admin-card min-w-0 p-4 md:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] opacity-65">Signup attempts</p>
+                <h4 className="mt-1 text-lg font-semibold">Recent registration history</h4>
+              </div>
+              <span className="text-xs opacity-70">
+                {payload?.totals.registrationAttempts ?? 0} attempts ·{" "}
+                {payload?.totals.registrationFailures ?? 0} failures
+              </span>
             </div>
-            <span className="text-xs opacity-70">
-              {payload?.totals.registrationAttempts ?? 0} attempts ·{" "}
-              {payload?.totals.registrationFailures ?? 0} failures
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {payload?.recentRegistrationAttempts.length ? (
-              payload.recentRegistrationAttempts.map((event) => (
+            <div className="mt-4 space-y-2">
+              {payload?.recentRegistrationAttempts.length ? (
+                payload.recentRegistrationAttempts.map((event) => (
+                  <div
+                    key={event.id}
+                    className={`rounded-xl border px-3 py-3 text-sm ${
+                      event.status === "FAILURE"
+                        ? "border-rose-500/25 bg-rose-500/10"
+                        : "border-emerald-500/20 bg-emerald-500/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium">
+                        {event.email || "Unknown email"} · {event.method}
+                      </p>
+                      <span className="text-xs opacity-65">{formatDateTime(event.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 opacity-75">
+                      {event.status}
+                      {event.failureCode ? ` · ${event.failureCode}` : ""}
+                      {event.failureMessage ? ` · ${event.failureMessage}` : ""}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
+                  No registration attempts are in view yet.
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className="admin-card min-w-0 p-4 md:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] opacity-65">Member activity</p>
+                <h4 className="mt-1 text-lg font-semibold">Signed-in event feed</h4>
+              </div>
+              <span className="text-xs opacity-70">
+                {payload?.recentMemberActivity.length ?? 0} recent events
+              </span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {payload?.recentMemberActivity.map((event) => (
                 <div
                   key={event.id}
-                  className={`rounded-xl border px-3 py-3 text-sm ${
-                    event.status === "FAILURE"
-                      ? "border-rose-500/25 bg-rose-500/10"
-                      : "border-emerald-500/20 bg-emerald-500/5"
-                  }`}
+                  className="rounded-xl border border-white/10 px-3 py-3 text-sm"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">
-                      {event.email || "Unknown email"} · {event.method}
+                      {event.user?.name || event.user?.email || "Member"} ·{" "}
+                      {event.eventType.replaceAll("_", " ")}
                     </p>
                     <span className="text-xs opacity-65">{formatDateTime(event.createdAt)}</span>
                   </div>
-                  <p className="mt-1 opacity-75">
-                    {event.status}
-                    {event.failureCode ? ` · ${event.failureCode}` : ""}
-                    {event.failureMessage ? ` · ${event.failureMessage}` : ""}
-                  </p>
+                  <p className="mt-1 opacity-75">{event.path || "No path recorded"}</p>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-white/10 px-3 py-4 text-sm opacity-75">
-                No registration attempts are in view yet.
-              </div>
-            )}
-          </div>
-        </article>
-
-        <article className="admin-card min-w-0 p-4 md:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] opacity-65">Member activity</p>
-              <h4 className="mt-1 text-lg font-semibold">Signed-in event feed</h4>
+              ))}
             </div>
-            <span className="text-xs opacity-70">
-              {payload?.recentMemberActivity.length ?? 0} recent events
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {payload?.recentMemberActivity.map((event) => (
-              <div
-                key={event.id}
-                className="rounded-xl border border-white/10 px-3 py-3 text-sm"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">
-                    {event.user?.name || event.user?.email || "Member"} ·{" "}
-                    {event.eventType.replaceAll("_", " ")}
-                  </p>
-                  <span className="text-xs opacity-65">{formatDateTime(event.createdAt)}</span>
-                </div>
-                <p className="mt-1 opacity-75">{event.path || "No path recorded"}</p>
-              </div>
-            ))}
-          </div>
-        </article>
+          </article>
+        </div>
 
         <article className="admin-card min-w-0 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
