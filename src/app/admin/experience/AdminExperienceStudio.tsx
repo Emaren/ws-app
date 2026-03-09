@@ -99,6 +99,10 @@ export default function AdminExperienceStudio() {
   });
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [coverUploadTarget, setCoverUploadTarget] = useState<"draft" | "selected" | null>(null);
+  const [latestPreview, setLatestPreview] = useState<{
+    href: string;
+    label: string;
+  } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -133,6 +137,16 @@ export default function AdminExperienceStudio() {
 
   const routeCatalog = payload?.routeCatalog ?? [];
   const statusCatalog = payload?.statusCatalog ?? [];
+  const uploadPack = useMemo(
+    () => payload?.packs.find((pack) => pack.id === uploadDraft.experiencePackId) ?? null,
+    [payload, uploadDraft.experiencePackId],
+  );
+  const uploadRoute = useMemo(
+    () => routeCatalog.find((route) => route.key === uploadDraft.routeKey) ?? null,
+    [routeCatalog, uploadDraft.routeKey],
+  );
+  const pendingPreviewHref =
+    uploadPack && uploadRoute ? `/preview/${uploadPack.slug}/${uploadRoute.key}` : null;
 
   const updateSelectedPack = (next: Partial<typeof packDraft>) => {
     if (!selectedPack) {
@@ -274,10 +288,22 @@ export default function AdminExperienceStudio() {
         formData.set("viewportLabel", uploadDraft.viewportLabel);
         formData.set("file", uploadFile);
 
-        await requestJson("/api/admin/experience/pages", {
+        const response = await requestJson<{
+          pack: StudioPayload["packs"][number];
+          page: StudioPayload["packs"][number]["pages"][number] | null;
+        }>("/api/admin/experience/pages", {
           method: "POST",
           body: formData,
         });
+
+        if (response.page?.previewHref) {
+          setLatestPreview({
+            href: response.page.previewHref,
+            label: `${response.page.routeLabel} preview`,
+          });
+        } else {
+          setLatestPreview(null);
+        }
 
         setNotice("Mockup uploaded and preview route published.");
         setUploadFile(null);
@@ -407,51 +433,6 @@ export default function AdminExperienceStudio() {
                 />
               </label>
 
-              <div className="block">
-                <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image</span>
-                <span className="mt-2 block">
-                  <label className="group block cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) {
-                          return;
-                        }
-                        uploadCoverImage(file, "draft");
-                        event.target.value = "";
-                      }}
-                    />
-                    <span className="admin-surface flex min-h-[72px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-3 transition group-hover:border-amber-300/35 group-hover:bg-white/[0.05]">
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm">
-                          {packDraft.coverImageUrl || "Click to select a cover image"}
-                        </span>
-                        <span className="mt-1 block text-xs opacity-65">
-                          {coverUploadTarget === "draft"
-                            ? "Uploading cover image…"
-                            : "PNG, JPG, or WEBP. Click anywhere in this field to browse files."}
-                        </span>
-                      </span>
-                      <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-75">
-                        Browse
-                      </span>
-                    </span>
-                  </label>
-                </span>
-              </div>
-
-              {packDraft.coverImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={packDraft.coverImageUrl}
-                  alt="Draft pack cover"
-                  className="h-40 w-full rounded-2xl border border-white/10 object-cover"
-                />
-              ) : null}
-
               <label className="block">
                 <span className="text-xs uppercase tracking-[0.16em] opacity-65">Status</span>
                 <select
@@ -490,6 +471,11 @@ export default function AdminExperienceStudio() {
                   </p>
                 </div>
               </label>
+
+              <div className="rounded-xl border border-dashed border-white/10 px-3 py-3 text-sm opacity-75">
+                Create the pack first, then upload the actual page mockup on the right. The first
+                page mockup automatically becomes the pack poster unless you override it later.
+              </div>
 
               <button
                 type="button"
@@ -566,8 +552,12 @@ export default function AdminExperienceStudio() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.18em] opacity-65">Upload mockup</p>
-                    <h3 className="mt-1 text-lg font-semibold">Assign static art to a real route target</h3>
+                    <p className="text-xs uppercase tracking-[0.18em] opacity-65">
+                      Upload page mockup
+                    </p>
+                    <h3 className="mt-1 text-lg font-semibold">
+                      Assign static art to a real route target
+                    </h3>
                   </div>
                   <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-70">
                     Preview-only publishing
@@ -620,6 +610,20 @@ export default function AdminExperienceStudio() {
                     ))}
                   </select>
                 </label>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
+                  <p className="text-xs uppercase tracking-[0.16em] opacity-60">Preview route</p>
+                  <p className="mt-2 font-medium">
+                    {pendingPreviewHref ?? "Create or select a pack to generate the preview URL"}
+                  </p>
+                  <p className="mt-2 opacity-75">
+                    {!uploadRoute
+                      ? "Pick a route target to see where the preview will live and which real page it represents."
+                      : uploadRoute.pathname === "/"
+                        ? `This mockup will preview at ${pendingPreviewHref ?? "-"} and represents the live homepage /. The route key is home, but there is no /home page.`
+                        : `This mockup will preview at ${pendingPreviewHref ?? "-"} and represents the live page ${uploadRoute.pathname}.`}
+                  </p>
+                </div>
 
                 <label className="block">
                   <span className="text-xs uppercase tracking-[0.16em] opacity-65">Mockup title</span>
@@ -683,6 +687,14 @@ export default function AdminExperienceStudio() {
                   <span className="text-sm opacity-65">
                     The uploaded image becomes a live preview page immediately.
                   </span>
+                  {latestPreview ? (
+                    <a
+                      href={latestPreview.href}
+                      className="inline-flex items-center rounded-xl border border-amber-300/35 bg-amber-200/12 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-200/18"
+                    >
+                      Open latest preview
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -769,7 +781,9 @@ export default function AdminExperienceStudio() {
                     </label>
 
                     <div className="block">
-                      <span className="text-xs uppercase tracking-[0.16em] opacity-65">Cover image</span>
+                      <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                        Optional pack poster override
+                      </span>
                       <span className="mt-2 block">
                         <label className="group block cursor-pointer">
                           <input
@@ -788,12 +802,12 @@ export default function AdminExperienceStudio() {
                           <span className="admin-surface flex min-h-[72px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-3 transition group-hover:border-sky-300/35 group-hover:bg-white/[0.05]">
                             <span className="min-w-0">
                               <span className="block truncate text-sm">
-                                {selectedPack.coverImageUrl || "Click to select a cover image"}
+                                {selectedPack.coverImageUrl || "Click to select an optional poster override"}
                               </span>
                               <span className="mt-1 block text-xs opacity-65">
                                 {coverUploadTarget === "selected"
-                                  ? "Uploading cover image…"
-                                  : "PNG, JPG, or WEBP. Click anywhere in this field to browse files."}
+                                  ? "Uploading pack poster…"
+                                  : "Only used as the pack thumbnail in selectors. Most of the time you can ignore this and just upload route mockups above."}
                               </span>
                             </span>
                             <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-75">

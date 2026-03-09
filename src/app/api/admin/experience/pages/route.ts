@@ -4,6 +4,7 @@ import { requireOwnerAdmin } from "../_shared";
 import { prisma } from "@/lib/prisma";
 import { normalizeExperienceRouteKey } from "@/lib/experienceStudio";
 import {
+  getExperiencePackCatalogItem,
   normalizeExperienceNotes,
   normalizeExperienceViewportLabel,
   storeExperienceMockupFile,
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       slug: true,
+      coverImageUrl: true,
     },
   });
 
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
       file,
     });
 
-    const updatedPack = await upsertExperiencePackPage({
+    let updatedPack = await upsertExperiencePackPage({
       experiencePackId: pack.id,
       routeKey,
       title,
@@ -84,11 +86,27 @@ export async function POST(req: NextRequest) {
       isPublished: true,
     });
 
+    if (!pack.coverImageUrl) {
+      await prisma.experiencePack.update({
+        where: { id: pack.id },
+        data: {
+          coverImageUrl: stored.imageUrl,
+        },
+      });
+
+      const refreshedPack = await getExperiencePackCatalogItem(pack.id);
+      if (refreshedPack) {
+        updatedPack = refreshedPack;
+      }
+    }
+
+    const uploadedPage = updatedPack.pages.find((page) => page.routeKey === routeKey);
+
     revalidatePath("/admin/experience");
     revalidatePath(`/preview/${pack.slug}/${routeKey}`);
     revalidatePath("/account");
 
-    return NextResponse.json({ pack: updatedPack }, { status: 201 });
+    return NextResponse.json({ pack: updatedPack, page: uploadedPage ?? null }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Could not upload mockup" },
