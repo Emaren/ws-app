@@ -349,6 +349,7 @@ function shortAddress(value: string | null | undefined): string {
 
 function preferenceLabel(key: string): string {
   if (key === "siteVersion") return "Site version";
+  if (key === "experiencePack") return "Experience pack";
   if (key === "profileImageUrl") return "Profile image";
   if (key === "personalDigestEnabled") return "Digest";
   if (key === "digestCadenceHours") return "Digest cadence";

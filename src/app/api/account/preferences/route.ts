@@ -14,13 +14,18 @@ import {
   normalizeSiteVersion,
   normalizeSkin,
 } from "@/lib/experiencePreferences";
+import {
+  findSelectableExperiencePackById,
+  getExperiencePackCatalogItem,
+  listSelectableExperiencePacks,
+} from "@/lib/experienceStudioServer";
 import { normalizeTheme } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 async function loadPreferencePayload(userId: string) {
-  const [profile, history] = await Promise.all([
+  const [profile, history, experiencePackCatalog] = await Promise.all([
     prisma.userExperienceProfile.findUnique({
       where: {
         userId,
@@ -33,10 +38,16 @@ async function loadPreferencePayload(userId: string) {
       orderBy: [{ createdAt: "desc" }],
       take: EXPERIENCE_HISTORY_LIMIT,
     }),
+    listSelectableExperiencePacks(),
   ]);
+  const activeExperiencePack = profile?.activeExperiencePackId
+    ? await getExperiencePackCatalogItem(profile.activeExperiencePackId)
+    : null;
 
   return {
     profile: resolveUserExperienceSnapshot(profile ?? {}),
+    activeExperiencePack,
+    experiencePackCatalog,
     history: serializeExperienceHistory(history),
     generatedAt: new Date().toISOString(),
   };
@@ -63,6 +74,7 @@ export async function PATCH(req: NextRequest) {
         theme?: unknown;
         skin?: unknown;
         siteVersion?: unknown;
+        experiencePackId?: unknown;
         profileImageUrl?: unknown;
         personalDigestEnabled?: unknown;
         digestCadenceHours?: unknown;
@@ -77,6 +89,17 @@ export async function PATCH(req: NextRequest) {
   const siteVersion =
     body && "siteVersion" in body
       ? normalizeSiteVersion(String(body.siteVersion ?? ""))
+      : null;
+  const experiencePackId =
+    body && "experiencePackId" in body
+      ? (() => {
+          if (body.experiencePackId === null || body.experiencePackId === "") {
+            return "";
+          }
+          return typeof body.experiencePackId === "string"
+            ? body.experiencePackId.trim()
+            : null;
+        })()
       : null;
   const profileImageUrl =
     body && "profileImageUrl" in body
@@ -99,6 +122,7 @@ export async function PATCH(req: NextRequest) {
     theme === null &&
     skin === null &&
     siteVersion === null &&
+    experiencePackId === null &&
     profileImageUrl === null &&
     personalDigestEnabled === null &&
     digestCadenceHours === null
@@ -115,11 +139,32 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
+  const currentExperiencePack =
+    existing?.activeExperiencePackId
+      ? await getExperiencePackCatalogItem(existing.activeExperiencePackId)
+      : null;
+  const nextExperiencePack =
+    experiencePackId === null
+      ? null
+      : experiencePackId === ""
+        ? null
+        : await findSelectableExperiencePackById(experiencePackId);
+
+  if (experiencePackId && !nextExperiencePack) {
+    return NextResponse.json(
+      { message: "That experience pack is not selectable" },
+      { status: 400 },
+    );
+  }
+
   const current = resolveUserExperienceSnapshot(existing ?? {});
   const next = {
     ...(theme ? { theme } : {}),
     ...(skin ? { skin } : {}),
     ...(siteVersion ? { siteVersion } : {}),
+    ...(experiencePackId !== null
+      ? { experiencePackId: nextExperiencePack?.id ?? null }
+      : {}),
     ...(profileImageUrl !== null ? { profileImageUrl } : {}),
     ...(typeof personalDigestEnabled === "boolean" ? { personalDigestEnabled } : {}),
     ...(typeof digestCadenceHours === "number" ? { digestCadenceHours } : {}),
@@ -141,6 +186,9 @@ export async function PATCH(req: NextRequest) {
         ...(theme ? { activeTheme: theme } : {}),
         ...(skin ? { activeSkin: skin } : {}),
         ...(siteVersion ? { activeSiteVersion: siteVersion } : {}),
+        ...(experiencePackId !== null
+          ? { activeExperiencePackId: nextExperiencePack?.id ?? null }
+          : {}),
         ...(profileImageUrl !== null ? { profileImageUrl } : {}),
         ...(typeof personalDigestEnabled === "boolean" ? { personalDigestEnabled } : {}),
         ...(typeof digestCadenceHours === "number" ? { digestCadenceHours } : {}),
@@ -150,6 +198,9 @@ export async function PATCH(req: NextRequest) {
         ...(theme ? { activeTheme: theme } : {}),
         ...(skin ? { activeSkin: skin } : {}),
         ...(siteVersion ? { activeSiteVersion: siteVersion } : {}),
+        ...(experiencePackId !== null
+          ? { activeExperiencePackId: nextExperiencePack?.id ?? null }
+          : {}),
         ...(profileImageUrl !== null ? { profileImageUrl } : {}),
         ...(typeof personalDigestEnabled === "boolean" ? { personalDigestEnabled } : {}),
         ...(typeof digestCadenceHours === "number" ? { digestCadenceHours } : {}),
@@ -159,6 +210,27 @@ export async function PATCH(req: NextRequest) {
     if (historyCreates.length > 0) {
       await tx.userExperienceHistory.createMany({
         data: historyCreates,
+      });
+    }
+
+    if (
+      experiencePackId !== null &&
+      currentExperiencePack?.id !== (nextExperiencePack?.id ?? null)
+    ) {
+      await tx.userExperienceHistory.create({
+        data: {
+          userId,
+          preferenceKey: "experiencePack",
+          previousValue: currentExperiencePack?.slug ?? null,
+          nextValue: nextExperiencePack?.slug ?? "flagship-live",
+          sourceContext,
+          metadata: {
+            previousPackId: currentExperiencePack?.id ?? null,
+            nextPackId: nextExperiencePack?.id ?? null,
+            previousPackName: currentExperiencePack?.name ?? null,
+            nextPackName: nextExperiencePack?.name ?? null,
+          },
+        },
       });
     }
   });

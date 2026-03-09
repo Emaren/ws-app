@@ -73,6 +73,12 @@ const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
     roles: RBAC_ROLE_GROUPS.ownerAdmin,
   },
   {
+    href: "/admin/experience",
+    label: "Experience Studio",
+    summary: "Upload preview packs and alternate page mockups",
+    roles: RBAC_ROLE_GROUPS.ownerAdmin,
+  },
+  {
     href: "/admin/billing",
     label: "Billing Integrity",
     summary: "Stripe reconciliation + mismatch repair",

@@ -49,6 +49,7 @@ model UserExperienceProfile {
   activeTheme           String   @default("gray")
   activeSkin            String   @default("editorial")
   activeSiteVersion     String   @default("v1")
+  activeExperiencePackId String?
   personalDigestEnabled Boolean  @default(true)
   digestCadenceHours    Int      @default(168)
   lastDigestAt          DateTime?
@@ -57,10 +58,12 @@ model UserExperienceProfile {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeExperiencePack  ExperiencePack? @relation("UserActiveExperiencePack", fields: [activeExperiencePackId], references: [id], onDelete: SetNull)
 
   @@index([activeTheme])
   @@index([activeSkin])
   @@index([activeSiteVersion])
+  @@index([activeExperiencePackId])
   @@index([lastSeenAt])
 }
 
@@ -77,6 +80,45 @@ model UserExperienceHistory {
 
   @@index([userId, preferenceKey, createdAt])
   @@index([preferenceKey, createdAt])
+}
+
+model ExperiencePack {
+  id           String                @id @default(cuid())
+  slug         String                @unique
+  name         String
+  description  String?
+  coverImageUrl String?
+  status       ExperiencePackStatus  @default(DRAFT)
+  isSelectable Boolean               @default(false)
+  sortOrder    Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  pages        ExperiencePackPage[]
+  activeUsers  UserExperienceProfile[] @relation("UserActiveExperiencePack")
+
+  @@index([status, isSelectable, sortOrder])
+  @@index([slug, status])
+}
+
+model ExperiencePackPage {
+  id               String               @id @default(cuid())
+  experiencePackId String
+  routeKey         String
+  title            String
+  notes            String?
+  viewportLabel    String?
+  imageUrl         String
+  originalFilename String?
+  fileSizeBytes    Int?
+  sortOrder        Int                  @default(0)
+  isPublished      Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  experiencePack   ExperiencePack       @relation(fields: [experiencePackId], references: [id], onDelete: Cascade)
+
+  @@unique([experiencePackId, routeKey])
+  @@index([routeKey, isPublished])
+  @@index([experiencePackId, sortOrder])
 }
 
 model Article {
@@ -1092,4 +1134,11 @@ enum FulfillmentAutomationAlertStatus {
   QUEUED
   SKIPPED
   FAILED
+}
+
+enum ExperiencePackStatus {
+  DRAFT
+  PREVIEWABLE
+  SELECTABLE
+  ARCHIVED
 }

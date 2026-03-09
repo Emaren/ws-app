@@ -17,9 +17,38 @@ type PreferencesPayload = {
     theme: ThemeMode;
     skin: SiteSkin;
     siteVersion: SiteVersion;
+    experiencePackId: string | null;
     personalDigestEnabled: boolean;
     digestCadenceHours: number;
   };
+  activeExperiencePack: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    pages: Array<{
+      id: string;
+      routeKey: string;
+      title: string;
+      previewHref: string;
+      routeLabel: string;
+    }>;
+  } | null;
+  experiencePackCatalog: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    status: string;
+    previewablePageCount: number;
+    pages: Array<{
+      id: string;
+      routeKey: string;
+      title: string;
+      previewHref: string;
+      routeLabel: string;
+    }>;
+  }>;
   history: Array<{
     id: string;
     preferenceKey: string;
@@ -45,6 +74,7 @@ function formatDateTime(value: string | null | undefined): string {
 
 function preferenceLabel(key: string): string {
   if (key === "siteVersion") return "Site version";
+  if (key === "experiencePack") return "Experience pack";
   if (key === "personalDigestEnabled") return "Digest";
   if (key === "digestCadenceHours") return "Digest cadence";
   if (key === "profileImageUrl") return "Profile image";
@@ -55,6 +85,10 @@ export default function ExperiencePreferencesCard() {
   const [theme, setTheme] = useState<ThemeMode>("gray");
   const [skin, setSkin] = useState<SiteSkin>("editorial");
   const [siteVersion, setSiteVersion] = useState<SiteVersion>("v1");
+  const [experiencePackId, setExperiencePackId] = useState<string | null>(null);
+  const [experiencePackCatalog, setExperiencePackCatalog] = useState<
+    PreferencesPayload["experiencePackCatalog"]
+  >([]);
   const [personalDigestEnabled, setPersonalDigestEnabled] = useState(true);
   const [digestCadenceHours, setDigestCadenceHours] = useState(168);
   const [history, setHistory] = useState<PreferencesPayload["history"]>([]);
@@ -81,6 +115,8 @@ export default function ExperiencePreferencesCard() {
         setTheme(payload.profile.theme);
         setSkin(payload.profile.skin);
         setSiteVersion(payload.profile.siteVersion);
+        setExperiencePackId(payload.profile.experiencePackId);
+        setExperiencePackCatalog(payload.experiencePackCatalog);
         setPersonalDigestEnabled(payload.profile.personalDigestEnabled);
         setDigestCadenceHours(payload.profile.digestCadenceHours);
         setHistory(payload.history);
@@ -118,6 +154,7 @@ export default function ExperiencePreferencesCard() {
       theme: ThemeMode;
       skin: SiteSkin;
       siteVersion: SiteVersion;
+      experiencePackId: string | null;
       personalDigestEnabled: boolean;
       digestCadenceHours: number;
     }>,
@@ -146,6 +183,8 @@ export default function ExperiencePreferencesCard() {
       setTheme(payload.profile.theme);
       setSkin(payload.profile.skin);
       setSiteVersion(payload.profile.siteVersion);
+      setExperiencePackId(payload.profile.experiencePackId);
+      setExperiencePackCatalog(payload.experiencePackCatalog);
       setPersonalDigestEnabled(payload.profile.personalDigestEnabled);
       setDigestCadenceHours(payload.profile.digestCadenceHours);
       setHistory(payload.history);
@@ -165,6 +204,9 @@ export default function ExperiencePreferencesCard() {
       setSaving(false);
     }
   };
+
+  const activeExperiencePack =
+    experiencePackCatalog.find((pack) => pack.id === experiencePackId) ?? null;
 
   return (
     <section className="rounded-xl border border-black/10 bg-black/[0.02] p-4 dark:border-white/15 dark:bg-white/[0.03] md:p-5">
@@ -233,7 +275,88 @@ export default function ExperiencePreferencesCard() {
           </div>
 
           <div className="rounded-lg border border-black/10 px-3 py-4 dark:border-white/15">
-            <p className="text-xs uppercase tracking-[0.18em] opacity-65">Version track</p>
+            <p className="text-xs uppercase tracking-[0.18em] opacity-65">Experience pack</p>
+            <div className="mt-3 grid gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setExperiencePackId(null);
+                  void persist(
+                    { experiencePackId: null },
+                    "account_experience_pack_selector",
+                  );
+                }}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  experiencePackId === null
+                    ? "border-amber-400/60 bg-amber-400/12"
+                    : "border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/5"
+                }`}
+              >
+                <p className="font-medium">Flagship Live Site</p>
+                <p className="mt-1 text-sm opacity-75">
+                  Stay on the currently wired production experience.
+                </p>
+              </button>
+
+              {experiencePackCatalog.map((pack) => {
+                const active = pack.id === experiencePackId;
+                return (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    onClick={() => {
+                      setExperiencePackId(pack.id);
+                      void persist(
+                        { experiencePackId: pack.id },
+                        "account_experience_pack_selector",
+                      );
+                    }}
+                    className={`rounded-xl border px-3 py-3 text-left transition ${
+                      active
+                        ? "border-amber-400/60 bg-amber-400/12"
+                        : "border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium">{pack.name}</p>
+                      <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                        {pack.previewablePageCount} pages
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm opacity-75">
+                      {pack.description || "Static preview pack for alternate route mockups."}
+                    </p>
+                  </button>
+                );
+              })}
+
+              {experiencePackCatalog.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-black/10 px-3 py-4 text-sm opacity-70 dark:border-white/15">
+                  No selectable experience packs are live yet.
+                </div>
+              ) : null}
+            </div>
+
+            {activeExperiencePack ? (
+              <div className="mt-4 rounded-xl border border-black/10 px-3 py-3 text-sm dark:border-white/15">
+                <p className="text-xs uppercase tracking-[0.16em] opacity-65">Pack preview links</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {activeExperiencePack.pages.map((page) => (
+                    <a
+                      key={page.id}
+                      href={page.previewHref}
+                      className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/5"
+                    >
+                      {page.routeLabel}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-lg border border-black/10 px-3 py-4 dark:border-white/15">
+            <p className="text-xs uppercase tracking-[0.18em] opacity-65">Core version track</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {SITE_VERSION_OPTIONS.map((option) => {
                 const active = option.value === siteVersion;

@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import PageViewTracker from "@/components/analytics/PageViewTracker";
 import Header from "../components/Header";
@@ -21,6 +22,9 @@ import {
 const container = "ws-container";
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isExperiencePreviewRoute = pathname?.startsWith("/preview/") ?? false;
+
   // theme
   useEffect(() => {
     const saved = readThemeFromStorage();
@@ -57,15 +61,25 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
     <SessionProvider>
       {/* ROOT CLAMP — nothing may exceed the visual viewport */}
       <div id="viewport-clamp" className="w-full max-w-[100svw] overflow-x-clip">
-        <div className={container}>
-          <Header />
-        </div>
+        {isExperiencePreviewRoute ? null : (
+          <>
+            <div className={container}>
+              <Header />
+            </div>
 
-        <div className={container}>
-          <div className="border-t border-neutral-200 dark:border-neutral-800 mt-[calc(var(--section-gap-sm)/7)] mb-[calc(var(--section-gap-sm)/2.2)]" />
-        </div>
+            <div className={container}>
+              <div className="border-t border-neutral-200 dark:border-neutral-800 mt-[calc(var(--section-gap-sm)/7)] mb-[calc(var(--section-gap-sm)/2.2)]" />
+            </div>
+          </>
+        )}
 
-        <main className="w-full overflow-x-clip min-h-[calc(100svh-var(--header-h,0px))] mt-[calc(var(--section-gap-sm)/7)] mb-[var(--section-gap-lg)]">
+        <main
+          className={`w-full overflow-x-clip min-h-[calc(100svh-var(--header-h,0px))] ${
+            isExperiencePreviewRoute
+              ? "my-0"
+              : "mt-[calc(var(--section-gap-sm)/7)] mb-[var(--section-gap-lg)]"
+          }`}
+        >
           <PageViewTracker />
           {children}
         </main>

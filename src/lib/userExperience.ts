@@ -19,6 +19,7 @@ export type UserExperienceSnapshot = {
   theme: ThemeMode;
   skin: SiteSkin;
   siteVersion: SiteVersion;
+  experiencePackId: string | null;
   personalDigestEnabled: boolean;
   digestCadenceHours: number;
   lastDigestAt: string | null;
@@ -91,6 +92,7 @@ export function resolveUserExperienceSnapshot(input: {
   activeTheme?: string | null;
   activeSkin?: string | null;
   activeSiteVersion?: string | null;
+  activeExperiencePackId?: string | null;
   personalDigestEnabled?: boolean | null;
   digestCadenceHours?: number | null;
   lastDigestAt?: Date | string | null;
@@ -111,6 +113,7 @@ export function resolveUserExperienceSnapshot(input: {
     theme: normalizeTheme(input.activeTheme) ?? "gray",
     skin: normalizeSkin(input.activeSkin) ?? defaultSkin(),
     siteVersion: normalizeSiteVersion(input.activeSiteVersion) ?? defaultSiteVersion(),
+    experiencePackId: input.activeExperiencePackId ?? null,
     personalDigestEnabled: input.personalDigestEnabled ?? true,
     digestCadenceHours:
       normalizeDigestCadenceHours(input.digestCadenceHours) ?? DEFAULT_DIGEST_CADENCE_HOURS,
@@ -144,6 +147,7 @@ export function historyLabel(preferenceKey: string): string {
   if (preferenceKey === "theme") return "Theme";
   if (preferenceKey === "skin") return "Skin";
   if (preferenceKey === "siteVersion") return "Site version";
+  if (preferenceKey === "experiencePack") return "Experience pack";
   if (preferenceKey === "profileImageUrl") return "Profile image";
   if (preferenceKey === "personalDigestEnabled") return "Digest";
   if (preferenceKey === "digestCadenceHours") return "Digest cadence";
