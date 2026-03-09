@@ -315,7 +315,7 @@ export default function AdminExperienceStudio() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+      <section className="grid gap-4 2xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <div className="space-y-4">
           <article className="admin-card p-4 md:p-5">
             <div className="flex items-center justify-between gap-3">
@@ -489,82 +489,91 @@ export default function AdminExperienceStudio() {
 
         <div className="min-w-0 space-y-4">
           <article className="admin-card p-4 md:p-5">
-            <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="min-w-0 space-y-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] opacity-65">Upload mockup</p>
-                  <h3 className="mt-1 text-lg font-semibold">Assign static PNG to a real route target</h3>
+            <div className="max-w-3xl space-y-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] opacity-65">Upload mockup</p>
+                    <h3 className="mt-1 text-lg font-semibold">Assign static art to a real route target</h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] opacity-70">
+                    Preview-only publishing
+                  </span>
                 </div>
+                <p className="max-w-2xl text-sm opacity-75">
+                  This is the fast mockup lane. Upload a static concept, map it to a canonical
+                  route, and get a production preview URL without wiring any live functionality yet.
+                </p>
+              </div>
 
-                <div className="grid gap-3 xl:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs uppercase tracking-[0.16em] opacity-65">Experience pack</span>
-                    <select
-                      value={uploadDraft.experiencePackId}
-                      onChange={(event) =>
-                        setUploadDraft((current) => ({
-                          ...current,
-                          experiencePackId: event.target.value,
-                        }))
-                      }
-                      className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
-                    >
-                      <option value="">Select a pack</option>
-                      {(payload?.packs ?? []).map((pack) => (
-                        <option key={pack.id} value={pack.id}>
-                          {pack.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+              <div className="grid gap-3">
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.16em] opacity-65">Experience pack</span>
+                  <select
+                    value={uploadDraft.experiencePackId}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({
+                        ...current,
+                        experiencePackId: event.target.value,
+                      }))
+                    }
+                    className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
+                  >
+                    <option value="">Select a pack</option>
+                    {(payload?.packs ?? []).map((pack) => (
+                      <option key={pack.id} value={pack.id}>
+                        {pack.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                  <label className="block">
-                    <span className="text-xs uppercase tracking-[0.16em] opacity-65">Route target</span>
-                    <select
-                      value={uploadDraft.routeKey}
-                      onChange={(event) =>
-                        setUploadDraft((current) => ({
-                          ...current,
-                          routeKey: event.target.value,
-                        }))
-                      }
-                      className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
-                    >
-                      {routeCatalog.map((route) => (
-                        <option key={route.key} value={route.key}>
-                          {route.label} ({route.pathname})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.16em] opacity-65">Route target</span>
+                  <select
+                    value={uploadDraft.routeKey}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({
+                        ...current,
+                        routeKey: event.target.value,
+                      }))
+                    }
+                    className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
+                  >
+                    {routeCatalog.map((route) => (
+                      <option key={route.key} value={route.key}>
+                        {route.label} ({route.pathname})
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                  <label className="block">
-                    <span className="text-xs uppercase tracking-[0.16em] opacity-65">Mockup title</span>
-                    <input
-                      value={uploadDraft.title}
-                      onChange={(event) =>
-                        setUploadDraft((current) => ({ ...current, title: event.target.value }))
-                      }
-                      placeholder="Rustic Canada homepage"
-                      className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
-                    />
-                  </label>
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.16em] opacity-65">Mockup title</span>
+                  <input
+                    value={uploadDraft.title}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({ ...current, title: event.target.value }))
+                    }
+                    placeholder="Rustic Canada homepage"
+                    className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
+                  />
+                </label>
 
-                  <label className="block">
-                    <span className="text-xs uppercase tracking-[0.16em] opacity-65">Viewport</span>
-                    <input
-                      value={uploadDraft.viewportLabel}
-                      onChange={(event) =>
-                        setUploadDraft((current) => ({
-                          ...current,
-                          viewportLabel: event.target.value,
-                        }))
-                      }
-                      placeholder="desktop"
-                      className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
-                    />
-                  </label>
-                </div>
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.16em] opacity-65">Viewport</span>
+                  <input
+                    value={uploadDraft.viewportLabel}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({
+                        ...current,
+                        viewportLabel: event.target.value,
+                      }))
+                    }
+                    placeholder="desktop"
+                    className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
+                  />
+                </label>
 
                 <label className="block">
                   <span className="text-xs uppercase tracking-[0.16em] opacity-65">Notes</span>
@@ -573,7 +582,7 @@ export default function AdminExperienceStudio() {
                     onChange={(event) =>
                       setUploadDraft((current) => ({ ...current, notes: event.target.value }))
                     }
-                    rows={3}
+                    rows={4}
                     placeholder="Static art-only concept for homepage hero and card treatments."
                     className="admin-surface mt-2 w-full rounded-xl px-3 py-2.5"
                   />
@@ -589,31 +598,53 @@ export default function AdminExperienceStudio() {
                   />
                 </label>
 
-                <button
-                  type="button"
-                  onClick={uploadMockup}
-                  disabled={isPending}
-                  className="inline-flex items-center rounded-xl border border-emerald-300/35 bg-emerald-200/12 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-200/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Upload mockup and publish preview
-                </button>
-              </div>
-
-              <div className="h-fit rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-                <p className="text-xs uppercase tracking-[0.18em] opacity-65">How it works</p>
-                <div className="mt-3 space-y-3 opacity-80">
-                  <p>1. Create a named pack for the overall visual direction.</p>
-                  <p>2. Upload one mockup per canonical route target.</p>
-                  <p>3. Open the generated preview URL on production.</p>
-                  <p>4. Mark the pack selectable when you want members to choose it.</p>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={uploadMockup}
+                    disabled={isPending}
+                    className="inline-flex items-center rounded-xl border border-emerald-300/35 bg-emerald-200/12 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-200/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Upload mockup and publish preview
+                  </button>
+                  <span className="text-sm opacity-65">
+                    The uploaded image becomes a live preview page immediately.
+                  </span>
                 </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="admin-card p-4 md:p-5">
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] opacity-65">How it works</p>
+                <h3 className="mt-1 text-lg font-semibold">Preview-pack publishing flow</h3>
+              </div>
+              <div className="grid gap-3 xl:grid-cols-2">
+                {[
+                  "Create a named pack for the overall visual direction.",
+                  "Upload one mockup per canonical route target.",
+                  "Open the generated preview URL on production.",
+                  "Mark the pack selectable when members should be allowed to choose it.",
+                ].map((step, index) => (
+                  <div
+                    key={step}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4"
+                  >
+                    <p className="text-xs uppercase tracking-[0.16em] opacity-55">
+                      Step {index + 1}
+                    </p>
+                    <p className="mt-2 text-sm opacity-80">{step}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </article>
 
           {selectedPack ? (
             <article className="admin-card p-4 md:p-5">
-              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="space-y-4">
                 <div className="min-w-0 space-y-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] opacity-65">Selected pack</p>
@@ -644,7 +675,7 @@ export default function AdminExperienceStudio() {
                     />
                   </label>
 
-                  <div className="grid gap-3 xl:grid-cols-2">
+                  <div className="grid gap-3 2xl:grid-cols-2">
                     <label className="block">
                       <span className="text-xs uppercase tracking-[0.16em] opacity-65">Status</span>
                       <select
@@ -702,7 +733,7 @@ export default function AdminExperienceStudio() {
                   </button>
                 </div>
 
-                <div className="h-fit space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+                <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
                   <p className="text-xs uppercase tracking-[0.18em] opacity-65">Pack telemetry</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-white/10 px-3 py-3">
