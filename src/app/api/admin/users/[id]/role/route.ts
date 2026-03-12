@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
+import { WsApiClientHttpError, updateWsApiUserRole } from "@/lib/wsApiClient";
 import { requireOwnerAdminWsToken } from "../../../offers/_shared";
 
 export const dynamic = "force-dynamic";
@@ -37,22 +37,28 @@ export async function PATCH(
     return NextResponse.json({ message: "Invalid role" }, { status: 400 });
   }
 
-  const response = await fetch(`${getWsApiBaseUrl()}/users/${encodeURIComponent(id)}/role`, {
-    method: "PATCH",
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${auth.accessToken}`,
-    },
-    body: JSON.stringify({ role }),
-  });
+  try {
+    const payload = await updateWsApiUserRole({
+      accessToken: auth.accessToken,
+      userId: id,
+      role,
+    });
 
-  const payload = await response
-    .json()
-    .catch(async () => response.text().catch(() => ""));
+    return NextResponse.json(payloadFromUnknown(payload), {
+      status: 200,
+    });
+  } catch (error) {
+    if (error instanceof WsApiClientHttpError) {
+      return NextResponse.json(payloadFromUnknown(error.payload), {
+        status: error.status,
+      });
+    }
 
-  return NextResponse.json(payloadFromUnknown(payload), {
-    status: response.status,
-  });
+    return NextResponse.json(
+      payloadFromUnknown(error instanceof Error ? error.message : String(error)),
+      {
+        status: 502,
+      },
+    );
+  }
 }

@@ -8,17 +8,17 @@ const THEME_OPTIONS: Array<{
   chipClass: string;
 }> = [
   {
-    value: "gray",
-    label: "Gray",
+    value: "black",
+    label: "Black",
+    chipClass: "bg-[#090909] border border-[#7d7d7d]",
+  },
+  {
+    value: "grey",
+    label: "Grey",
     chipClass: "bg-[#202123] border border-[#7d7d7d]",
   },
   {
-    value: "dark",
-    label: "Dark",
-    chipClass: "bg-[#0a0a0a] border border-white/20",
-  },
-  {
-    value: "light",
+    value: "white",
     label: "White",
     chipClass: "bg-white border border-black/30",
   },
@@ -28,9 +28,19 @@ const THEME_OPTIONS: Array<{
     chipClass: "bg-[#e9ddc5] border border-[#a27d48]",
   },
   {
-    value: "rugged",
-    label: "Rugged",
+    value: "walnut",
+    label: "Walnut",
     chipClass: "bg-[#1b1511] border border-[#7a5a2e]",
+  },
+  {
+    value: "crimson",
+    label: "Crimson",
+    chipClass: "bg-[#441515] border border-[#c16d6d]",
+  },
+  {
+    value: "midnight",
+    label: "Midnight",
+    chipClass: "bg-[#0e223f] border border-[#5f8fcb]",
   },
 ];
 

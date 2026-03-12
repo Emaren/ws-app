@@ -9,6 +9,7 @@ import AdFullWidth from "@/components/article/AdFullWidth";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ActionLinks from "@/components/site/ActionLinks";
 import SocialIconsRow from "@/components/site/SocialIconsRow";
+import { getPublicPageExperience } from "@/lib/publicExperienceServer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -109,11 +110,14 @@ export async function generateMetadata({
 
 export default async function ArticlePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { slug } = await params;
-  const article = await prisma.article.findUnique({
+  const [{ slug }, resolvedSearchParams] = await Promise.all([params, searchParams]);
+  const [article, pageExperience] = await Promise.all([
+    prisma.article.findUnique({
     where: { slug },
     include: {
       author: {
@@ -145,7 +149,12 @@ export default async function ArticlePage({
         },
       },
     },
-  });
+    }),
+    getPublicPageExperience({
+      page: "article",
+      searchParams: resolvedSearchParams,
+    }),
+  ]);
   const status = normalizeArticleStatus(article?.status);
 
   if (!article || !status || !isPubliclyVisibleArticle(status, article.publishedAt)) {
@@ -183,6 +192,7 @@ export default async function ArticlePage({
         variant="full"
         publishedAtUTC={publishedAtUTC}
         publishedAtISOString={publishedAtISOString}
+        experience={pageExperience}
       />
 
       {/* Page-frame sections (containerized + clipped) */}

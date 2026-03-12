@@ -50,7 +50,8 @@ export default async function AccountPage() {
 
   return (
     <main className="ws-container py-8 md:py-10">
-      <section className="ws-article rounded-2xl border border-black/10 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.04] p-5 md:p-6 space-y-4">
+      <section className="mx-auto w-full max-w-[min(1180px,100%)] rounded-2xl border border-black/10 bg-black/[0.03] p-5 dark:border-white/15 dark:bg-white/[0.04] md:p-6">
+        <div className="space-y-4">
         <header>
           <p className="text-xs uppercase tracking-[0.24em] opacity-65">Account</p>
           <h1 className="text-2xl md:text-3xl font-semibold mt-1">Profile</h1>
@@ -90,6 +91,7 @@ export default async function AccountPage() {
             Open {primaryLabel}
           </Link>
           <SignOutButton />
+        </div>
         </div>
       </section>
     </main>

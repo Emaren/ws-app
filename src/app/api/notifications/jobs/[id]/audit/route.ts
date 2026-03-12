@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import { forwardWsApiOpsRequest } from "@/lib/wsApiOpsProxy";
 import { requireStaffWsApiToken } from "../../../_shared";
 
@@ -16,11 +15,11 @@ export async function GET(
   }
 
   const { id } = await params;
-  const query = safeRequestUrl(req).search;
-
   return forwardWsApiOpsRequest({
-    path: `/notifications/jobs/${encodeURIComponent(id)}/audit${query}`,
+    route: "/notifications/jobs/:id/audit",
     method: "GET",
     accessToken: tokenOrResponse,
+    pathParams: { id },
+    query: req.nextUrl.search,
   });
 }

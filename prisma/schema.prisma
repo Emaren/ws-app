@@ -46,9 +46,11 @@ model UserExperienceProfile {
   id                    String   @id @default(cuid())
   userId                String   @unique
   profileImageUrl       String?
-  activeTheme           String   @default("gray")
+  activeTheme           String   @default("black")
   activeSkin            String   @default("editorial")
   activeSiteVersion     String   @default("v1")
+  activePresetSlug      String?
+  savedPresets          Json?
   activeExperiencePackId String?
   personalDigestEnabled Boolean  @default(true)
   digestCadenceHours    Int      @default(168)
@@ -63,6 +65,7 @@ model UserExperienceProfile {
   @@index([activeTheme])
   @@index([activeSkin])
   @@index([activeSiteVersion])
+  @@index([activePresetSlug])
   @@index([activeExperiencePackId])
   @@index([lastSeenAt])
 }

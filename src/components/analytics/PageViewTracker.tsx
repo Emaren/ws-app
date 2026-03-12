@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { trackAnalyticsEvent } from "@/lib/analytics/client";
 import {
+  readEditionFromDocument,
+  readLayoutFromDocument,
+  readPresetFromDocument,
   readSiteVersionFromDocument,
   readSkinFromDocument,
 } from "@/lib/experiencePreferences";
@@ -37,6 +40,9 @@ export default function PageViewTracker() {
       pagePath: pathname,
       metadata: {
         theme: readThemeFromDocument(),
+        layout: readLayoutFromDocument(),
+        edition: readEditionFromDocument(),
+        preset: readPresetFromDocument(),
         skin: readSkinFromDocument(),
         siteVersion: readSiteVersionFromDocument(),
         viewportWidth: window.innerWidth,

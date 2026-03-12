@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   return forwardWsApiWalletRequest({
-    path: "/auth/wallet/challenge",
+    route: "/auth/wallet/challenge",
     method: "POST",
     accessToken: accessTokenOrResponse,
     body,

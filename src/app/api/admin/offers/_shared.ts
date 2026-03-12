@@ -6,28 +6,12 @@ import {
   RBAC_ROLE_GROUPS,
   type AppRole,
 } from "@/lib/rbac";
-import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
-
-const WS_API_TIMEOUT_MS = 10_000;
-
-export type WsApiUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type WsApiBusiness = {
-  id: string;
-  slug: string;
-  name: string;
-  ownerUserId: string | null;
-  contactEmail: string | null;
-  status: string;
-  isVerified: boolean;
-};
+import {
+  listWsApiBusinesses,
+  listWsApiUsers,
+  type WsApiBusiness,
+  type WsApiUser,
+} from "@/lib/wsApiClient";
 
 export type OffersManagerAuthContext = {
   accessToken: string;
@@ -38,25 +22,7 @@ export type OffersManagerAuthContext = {
   managedBusinessIds: string[] | null;
 };
 
-function invalidWsApiResponse(message: string) {
-  return new Error(`ws-api users request failed: ${message}`);
-}
-
-function unknownPayloadToMessage(payload: unknown): string {
-  if (!payload) return "unknown error";
-  if (typeof payload === "string") return payload;
-  if (typeof payload === "object" && payload !== null) {
-    const maybeMessage = (payload as { message?: unknown }).message;
-    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
-      return maybeMessage;
-    }
-  }
-  return "unknown error";
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
+export { listWsApiBusinesses, listWsApiUsers, type WsApiBusiness, type WsApiUser };
 
 export async function requireOwnerAdminWsToken(
   req: NextRequest,
@@ -146,139 +112,4 @@ export async function requireOffersManagerWsToken(
     isOwnerAdmin: false,
     managedBusinessIds,
   };
-}
-
-export async function listWsApiUsers(accessToken: string): Promise<WsApiUser[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WS_API_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(`${getWsApiBaseUrl()}/users`, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    const payload = await response
-      .json()
-      .catch(async () => response.text().catch(() => ""));
-
-    if (!response.ok) {
-      throw invalidWsApiResponse(
-        `${response.status} ${unknownPayloadToMessage(payload)}`,
-      );
-    }
-
-    if (!Array.isArray(payload)) {
-      throw invalidWsApiResponse("users payload was not an array");
-    }
-
-    return payload
-      .filter((value): value is WsApiUser => {
-        if (!value || typeof value !== "object") return false;
-        const row = value as Partial<WsApiUser>;
-        return (
-          typeof row.id === "string" &&
-          typeof row.email === "string" &&
-          typeof row.name === "string" &&
-          typeof row.role === "string"
-        );
-      })
-      .sort((a, b) => a.email.localeCompare(b.email));
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("ws-api users request timed out");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export async function listWsApiBusinesses(
-  accessToken: string,
-): Promise<WsApiBusiness[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WS_API_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(`${getWsApiBaseUrl()}/ops/businesses`, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    const payload = await response
-      .json()
-      .catch(async () => response.text().catch(() => ""));
-
-    if (!response.ok) {
-      throw invalidWsApiResponse(
-        `${response.status} ${unknownPayloadToMessage(payload)}`,
-      );
-    }
-
-    if (!Array.isArray(payload)) {
-      throw invalidWsApiResponse("businesses payload was not an array");
-    }
-
-    const rows: WsApiBusiness[] = [];
-    for (const value of payload) {
-      if (!isObjectRecord(value)) {
-        continue;
-      }
-
-      const id = typeof value.id === "string" ? value.id.trim() : "";
-      const name = typeof value.name === "string" ? value.name.trim() : "";
-      if (!id || !name) {
-        continue;
-      }
-
-      const slug =
-        typeof value.slug === "string" && value.slug.trim()
-          ? value.slug.trim()
-          : id.toLowerCase();
-      const ownerUserId =
-        typeof value.ownerUserId === "string" && value.ownerUserId.trim()
-          ? value.ownerUserId.trim()
-          : null;
-      const contactEmail =
-        typeof value.contactEmail === "string" && value.contactEmail.trim()
-          ? value.contactEmail.trim()
-          : null;
-      const status =
-        typeof value.status === "string" && value.status.trim()
-          ? value.status.trim().toUpperCase()
-          : "ACTIVE";
-      const isVerified = Boolean(value.isVerified);
-
-      rows.push({
-        id,
-        slug,
-        name,
-        ownerUserId,
-        contactEmail,
-        status,
-        isVerified,
-      });
-    }
-
-    rows.sort((a, b) => a.name.localeCompare(b.name));
-    return rows;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("ws-api businesses request timed out");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
 }

@@ -14,6 +14,7 @@ import ReactionsBar from "./ReactionsBar";
 import AffiliatePair from "./AffiliatePair";
 import ArticleHeaderArt from "./ArticleHeaderArt";
 import ReviewScorecard from "./ReviewScorecard";
+import type { SiteEdition, SiteLayout } from "@/lib/experienceSystem";
 
 type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
   include: {
@@ -51,6 +52,10 @@ type Props = {
   variant: "summary" | "full";
   publishedAtUTC?: string;
   publishedAtISOString?: string;
+  experience?: {
+    edition: SiteEdition;
+    layout: SiteLayout;
+  };
 };
 
 const formatUTC = (dt?: Date | string | null) => {
@@ -96,6 +101,7 @@ export default function ArticleView({
   variant,
   publishedAtUTC,
   publishedAtISOString,
+  experience,
 }: Props) {
   if (!article) {
     return (
@@ -111,6 +117,7 @@ export default function ArticleView({
     buildAffiliatePairFromReviewProfile(article.reviewProfile) || legacyAffiliatePair(article);
   const contributorName = resolveContributorDisplayName(article.author?.name);
   const contributorSlug = resolveContributorPublicSlug(article.author);
+  const shouldShowReviewSnapshot = experience?.edition === "modern";
 
   if (variant === "summary") {
     return (
@@ -220,7 +227,7 @@ export default function ArticleView({
       {/* Hero */}
       <div className="ws-container">
         <div className="ws-article overflow-x-clip">
-          <ReviewScorecard profile={article.reviewProfile} />
+          {shouldShowReviewSnapshot ? <ReviewScorecard profile={article.reviewProfile} /> : null}
           <ArticleHeaderArt
             title={article.title}
             slug={article.slug}

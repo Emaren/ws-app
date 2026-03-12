@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   return forwardWsApiOpsRequest({
-    path: "/ops/pricing/quote",
+    route: "/ops/pricing/quote",
     method: "POST",
     accessToken: tokenOrResponse,
     body,

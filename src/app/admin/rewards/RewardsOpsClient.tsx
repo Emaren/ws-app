@@ -70,7 +70,7 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 
   const payload = (await response.json().catch(() => null)) as
     | T
-    | { message?: string; error?: { message?: string } }
+    | { message?: string; cause?: string; error?: { message?: string } }
     | null;
 
   if (!response.ok) {
@@ -78,7 +78,10 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
       (payload as { message?: string } | null)?.message ||
       (payload as { error?: { message?: string } } | null)?.error?.message ||
       "Request failed";
-    throw new Error(message);
+    const cause = (payload as { cause?: string } | null)?.cause;
+    throw new Error(
+      cause && message.startsWith("ws-api request failed") ? `${message}: ${cause}` : message,
+    );
   }
 
   return payload as T;

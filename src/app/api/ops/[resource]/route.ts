@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
-import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import {
   forwardWsApiOpsRequest,
   isAllowedOpsResource,
+  resolveOpsCollectionContractRoute,
 } from "@/lib/wsApiOpsProxy";
 
 export const dynamic = "force-dynamic";
@@ -51,11 +51,11 @@ export async function GET(
     return tokenOrResponse;
   }
 
-  const query = safeRequestUrl(req).search;
   return forwardWsApiOpsRequest({
-    path: `/ops/${resource}${query}`,
+    route: resolveOpsCollectionContractRoute(resource),
     method: "GET",
     accessToken: tokenOrResponse,
+    query: req.nextUrl.search,
   });
 }
 
@@ -79,7 +79,7 @@ export async function POST(
   }
 
   return forwardWsApiOpsRequest({
-    path: `/ops/${resource}`,
+    route: resolveOpsCollectionContractRoute(resource),
     method: "POST",
     accessToken: tokenOrResponse,
     body,

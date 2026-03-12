@@ -4,6 +4,7 @@ import { sanitizeArticleHtml } from "@/lib/sanitizeArticleHtml";
 import ArticleCommerceModuleView, {
   type ArticleCommerceRenderableModule,
 } from "./ArticleCommerceModuleView";
+import { stripLeadingDuplicateExcerptBlock } from "./articleBodySupport";
 import WysiwygStyle from "./WysiwygStyle";
 import BigThumbs from "./BigThumbs";
 
@@ -132,7 +133,10 @@ function legacyCommerceModules(article: {
 export default function ArticleBody({ article }: { article: ArticleBodyArticle }) {
   const raw = article.content ?? "";
   const clean = sanitizeArticleHtml(raw);
-  const unwrapped = stripSingleOuterDiv(clean);
+  const unwrapped = stripLeadingDuplicateExcerptBlock(
+    stripSingleOuterDiv(clean),
+    article.excerpt,
+  );
 
   const hasAnyBody = unwrapped.trim().length > 0;
   const excerpt = article.excerpt?.trim() || "";

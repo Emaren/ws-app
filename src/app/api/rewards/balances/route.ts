@@ -2,12 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { listLocalRewardBalancesForUser } from "@/lib/localRewards";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
-import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
+import { fetchWsApiContractJson } from "@/lib/wsApiContractProxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const WS_API_TIMEOUT_MS = 8_000;
 
 type RewardLikeEntry = {
   token?: unknown;
@@ -77,34 +75,16 @@ async function fetchRemoteRewardEntries(
   accessToken: string,
   requestedUserId: string,
 ): Promise<RewardLikeEntry[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WS_API_TIMEOUT_MS);
+  const result = await fetchWsApiContractJson<RewardLikeEntry[]>({
+    method: "GET",
+    route: "/rewards/ledger",
+    accessToken,
+    query: `userId=${encodeURIComponent(requestedUserId)}`,
+    logLabel: "ws-api reward balances bridge failed",
+    timeoutMs: 8_000,
+  });
 
-  try {
-    const response = await fetch(
-      `${getWsApiBaseUrl()}/rewards/ledger?userId=${encodeURIComponent(requestedUserId)}`,
-      {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    );
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || !Array.isArray(payload)) {
-      return [];
-    }
-
-    return payload as RewardLikeEntry[];
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timer);
-  }
+  return Array.isArray(result.payload) ? result.payload : [];
 }
 
 export async function GET(req: NextRequest) {

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const body = (await readJsonObjectBody(req)) ?? {};
 
   return forwardWsApiOpsRequest({
-    path: "/notifications/jobs/process",
+    route: "/notifications/jobs/process",
     method: "POST",
     accessToken: tokenOrResponse,
     body,

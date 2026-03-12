@@ -4,7 +4,9 @@ import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_RESEND_API_BASE_URL = "https://api.resend.com";
+const DEFAULT_TMAIL_API_BASE_URL = "https://api.tmail.tokentap.ca/api";
 const DEFAULT_TOKEN_TTL_MINUTES = 45;
+export const PASSWORD_RESET_EMAIL_SUBJECT = "Reset your Wheat & Stone password";
 
 export type PasswordResetEmailResult = {
   delivered: boolean;
@@ -19,11 +21,29 @@ export type CreatedPasswordResetToken = {
   expiresAt: Date;
 };
 
+export type PasswordResetEmailConfig = {
+  provider: string;
+  apiKey: string | null;
+  from: string | null;
+  apiBaseUrl: string | null;
+  tmailIdentityId: string | null;
+  configured: boolean;
+};
+
 export function normalizeEmail(input: unknown): string {
   if (typeof input !== "string") {
     return "";
   }
   return input.trim().toLowerCase();
+}
+
+function normalizeOptionalString(input: unknown): string | null {
+  if (typeof input !== "string") {
+    return null;
+  }
+
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function parsePositiveInt(
@@ -111,6 +131,65 @@ function envFlagEnabled(value: string | undefined): boolean {
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
 
+function resolveDefaultTmailIdentityId(from: string | null): string | null {
+  const normalizedFrom = normalizeEmail(from);
+  if (!normalizedFrom) {
+    return null;
+  }
+
+  if (normalizedFrom === "info@wheatandstone.ca") {
+    return "ws-info";
+  }
+
+  if (normalizedFrom === "tonyblum@me.com") {
+    return "tony-me";
+  }
+
+  return null;
+}
+
+export function resolvePasswordResetEmailConfig(): PasswordResetEmailConfig {
+  const provider = (
+    process.env.AUTH_EMAIL_PROVIDER ??
+    process.env.NOTIFICATION_EMAIL_PROVIDER ??
+    "dev"
+  )
+    .trim()
+    .toLowerCase();
+  const apiKey = normalizeOptionalString(
+    process.env.AUTH_EMAIL_API_KEY ??
+      process.env.NOTIFICATION_EMAIL_API_KEY ??
+      process.env.TMAIL_INTERNAL_API_TOKEN,
+  );
+  const from = normalizeOptionalString(
+    process.env.AUTH_EMAIL_FROM ?? process.env.NOTIFICATION_EMAIL_FROM,
+  );
+  const apiBaseUrl = normalizeOptionalString(
+    process.env.AUTH_EMAIL_API_BASE_URL ??
+      process.env.NOTIFICATION_EMAIL_API_BASE_URL ??
+      (provider === "tmail" ? DEFAULT_TMAIL_API_BASE_URL : DEFAULT_RESEND_API_BASE_URL),
+  );
+  const tmailIdentityId =
+    normalizeOptionalString(process.env.AUTH_EMAIL_TMAIL_IDENTITY_ID) ??
+    resolveDefaultTmailIdentityId(from);
+
+  const configured =
+    provider === "resend"
+      ? Boolean(apiKey && from)
+      : provider === "tmail"
+        ? Boolean(apiKey && from && apiBaseUrl && tmailIdentityId)
+        : provider !== "dev";
+
+  return {
+    provider,
+    apiKey,
+    from,
+    apiBaseUrl,
+    tmailIdentityId,
+    configured,
+  };
+}
+
 export function shouldExposeDebugResetUrl(
   emailResult: PasswordResetEmailResult,
 ): boolean {
@@ -129,48 +208,11 @@ export function shouldExposeDebugResetUrl(
 export async function sendPasswordResetEmail(input: {
   to: string;
   resetUrl: string;
+  fetchImpl?: typeof fetch;
 }): Promise<PasswordResetEmailResult> {
-  const provider = (
-    process.env.AUTH_EMAIL_PROVIDER ??
-    process.env.NOTIFICATION_EMAIL_PROVIDER ??
-    "dev"
-  )
-    .trim()
-    .toLowerCase();
-
-  if (provider !== "resend") {
-    console.info("password_reset_dev_email", {
-      to: input.to,
-      resetUrl: input.resetUrl,
-      provider,
-    });
-    return {
-      delivered: false,
-      provider,
-      reason: "email_provider_not_configured",
-    };
-  }
-
-  const apiKey =
-    process.env.AUTH_EMAIL_API_KEY ?? process.env.NOTIFICATION_EMAIL_API_KEY;
-  const from =
-    process.env.AUTH_EMAIL_FROM ?? process.env.NOTIFICATION_EMAIL_FROM;
-  const baseUrl =
-    process.env.AUTH_EMAIL_API_BASE_URL ??
-    process.env.NOTIFICATION_EMAIL_API_BASE_URL ??
-    DEFAULT_RESEND_API_BASE_URL;
-
-  if (!apiKey || !from) {
-    console.warn("password_reset_email_unavailable", {
-      provider: "resend",
-      reason: "missing_api_key_or_from",
-    });
-    return {
-      delivered: false,
-      provider: "resend",
-      reason: "missing_api_key_or_from",
-    };
-  }
+  const config = resolvePasswordResetEmailConfig();
+  const provider = config.provider;
+  const fetchImpl = input.fetchImpl ?? fetch;
 
   const text = [
     "You requested a password reset for Wheat & Stone.",
@@ -186,16 +228,111 @@ export async function sendPasswordResetEmail(input: {
     "<p>If you did not request this, you can ignore this email.</p>",
   ].join("");
 
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/emails`, {
+  if (provider === "tmail") {
+    if (!config.configured || !config.apiKey || !config.apiBaseUrl || !config.tmailIdentityId) {
+      console.warn("password_reset_email_unavailable", {
+        provider: "tmail",
+        reason: "missing_api_key_from_identity_or_base_url",
+      });
+      return {
+        delivered: false,
+        provider: "tmail",
+        reason: "missing_api_key_from_identity_or_base_url",
+      };
+    }
+
+    const response = await fetchImpl(`${config.apiBaseUrl.replace(/\/+$/, "")}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        identity_id: config.tmailIdentityId,
+        recipients: [input.to],
+        subject: PASSWORD_RESET_EMAIL_SUBJECT,
+        preheader: "Use this secure link to choose a new password.",
+        html_body: html,
+        text_body: text,
+        tracking_enabled: false,
+        pixel_enabled: false,
+        action: "send_live",
+      }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { status?: unknown; error?: unknown; error_message?: unknown }
+      | null;
+
+    if (!response.ok) {
+      console.error("password_reset_email_failed", {
+        provider: "tmail",
+        status: response.status,
+        error:
+          typeof payload?.error === "string"
+            ? payload.error
+            : typeof payload?.error_message === "string"
+              ? payload.error_message
+              : null,
+      });
+      return {
+        delivered: false,
+        provider: "tmail",
+        reason: `tmail_http_${response.status}`,
+      };
+    }
+
+    const messageStatus =
+      typeof payload?.status === "string" ? payload.status.trim().toLowerCase() : null;
+    if (messageStatus !== "sent") {
+      return {
+        delivered: false,
+        provider: "tmail",
+        reason: messageStatus ? `tmail_${messageStatus.replace(/\s+/g, "_")}` : "tmail_unsent",
+      };
+    }
+
+    return {
+      delivered: true,
+      provider: "tmail",
+    };
+  }
+
+  if (provider !== "resend") {
+    console.info("password_reset_dev_email", {
+      to: input.to,
+      resetUrl: input.resetUrl,
+      provider,
+    });
+    return {
+      delivered: false,
+      provider,
+      reason: "email_provider_not_configured",
+    };
+  }
+
+  if (!config.apiKey || !config.from || !config.apiBaseUrl) {
+    console.warn("password_reset_email_unavailable", {
+      provider: "resend",
+      reason: "missing_api_key_or_from",
+    });
+    return {
+      delivered: false,
+      provider: "resend",
+      reason: "missing_api_key_or_from",
+    };
+  }
+
+  const response = await fetchImpl(`${config.apiBaseUrl.replace(/\/+$/, "")}/emails`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from,
+      from: config.from,
       to: input.to,
-      subject: "Reset your Wheat & Stone password",
+      subject: PASSWORD_RESET_EMAIL_SUBJECT,
       html,
       text,
     }),

@@ -3,17 +3,29 @@ import { getApiAuthContext } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 import {
   EXPERIENCE_HISTORY_LIMIT,
+  buildSavedExperiencePresetCatalog,
   buildExperienceHistoryCreates,
   normalizeDigestCadenceHours,
   normalizeProfileImageUrl,
+  parseSavedExperiencePresets,
   parseBoolean,
   resolveUserExperienceSnapshot,
+  serializeSavedExperiencePresets,
   serializeExperienceHistory,
+  type UserSavedExperiencePreset,
 } from "@/lib/userExperience";
 import {
+  normalizeEditionSelection,
+  normalizeLayoutSelection,
+  normalizePresetSelection,
   normalizeSiteVersion,
   normalizeSkin,
 } from "@/lib/experiencePreferences";
+import {
+  buildExperiencePresetName,
+  resolveExperienceSelection,
+  toExperiencePresetOption,
+} from "@/lib/experienceSystem";
 import {
   findSelectableExperiencePackById,
   getExperiencePackCatalogItem,
@@ -23,6 +35,37 @@ import { normalizeTheme } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function slugifyPresetName(value: string) {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "preset"
+  );
+}
+
+function buildUniqueUserPresetSlug(
+  name: string,
+  presets: UserSavedExperiencePreset[],
+): string {
+  const base = `user-${slugifyPresetName(name)}`;
+  const existing = new Set(presets.map((preset) => preset.slug));
+  if (!existing.has(base)) {
+    return base;
+  }
+
+  let counter = 2;
+  let next = `${base}-${counter}`;
+  while (existing.has(next)) {
+    counter += 1;
+    next = `${base}-${counter}`;
+  }
+
+  return next;
+}
 
 async function loadPreferencePayload(userId: string) {
   const [profile, history, experiencePackCatalog] = await Promise.all([
@@ -43,11 +86,16 @@ async function loadPreferencePayload(userId: string) {
   const activeExperiencePack = profile?.activeExperiencePackId
     ? await getExperiencePackCatalogItem(profile.activeExperiencePackId)
     : null;
+  const resolvedProfile = resolveUserExperienceSnapshot(profile ?? {});
+  const userPresetCatalog = buildSavedExperiencePresetCatalog(
+    resolvedProfile.savedPresets,
+  ).map(toExperiencePresetOption);
 
   return {
-    profile: resolveUserExperienceSnapshot(profile ?? {}),
+    profile: resolvedProfile,
     activeExperiencePack,
     experiencePackCatalog,
+    userPresetCatalog,
     history: serializeExperienceHistory(history),
     generatedAt: new Date().toISOString(),
   };
@@ -72,24 +120,36 @@ export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as
     | {
         theme?: unknown;
+        layout?: unknown;
+        edition?: unknown;
         skin?: unknown;
         siteVersion?: unknown;
+        preset?: unknown;
         experiencePackId?: unknown;
         profileImageUrl?: unknown;
         personalDigestEnabled?: unknown;
         digestCadenceHours?: unknown;
+        savePresetName?: unknown;
         sourceContext?: unknown;
       }
     | null;
 
   const theme =
-    body && "theme" in body ? normalizeTheme(String(body.theme ?? "")) : null;
+      body && "theme" in body ? normalizeTheme(String(body.theme ?? "")) : null;
+  const layout =
+    body && "layout" in body ? normalizeLayoutSelection(String(body.layout ?? "")) : null;
+  const edition =
+    body && "edition" in body
+      ? normalizeEditionSelection(String(body.edition ?? ""))
+      : null;
   const skin =
     body && "skin" in body ? normalizeSkin(String(body.skin ?? "")) : null;
   const siteVersion =
     body && "siteVersion" in body
       ? normalizeSiteVersion(String(body.siteVersion ?? ""))
       : null;
+  const preset =
+    body && "preset" in body ? normalizePresetSelection(String(body.preset ?? "")) : null;
   const experiencePackId =
     body && "experiencePackId" in body
       ? (() => {
@@ -113,6 +173,10 @@ export async function PATCH(req: NextRequest) {
     body && "digestCadenceHours" in body
       ? normalizeDigestCadenceHours(body.digestCadenceHours)
       : null;
+  const savePresetName =
+    body && "savePresetName" in body && typeof body.savePresetName === "string"
+      ? body.savePresetName.trim().slice(0, 80)
+      : null;
   const sourceContext =
     body && typeof body.sourceContext === "string" && body.sourceContext.trim()
       ? body.sourceContext.trim().slice(0, 120)
@@ -120,12 +184,16 @@ export async function PATCH(req: NextRequest) {
 
   if (
     theme === null &&
+    layout === null &&
+    edition === null &&
     skin === null &&
     siteVersion === null &&
+    preset === null &&
     experiencePackId === null &&
     profileImageUrl === null &&
     personalDigestEnabled === null &&
-    digestCadenceHours === null
+    digestCadenceHours === null &&
+    !savePresetName
   ) {
     return NextResponse.json(
       { message: "No valid preference changes were provided" },
@@ -143,6 +211,8 @@ export async function PATCH(req: NextRequest) {
     existing?.activeExperiencePackId
       ? await getExperiencePackCatalogItem(existing.activeExperiencePackId)
       : null;
+  const savedPresets = parseSavedExperiencePresets(existing?.savedPresets);
+  const savedPresetCatalog = buildSavedExperiencePresetCatalog(savedPresets);
   const nextExperiencePack =
     experiencePackId === null
       ? null
@@ -158,10 +228,66 @@ export async function PATCH(req: NextRequest) {
   }
 
   const current = resolveUserExperienceSnapshot(existing ?? {});
+  const currentPresetSlug = existing?.activePresetSlug ?? current.activePresetSlug;
+  const nextExperience =
+    theme !== null ||
+    layout !== null ||
+    edition !== null ||
+    skin !== null ||
+    siteVersion !== null ||
+    preset !== null
+      ? resolveExperienceSelection(
+          {
+            theme: theme ?? current.theme,
+            layout: layout ?? skin ?? current.layout,
+            edition: edition ?? siteVersion ?? current.edition,
+            preset: preset ?? currentPresetSlug ?? current.preset,
+          },
+          { customPresets: savedPresetCatalog },
+        )
+      : null;
+  let nextSavedPresets = savedPresets;
+  let nextActivePresetSlug =
+    nextExperience && nextExperience.presetMatched ? nextExperience.preset : null;
+
+  if (savePresetName) {
+    const targetTheme = nextExperience?.theme ?? current.theme;
+    const targetLayout = nextExperience?.layout ?? current.layout;
+    const targetEdition = nextExperience?.edition ?? current.edition;
+    const presetName =
+      savePresetName ||
+      buildExperiencePresetName({
+        theme: targetTheme,
+        layout: targetLayout,
+        edition: targetEdition,
+      });
+    const nextTimestamp = new Date().toISOString();
+    const slug = buildUniqueUserPresetSlug(presetName, savedPresets);
+    const savedPreset: UserSavedExperiencePreset = {
+      slug,
+      name: presetName,
+      theme: targetTheme,
+      layout: targetLayout,
+      edition: targetEdition,
+      createdAt: nextTimestamp,
+      updatedAt: nextTimestamp,
+    };
+
+    nextSavedPresets = [...savedPresets, savedPreset];
+    nextActivePresetSlug = slug;
+  }
+
   const next = {
-    ...(theme ? { theme } : {}),
-    ...(skin ? { skin } : {}),
-    ...(siteVersion ? { siteVersion } : {}),
+    ...(nextExperience
+      ? {
+          theme: nextExperience.theme,
+          layout: nextExperience.layout,
+          edition: nextExperience.edition,
+          skin: nextExperience.layout,
+          siteVersion: nextExperience.edition,
+        }
+      : {}),
+    ...(nextExperience || savePresetName ? { activePresetSlug: nextActivePresetSlug } : {}),
     ...(experiencePackId !== null
       ? { experiencePackId: nextExperiencePack?.id ?? null }
       : {}),
@@ -183,9 +309,13 @@ export async function PATCH(req: NextRequest) {
         userId,
       },
       update: {
-        ...(theme ? { activeTheme: theme } : {}),
-        ...(skin ? { activeSkin: skin } : {}),
-        ...(siteVersion ? { activeSiteVersion: siteVersion } : {}),
+        ...(nextExperience ? { activeTheme: nextExperience.theme } : {}),
+        ...(nextExperience ? { activeSkin: nextExperience.layout } : {}),
+        ...(nextExperience ? { activeSiteVersion: nextExperience.edition } : {}),
+        ...(nextExperience || savePresetName ? { activePresetSlug: nextActivePresetSlug } : {}),
+        ...(savePresetName
+          ? { savedPresets: serializeSavedExperiencePresets(nextSavedPresets) }
+          : {}),
         ...(experiencePackId !== null
           ? { activeExperiencePackId: nextExperiencePack?.id ?? null }
           : {}),
@@ -195,9 +325,13 @@ export async function PATCH(req: NextRequest) {
       },
       create: {
         userId,
-        ...(theme ? { activeTheme: theme } : {}),
-        ...(skin ? { activeSkin: skin } : {}),
-        ...(siteVersion ? { activeSiteVersion: siteVersion } : {}),
+        ...(nextExperience ? { activeTheme: nextExperience.theme } : {}),
+        ...(nextExperience ? { activeSkin: nextExperience.layout } : {}),
+        ...(nextExperience ? { activeSiteVersion: nextExperience.edition } : {}),
+        ...(nextExperience || savePresetName ? { activePresetSlug: nextActivePresetSlug } : {}),
+        ...(savePresetName
+          ? { savedPresets: serializeSavedExperiencePresets(nextSavedPresets) }
+          : {}),
         ...(experiencePackId !== null
           ? { activeExperiencePackId: nextExperiencePack?.id ?? null }
           : {}),
@@ -211,6 +345,27 @@ export async function PATCH(req: NextRequest) {
       await tx.userExperienceHistory.createMany({
         data: historyCreates,
       });
+    }
+
+    if (savePresetName && nextActivePresetSlug) {
+      const savedPreset = nextSavedPresets.find((presetItem) => presetItem.slug === nextActivePresetSlug);
+      if (savedPreset) {
+        await tx.userExperienceHistory.create({
+          data: {
+            userId,
+            preferenceKey: "savedPreset",
+            previousValue: null,
+            nextValue: savedPreset.slug,
+            sourceContext,
+            metadata: {
+              name: savedPreset.name,
+              theme: savedPreset.theme,
+              edition: savedPreset.edition,
+              layout: savedPreset.layout,
+            },
+          },
+        });
+      }
     }
 
     if (

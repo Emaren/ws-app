@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   return forwardWsApiRewardsRequest({
-    path: "/rewards/export/settle",
+    route: "/rewards/export/settle",
     method: "POST",
     accessToken: accessTokenOrResponse,
     body,

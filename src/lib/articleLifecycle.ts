@@ -13,7 +13,7 @@ const ARTICLE_STATUS_TRANSITIONS: Record<ArticleLifecycleStatus, readonly Articl
   DRAFT: ["REVIEW", "ARCHIVED"],
   REVIEW: ["DRAFT", "PUBLISHED", "ARCHIVED"],
   PUBLISHED: ["ARCHIVED"],
-  ARCHIVED: ["DRAFT"],
+  ARCHIVED: ["DRAFT", "REVIEW", "PUBLISHED"],
 };
 
 export function normalizeArticleStatus(

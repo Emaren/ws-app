@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
-import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import {
   forwardWsApiOpsRequest,
   isAllowedOpsResource,
+  resolveOpsItemContractRoute,
 } from "@/lib/wsApiOpsProxy";
 
 export const dynamic = "force-dynamic";
@@ -51,11 +51,12 @@ export async function GET(
     return tokenOrResponse;
   }
 
-  const query = safeRequestUrl(req).search;
   return forwardWsApiOpsRequest({
-    path: `/ops/${resource}/${encodeURIComponent(id)}${query}`,
+    route: resolveOpsItemContractRoute(resource),
     method: "GET",
     accessToken: tokenOrResponse,
+    pathParams: { id },
+    query: req.nextUrl.search,
   });
 }
 
@@ -79,9 +80,10 @@ export async function PATCH(
   }
 
   return forwardWsApiOpsRequest({
-    path: `/ops/${resource}/${encodeURIComponent(id)}`,
+    route: resolveOpsItemContractRoute(resource),
     method: "PATCH",
     accessToken: tokenOrResponse,
+    pathParams: { id },
     body,
   });
 }
@@ -101,8 +103,9 @@ export async function DELETE(
   }
 
   return forwardWsApiOpsRequest({
-    path: `/ops/${resource}/${encodeURIComponent(id)}`,
+    route: resolveOpsItemContractRoute(resource),
     method: "DELETE",
     accessToken: tokenOrResponse,
+    pathParams: { id },
   });
 }

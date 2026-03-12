@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import AdminShell from "@/components/admin/AdminShell";
 import { authOptions } from "@/lib/authOptions";
 import { isEditorialRole, normalizeAppRole } from "@/lib/rbac";
+import { resolveE2EAdminOverride } from "./resolveE2EAdminOverride";
 
 export const metadata: Metadata = {
   title: "Small Business Admin | Wheat & Stone",
@@ -17,6 +18,15 @@ export default async function AdminLayout({
 }: {
   children: ReactNode;
 }) {
+  const e2eOverride = await resolveE2EAdminOverride();
+  if (e2eOverride) {
+    return (
+      <AdminShell role={e2eOverride.role} email={e2eOverride.email}>
+        {children}
+      </AdminShell>
+    );
+  }
+
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     redirect("/login");

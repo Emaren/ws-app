@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { safeRequestUrl } from "@/lib/safeRequestUrl";
 import { forwardWsApiOpsRequest } from "@/lib/wsApiOpsProxy";
 import { invalidBody, readJsonObjectBody, requireStaffWsApiToken } from "../_shared";
 
@@ -12,11 +11,11 @@ export async function GET(req: NextRequest) {
     return tokenOrResponse;
   }
 
-  const query = safeRequestUrl(req).search;
   return forwardWsApiOpsRequest({
-    path: `/notifications/jobs${query}`,
+    route: "/notifications/jobs",
     method: "GET",
     accessToken: tokenOrResponse,
+    query: req.nextUrl.search,
   });
 }
 
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   return forwardWsApiOpsRequest({
-    path: "/notifications/jobs",
+    route: "/notifications/jobs",
     method: "POST",
     accessToken: tokenOrResponse,
     body,

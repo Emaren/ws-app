@@ -29,6 +29,18 @@ const normalizedSiteOrigin =
   normalizeOrigin(process.env.NEXT_PUBLIC_SITE_ORIGIN) ?? "https://wheatandstone.ca";
 const normalizedNextAuthUrl =
   normalizeOrigin(process.env.NEXTAUTH_URL) ?? normalizedSiteOrigin;
+const devPort = process.env.PORT?.trim() || "3211";
+const allowedDevOrigins = Array.from(
+  new Set(
+    [
+      `http://127.0.0.1:${devPort}`,
+      `http://localhost:${devPort}`,
+      `http://0.0.0.0:${devPort}`,
+      normalizedSiteOrigin,
+      normalizedNextAuthUrl,
+    ].filter((origin): origin is string => Boolean(origin)),
+  ),
+);
 
 // Directives that differ by mode
 const scriptSrc = devLike
@@ -78,6 +90,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  allowedDevOrigins: devLike ? allowedDevOrigins : undefined,
   env: {
     NEXTAUTH_URL: normalizedNextAuthUrl,
   },

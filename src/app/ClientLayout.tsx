@@ -13,10 +13,9 @@ import {
 } from "@/lib/theme";
 import {
   applyExperienceToDocument,
-  defaultSiteVersion,
-  defaultSkin,
-  readSiteVersionFromStorage,
-  readSkinFromStorage,
+  hasExperiencePreviewOverride,
+  readExperienceFromClientStorage,
+  readExperiencePreviewOverrideFromUrl,
 } from "@/lib/experiencePreferences";
 
 const container = "ws-container";
@@ -27,13 +26,20 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
 
   // theme
   useEffect(() => {
-    const saved = readThemeFromStorage();
+    const previewOverride = readExperiencePreviewOverrideFromUrl();
+    if (previewOverride) {
+      applyExperienceToDocument(previewOverride);
+      return;
+    }
+
+    const saved = readExperienceFromClientStorage();
     applyExperienceToDocument({
-      theme: saved ?? getSystemDefaultTheme(),
-      skin: readSkinFromStorage() ?? defaultSkin(),
-      siteVersion: readSiteVersionFromStorage() ?? defaultSiteVersion(),
+      theme: saved.theme ?? readThemeFromStorage() ?? getSystemDefaultTheme(),
+      layout: saved.layout,
+      edition: saved.edition,
+      preset: saved.preset,
     });
-  }, []);
+  }, [pathname]);
 
   // overflow debugger (visit with ?debug=overflow)
   useEffect(() => {
@@ -74,6 +80,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         )}
 
         <main
+          data-experience-preview={hasExperiencePreviewOverride() ? "true" : "false"}
           className={`w-full overflow-x-clip min-h-[calc(100svh-var(--header-h,0px))] ${
             isExperiencePreviewRoute
               ? "my-0"

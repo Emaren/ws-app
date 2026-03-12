@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext } from "@/lib/apiAuth";
 import { hasAnyRole, RBAC_ROLE_GROUPS } from "@/lib/rbac";
-import { getWsApiBaseUrl } from "@/lib/wsApiBaseUrl";
+import { updateWsApiUserRole } from "@/lib/wsApiClient";
 import { listWsApiUsers, type WsApiUser } from "../../offers/_shared";
 
 export const dynamic = "force-dynamic";
@@ -124,32 +124,11 @@ async function patchWsApiRole(input: {
   wsApiUserId: string;
   role: string;
 }): Promise<void> {
-  const response = await fetch(
-    `${getWsApiBaseUrl()}/users/${encodeURIComponent(input.wsApiUserId)}/role`,
-    {
-      method: "PATCH",
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${input.accessToken}`,
-      },
-      body: JSON.stringify({ role: input.role }),
-    },
-  );
-
-  if (!response.ok) {
-    const payload = await response
-      .json()
-      .catch(async () => response.text().catch(() => ""));
-    throw new Error(
-      `ws-api role update failed (${response.status}): ${
-        typeof payload === "string"
-          ? payload
-          : (payload as { message?: string })?.message || "unknown error"
-      }`,
-    );
-  }
+  await updateWsApiUserRole({
+    accessToken: input.accessToken,
+    userId: input.wsApiUserId,
+    role: input.role,
+  });
 }
 
 export async function GET(req: NextRequest) {

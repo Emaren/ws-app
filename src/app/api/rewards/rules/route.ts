@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   return forwardWsApiRewardsRequest({
-    path: "/rewards/rules",
+    route: "/rewards/rules",
     method: "GET",
     accessToken: accessTokenOrResponse,
   });

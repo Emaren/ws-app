@@ -8,8 +8,15 @@ import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
+import {
+  HomeAtlasSurface,
+  HomeGazetteSurface,
+  HomeMarketplaceSurface,
+} from "@/components/home/HomeExperienceSurfaces";
 import ActionLinks from "@/components/site/ActionLinks";
 import SocialIconsRow from "@/components/site/SocialIconsRow";
+import { getHomePageStories } from "@/lib/getHomePageStories";
+import { getPublicPageExperience } from "@/lib/publicExperienceServer";
 
 const container = "ws-container";
 
@@ -82,14 +89,106 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function HomePage() {
-  const article = await getLatestArticle();
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const [article, stories, pageExperience] = await Promise.all([
+    getLatestArticle(),
+    getHomePageStories(),
+    getPublicPageExperience({
+      page: "home",
+      searchParams: resolvedSearchParams,
+    }),
+  ]);
 
   if (!article) {
     return (
       <main className={container}>
         <div className="py-16 text-center opacity-70">No articles published yet.</div>
       </main>
+    );
+  }
+
+  const supportingStories = stories.filter((story) => story.slug !== article.slug);
+
+  if (pageExperience.layout === "gazette") {
+    return (
+      <>
+        <ArticleViewTracker
+          articleSlug={article.slug}
+          sourceContext="home_latest_article"
+        />
+        <HomeGazetteSurface
+          edition={pageExperience.edition}
+          latestArticle={article}
+          supportingStories={supportingStories}
+        />
+        <div className="ws-container overflow-x-clip">
+          <ActionLinks />
+        </div>
+        <div className="ws-container overflow-x-clip">
+          <SocialIconsRow
+            facebookUrl="https://www.facebook.com/"
+            discordUrl="https://discord.gg/"
+            email="mailto:tony@wheatandstone.ca"
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (pageExperience.layout === "marketplace") {
+    return (
+      <>
+        <ArticleViewTracker
+          articleSlug={article.slug}
+          sourceContext="home_latest_article"
+        />
+        <HomeMarketplaceSurface
+          edition={pageExperience.edition}
+          latestArticle={article}
+          supportingStories={supportingStories}
+        />
+        <div className="ws-container overflow-x-clip">
+          <ActionLinks />
+        </div>
+        <div className="ws-container overflow-x-clip">
+          <AdFullWidth
+            label="TokenTap.ca"
+            articleSlug={article.slug}
+            sourceContext="home_bottom_ad"
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (pageExperience.layout === "atlas") {
+    return (
+      <>
+        <ArticleViewTracker
+          articleSlug={article.slug}
+          sourceContext="home_latest_article"
+        />
+        <HomeAtlasSurface
+          edition={pageExperience.edition}
+          latestArticle={article}
+          supportingStories={supportingStories}
+        />
+        <div className="ws-container overflow-x-clip">
+          <ActionLinks />
+        </div>
+        <div className="ws-container overflow-x-clip">
+          <SocialIconsRow
+            facebookUrl="https://www.facebook.com/"
+            discordUrl="https://discord.gg/"
+            email="mailto:tony@wheatandstone.ca"
+          />
+        </div>
+      </>
     );
   }
 
@@ -100,7 +199,11 @@ export default async function HomePage() {
         sourceContext="home_latest_article"
       />
       <div className="pt-[var(--section-gap-sm)]">
-        <ArticleView article={article} variant="full" />
+        <ArticleView
+          article={article}
+          variant="full"
+          experience={pageExperience}
+        />
       </div>
 
       <div className="ws-container overflow-x-clip mb-12 md:mb-16">

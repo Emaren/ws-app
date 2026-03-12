@@ -40,14 +40,16 @@ import ThemeCircles from "./header/ThemeCircles";
 import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
 import {
   applyExperienceToDocument,
-  defaultSiteVersion,
-  defaultSkin,
-  normalizeSiteVersion,
-  normalizeSkin,
-  persistSiteVersion,
-  persistSkin,
-  readSiteVersionFromStorage,
-  readSkinFromStorage,
+  defaultEditionSelection,
+  defaultLayoutSelection,
+  hasExperiencePreviewOverride,
+  normalizeEditionSelection,
+  normalizeLayoutSelection,
+  persistEdition,
+  persistLayout,
+  readEditionFromStorage,
+  readExperiencePreviewOverrideFromUrl,
+  readLayoutFromStorage,
   type SiteSkin,
   type SiteVersion,
 } from "@/lib/experiencePreferences";
@@ -152,6 +154,23 @@ function normalizeWalletError(
   return raw;
 }
 
+function normalizeWalletStatusMessage(message: string | null | undefined): string | null {
+  const normalized = message?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === "ws-api request failed") {
+    return "Wallet service reconnecting.";
+  }
+
+  if (normalized === "ws-api request timed out") {
+    return "Wallet service is responding slowly.";
+  }
+
+  return normalized;
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -160,7 +179,7 @@ export default function Header() {
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>("gray");
+  const [theme, setTheme] = useState<ThemeMode>("black");
   const [offersBadgeCount, setOffersBadgeCount] = useState(0);
 
   const headerRef = useRef<HTMLElement>(null);
@@ -189,17 +208,6 @@ export default function Header() {
   }, [router]);
 
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (menuPanelRef.current && !menuPanelRef.current.contains(t) && menuBtnRef.current && !menuBtnRef.current.contains(t)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
-  }, []);
-
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setMenuOpen(false);
@@ -208,6 +216,22 @@ export default function Header() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -236,7 +260,11 @@ export default function Header() {
         if (!response.ok) {
           setLinkedWalletAddress(null);
           if (response.status !== 401) {
-            setWalletError(payload?.message ?? "Failed to read wallet link");
+            setWalletError(
+              normalizeWalletStatusMessage(payload?.message ?? "Failed to read wallet link"),
+            );
+          } else {
+            setWalletError(null);
           }
           return;
         }
@@ -247,11 +275,14 @@ export default function Header() {
             ? walletAddress.trim()
             : null,
         );
+        setWalletError(null);
       } catch (error) {
         if (cancelled) return;
         setLinkedWalletAddress(null);
         setWalletError(
-          error instanceof Error ? error.message : "Failed to read wallet link",
+          normalizeWalletStatusMessage(
+            error instanceof Error ? error.message : "Failed to read wallet link",
+          ),
         );
       }
     };
@@ -264,12 +295,19 @@ export default function Header() {
   }, [session?.user?.id]);
 
   useEffect(() => {
+    const previewOverride = readExperiencePreviewOverrideFromUrl();
+    if (previewOverride) {
+      applyExperienceToDocument(previewOverride);
+      setTheme(previewOverride.theme);
+      return;
+    }
+
     const stored = readThemeFromStorage();
     const nextTheme = stored ?? readThemeFromDocument() ?? getSystemDefaultTheme();
     applyExperienceToDocument({
       theme: nextTheme,
-      skin: readSkinFromStorage() ?? defaultSkin(),
-      siteVersion: readSiteVersionFromStorage() ?? defaultSiteVersion(),
+      layout: readLayoutFromStorage() ?? defaultLayoutSelection(),
+      edition: readEditionFromStorage() ?? defaultEditionSelection(),
     });
     setTheme(nextTheme);
   }, []);
@@ -277,7 +315,7 @@ export default function Header() {
   useEffect(() => {
     let cancelled = false;
 
-    if (!session?.user) {
+    if (!session?.user || hasExperiencePreviewOverride()) {
       return () => {
         cancelled = true;
       };
@@ -293,8 +331,11 @@ export default function Header() {
           | {
               profile?: {
                 theme?: string | null;
+                layout?: string | null;
+                edition?: string | null;
                 skin?: string | null;
                 siteVersion?: string | null;
+                preset?: string | null;
               };
             }
           | null;
@@ -309,20 +350,23 @@ export default function Header() {
           readThemeFromDocument() ??
           getSystemDefaultTheme();
         const serverSkin =
-          normalizeSkin(payload.profile.skin) ?? readSkinFromStorage() ?? defaultSkin();
+          normalizeLayoutSelection(payload.profile.layout ?? payload.profile.skin) ??
+          readLayoutFromStorage() ??
+          defaultLayoutSelection();
         const serverSiteVersion =
-          normalizeSiteVersion(payload.profile.siteVersion) ??
-          readSiteVersionFromStorage() ??
-          defaultSiteVersion();
+          normalizeEditionSelection(payload.profile.edition ?? payload.profile.siteVersion) ??
+          readEditionFromStorage() ??
+          defaultEditionSelection();
 
         applyExperienceToDocument({
           theme: serverTheme,
-          skin: serverSkin,
-          siteVersion: serverSiteVersion,
+          layout: serverSkin,
+          edition: serverSiteVersion,
+          preset: payload.profile.preset ?? null,
         });
         persistTheme(serverTheme);
-        persistSkin(serverSkin);
-        persistSiteVersion(serverSiteVersion);
+        persistLayout(serverSkin);
+        persistEdition(serverSiteVersion);
         setTheme(serverTheme);
       } catch {
         // Preference sync is non-blocking.
@@ -518,12 +562,12 @@ export default function Header() {
   const persistExperienceSelection = async (
     input: Partial<{
       theme: ThemeMode;
-      skin: SiteSkin;
-      siteVersion: SiteVersion;
+      layout: SiteSkin;
+      edition: SiteVersion;
       sourceContext: string;
     }>,
   ) => {
-    if (!session?.user) {
+    if (!session?.user || hasExperiencePreviewOverride()) {
       return;
     }
 
@@ -669,93 +713,108 @@ export default function Header() {
       </div>
 
       {/* Mobile quick actions for better discoverability */}
-      <div className="ws-container md:hidden pb-2">
-        <div className="flex gap-2 overflow-x-auto whitespace-nowrap py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <ThemeCircles value={theme} onChange={updateTheme} compact />
-          {session ? (
-            <>
-              <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
-                <button
-                  onClick={connectWallet}
-                  disabled={walletBusy}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
-                    walletConnected
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
-                      : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
-                  }`}
-                >
-                  {walletBusy
-                    ? "Linking..."
-                    : walletConnected
-                      ? "Wallet Linked"
-                      : "Connect Wallet"}
-                </button>
-                <p className="mt-1.5 truncate text-[11px] opacity-75">{identityLabel}</p>
-                {walletShortAddress ? (
-                  <p className="mt-1 truncate text-[11px] text-emerald-300/90">
-                    {walletShortAddress}
-                  </p>
-                ) : null}
-                {walletError ? (
-                  <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
-                    {walletError}
-                  </p>
-                ) : null}
-              </div>
+      {!menuOpen ? (
+        <div className="ws-container md:hidden pb-2">
+          <div className="flex gap-2 overflow-x-auto whitespace-nowrap py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <ThemeCircles value={theme} onChange={updateTheme} compact />
+            {session ? (
+              <>
+                <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
+                  <button
+                    onClick={connectWallet}
+                    disabled={walletBusy}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
+                      walletConnected
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
+                        : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
+                    }`}
+                  >
+                    {walletBusy
+                      ? "Linking..."
+                      : walletConnected
+                        ? "Wallet Linked"
+                        : "Connect Wallet"}
+                  </button>
+                  <p className="mt-1.5 truncate text-[11px] opacity-75">{identityLabel}</p>
+                  {walletShortAddress ? (
+                    <p className="mt-1 truncate text-[11px] text-emerald-300/90">
+                      {walletShortAddress}
+                    </p>
+                  ) : null}
+                  {walletError ? (
+                    <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
+                      {walletError}
+                    </p>
+                  ) : null}
+                </div>
 
-              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
-                Articles
-              </button>
-              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
-                Premium
-              </button>
-              {isAdmin ? (
-                <button onClick={() => router.push("/admin")} className={mobileChipClass}>
-                  Admin
+                <button onClick={() => router.push("/articles")} className={mobileChipClass}>
+                  Articles
                 </button>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
-                Articles
-              </button>
-              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
-                Premium
-              </button>
-              <button onClick={() => router.push("/register")} className={mobileChipClass}>
-                Register
-              </button>
-              <button onClick={() => void openLogin()} className={mobileChipClass}>
-                Login
-              </button>
-            </>
-          )}
+                <button onClick={() => router.push("/premium")} className={mobileChipClass}>
+                  Premium
+                </button>
+                {isAdmin ? (
+                  <button onClick={() => router.push("/admin")} className={mobileChipClass}>
+                    Admin
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <button onClick={() => router.push("/articles")} className={mobileChipClass}>
+                  Articles
+                </button>
+                <button onClick={() => router.push("/premium")} className={mobileChipClass}>
+                  Premium
+                </button>
+                <button onClick={() => router.push("/register")} className={mobileChipClass}>
+                  Register
+                </button>
+                <button onClick={() => void openLogin()} className={mobileChipClass}>
+                  Login
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {menuOpen ? (
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="md:hidden fixed inset-x-0 bottom-0 top-[var(--header-h)] z-[55] bg-black/45 backdrop-blur-[2px]"
+          onClick={() => setMenuOpen(false)}
+        />
+      ) : null}
 
       {/* Mobile slide-down */}
       <div
         id="mobile-menu"
         ref={menuPanelRef}
-        className={`md:hidden absolute left-0 right-0 top-full bg-[var(--background)] text-[var(--foreground)] border-t border-black/10 dark:border-white/10 transition-[max-height,opacity] overflow-hidden ${
-          menuOpen ? "opacity-100 max-h-[480px]" : "opacity-0 max-h-0"
+        className={`md:hidden fixed inset-x-0 top-[var(--header-h)] z-[60] border-t border-black/10 bg-[var(--background)] text-[var(--foreground)] shadow-2xl transition-[opacity,transform] duration-200 dark:border-white/10 ${
+          menuOpen
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-2 opacity-0"
         }`}
       >
-        <MobileMenu
-          session={session}
-          theme={theme}
-          setTheme={updateTheme}
-          isAdmin={!!isAdmin}
-          offersBadgeCount={offersBadgeCount}
-          walletConnected={walletConnected}
-          walletBusy={walletBusy}
-          walletAddressLabel={walletShortAddress}
-          walletError={walletError}
-          connectWallet={connectWallet}
-          toggleTheme={toggleTheme}
-          close={() => setMenuOpen(false)}
-        />
+        <div className="mx-auto max-h-[calc(100dvh-var(--header-h)-0.5rem)] overflow-y-auto overscroll-contain">
+          <MobileMenu
+            session={session}
+            theme={theme}
+            setTheme={updateTheme}
+            isAdmin={!!isAdmin}
+            offersBadgeCount={offersBadgeCount}
+            walletConnected={walletConnected}
+            walletBusy={walletBusy}
+            walletAddressLabel={walletShortAddress}
+            walletError={walletError}
+            connectWallet={connectWallet}
+            toggleTheme={toggleTheme}
+            close={() => setMenuOpen(false)}
+          />
+        </div>
       </div>
     </header>
   );

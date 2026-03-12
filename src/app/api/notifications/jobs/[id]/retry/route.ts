@@ -17,9 +17,10 @@ export async function POST(
   const { id } = await params;
 
   return forwardWsApiOpsRequest({
-    path: `/notifications/jobs/${encodeURIComponent(id)}/retry`,
+    route: "/notifications/jobs/:id/retry",
     method: "POST",
     accessToken: tokenOrResponse,
+    pathParams: { id },
     body: {},
   });
 }

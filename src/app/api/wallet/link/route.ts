@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
 
   return forwardWsApiWalletRequest({
-    path: "/auth/wallet",
+    route: "/auth/wallet",
     method: "GET",
     accessToken: accessTokenOrResponse,
   });
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   return forwardWsApiWalletRequest({
-    path: "/auth/wallet/link",
+    route: "/auth/wallet/link",
     method: "POST",
     accessToken: accessTokenOrResponse,
     body,
@@ -44,7 +44,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   return forwardWsApiWalletRequest({
-    path: "/auth/wallet",
+    route: "/auth/wallet",
     method: "DELETE",
     accessToken: accessTokenOrResponse,
   });

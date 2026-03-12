@@ -1,29 +1,61 @@
-export type ThemeMode = "gray" | "dark" | "light" | "sepia" | "rugged";
+export type ThemeMode =
+  | "black"
+  | "grey"
+  | "white"
+  | "sepia"
+  | "walnut"
+  | "crimson"
+  | "midnight";
 
 export const THEME_STORAGE_KEY = "theme";
+export const THEME_LABELS: Record<ThemeMode, string> = {
+  black: "Black",
+  grey: "Grey",
+  white: "White",
+  sepia: "Sepia",
+  walnut: "Walnut",
+  crimson: "Crimson",
+  midnight: "Midnight",
+};
+
 const THEME_META_COLORS: Record<ThemeMode, string> = {
-  gray: "#202123",
-  dark: "#0a0a0a",
-  light: "#ffffff",
+  black: "#090909",
+  grey: "#202123",
+  white: "#ffffff",
   sepia: "#f4ecd9",
-  rugged: "#16110d",
+  walnut: "#16110d",
+  crimson: "#1a0d0d",
+  midnight: "#09111d",
+};
+
+const THEME_ALIASES: Record<string, ThemeMode> = {
+  black: "black",
+  dark: "black",
+  grey: "grey",
+  gray: "grey",
+  white: "white",
+  light: "white",
+  sepia: "sepia",
+  brown: "walnut",
+  walnut: "walnut",
+  rugged: "walnut",
+  red: "crimson",
+  crimson: "crimson",
+  blue: "midnight",
+  midnight: "midnight",
 };
 
 export function normalizeTheme(value: string | null | undefined): ThemeMode | null {
-  if (
-    value === "gray" ||
-    value === "dark" ||
-    value === "light" ||
-    value === "sepia" ||
-    value === "rugged"
-  ) {
-    return value;
-  }
-  return null;
+  if (!value) return null;
+  return THEME_ALIASES[value.trim().toLowerCase()] ?? null;
 }
 
 export function getSystemDefaultTheme(): ThemeMode {
-  return "gray";
+  return "black";
+}
+
+export function getThemeLabel(theme: ThemeMode | null | undefined): string {
+  return theme ? THEME_LABELS[theme] : "Black";
 }
 
 export function applyThemeToDocument(theme: ThemeMode): void {
@@ -32,7 +64,14 @@ export function applyThemeToDocument(theme: ThemeMode): void {
   }
 
   const html = document.documentElement;
-  html.classList.toggle("dark", theme === "dark" || theme === "gray" || theme === "rugged");
+  html.classList.toggle(
+    "dark",
+    theme === "black" ||
+      theme === "grey" ||
+      theme === "walnut" ||
+      theme === "crimson" ||
+      theme === "midnight",
+  );
   html.setAttribute("data-theme", theme);
 
   const metaThemeColor = document.querySelector(
@@ -77,28 +116,36 @@ export function readThemeFromDocument(): ThemeMode | null {
   }
 
   if (html.classList.contains("dark")) {
-    return "dark";
+    return "black";
   }
 
   return null;
 }
 
 export function cycleTheme(current: ThemeMode): ThemeMode {
-  if (current === "gray") {
-    return "dark";
+  if (current === "black") {
+    return "grey";
   }
 
-  if (current === "dark") {
-    return "light";
+  if (current === "grey") {
+    return "white";
   }
 
-  if (current === "light") {
+  if (current === "white") {
     return "sepia";
   }
 
   if (current === "sepia") {
-    return "rugged";
+    return "walnut";
   }
 
-  return "gray";
+  if (current === "walnut") {
+    return "crimson";
+  }
+
+  if (current === "crimson") {
+    return "midnight";
+  }
+
+  return "black";
 }
