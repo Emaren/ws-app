@@ -68,8 +68,8 @@ async function writeMaskableIcon() {
 async function writeAppleTouchIcon() {
   for (const target of [appleTouchTarget, applePrecomposedTarget]) {
     const image = await renderTrimmedSquare(180, {
-      padding: 10,
-      background: { r: 245, g: 239, b: 229, alpha: 1 },
+      padding: 0,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     });
     await image.png({ compressionLevel: 9 }).toFile(target);
   }

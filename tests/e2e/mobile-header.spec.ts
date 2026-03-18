@@ -49,6 +49,7 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
       themeCount: themeButtons.length,
       themeLeft: themeRects.length > 0 ? Math.min(...themeRects.map((rect) => rect.left)) : null,
       themeRight: themeRects.length > 0 ? Math.max(...themeRects.map((rect) => rect.right)) : null,
+      themeTop: themeRects.length > 0 ? Math.min(...themeRects.map((rect) => rect.top)) : null,
       menuRect,
       visibleUtilityLabels,
     };
@@ -59,6 +60,7 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
   expect(geometry.themeLeft ?? 0).toBeGreaterThanOrEqual(0);
   expect(geometry.themeRight ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect).not.toBeNull();
+  expect(geometry.themeTop ?? 0).toBeGreaterThanOrEqual((geometry.menuRect?.bottom ?? 0) - 1);
   expect(geometry.menuRect?.left ?? 0).toBeGreaterThanOrEqual(0);
   expect(geometry.menuRect?.right ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect?.bottom ?? 0).toBeLessThanOrEqual(geometry.height);

@@ -610,16 +610,20 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pt-2 pb-2 md:grid-cols-[auto_1fr_auto] md:gap-4 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-1 pt-2 pb-2 md:grid-cols-[auto_1fr_auto] md:grid-rows-1 md:gap-4 md:pt-3 md:pb-2">
         {/* Logo */}
-        <a href="/" aria-label="Wheat & Stone home" className="flex min-w-0 items-center shrink-0 cursor-pointer">
+        <a
+          href="/"
+          aria-label="Wheat & Stone home"
+          className="row-span-2 flex min-w-0 items-center shrink-0 cursor-pointer md:row-auto"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/tlogo.png"
             alt="Wheat & Stone"
             width={560}
             height={168}
-            className="block h-[42px] w-auto select-none cursor-pointer sm:h-[46px] md:h-[clamp(68px,9.5vw,128px)]"
+            className="block h-[40px] w-auto select-none cursor-pointer sm:h-[44px] md:h-[clamp(52px,5vw,82px)]"
             loading="eager"
             decoding="async"
           />
@@ -663,13 +667,12 @@ export default function Header() {
           connectWallet={connectWallet}
         />
 
-        {/* Mobile utility rail */}
+        {/* Mobile menu button */}
         <div
-          className="md:hidden flex min-w-0 items-center justify-end gap-2"
-          style={{ gridColumn: 2 }}
+          className="md:hidden flex min-w-0 items-center justify-end"
+          style={{ gridColumn: 2, gridRow: 1 }}
           ref={menuBtnRef}
         >
-          <ThemeCircles value={theme} onChange={updateTheme} compact dense className="justify-end" />
           <button
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -700,6 +703,20 @@ export default function Header() {
             </svg>
             <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
           </button>
+        </div>
+
+        {/* Mobile theme rail */}
+        <div
+          className="md:hidden flex min-w-0 items-center justify-end"
+          style={{ gridColumn: 2, gridRow: 2 }}
+        >
+          <ThemeCircles
+            value={theme}
+            onChange={updateTheme}
+            compact
+            dense
+            className="justify-end"
+          />
         </div>
       </div>
 
