@@ -3,7 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 
 const projectRoot = process.cwd();
-const sourceIcon = path.join(projectRoot, "public", "hh.tight.v3.png");
+const sourceIcon = path.join(projectRoot, "public", "icons", "app-icon-source.png");
 const iconsDir = path.join(projectRoot, "public", "icons");
 const appleTouchTarget = path.join(projectRoot, "public", "apple-touch-icon.png");
 const applePrecomposedTarget = path.join(
@@ -12,72 +12,66 @@ const applePrecomposedTarget = path.join(
   "apple-touch-icon-precomposed.png",
 );
 
+function centerOffset(canvasSize, contentSize) {
+  return Math.max(0, Math.floor((canvasSize - contentSize) / 2));
+}
+
+async function renderTrimmedSquare(size, options = {}) {
+  const {
+    padding = 0,
+    background = { r: 0, g: 0, b: 0, alpha: 0 },
+  } = options;
+  const innerSize = Math.max(1, size - padding * 2);
+
+  const foreground = await sharp(sourceIcon)
+    .trim()
+    .resize(innerSize, innerSize, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      withoutEnlargement: false,
+    })
+    .png()
+    .toBuffer();
+
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background,
+    },
+  }).composite([{ input: foreground, left: centerOffset(size, innerSize), top: centerOffset(size, innerSize) }]);
+}
+
 async function ensureReadable(filePath) {
   await fs.access(filePath);
 }
 
 async function writeStandardIcon(size) {
   const target = path.join(iconsDir, `icon-${size}.png`);
-  await sharp(sourceIcon)
-    .resize(size, size, {
-      fit: "contain",
-      background: { r: 10, g: 10, b: 10, alpha: 0 },
-      withoutEnlargement: false,
-    })
-    .png({ compressionLevel: 9 })
-    .toFile(target);
+  const image = await renderTrimmedSquare(size);
+  await image.png({ compressionLevel: 9 }).toFile(target);
   return target;
 }
 
 async function writeMaskableIcon() {
   const target = path.join(iconsDir, "maskable-512.png");
-
-  const foreground = await sharp(sourceIcon)
-    .resize(360, 360, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-      withoutEnlargement: false,
-    })
-    .png()
-    .toBuffer();
-
-  await sharp({
-    create: {
-      width: 512,
-      height: 512,
-      channels: 4,
-      background: { r: 10, g: 10, b: 10, alpha: 1 },
-    },
-  })
-    .composite([{ input: foreground, left: 76, top: 76 }])
-    .png({ compressionLevel: 9 })
-    .toFile(target);
+  const image = await renderTrimmedSquare(512, {
+    padding: 28,
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  });
+  await image.png({ compressionLevel: 9 }).toFile(target);
 
   return target;
 }
 
 async function writeAppleTouchIcon() {
-  const foreground = await sharp(sourceIcon)
-    .resize(140, 140, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-      withoutEnlargement: false,
-    })
-    .png()
-    .toBuffer();
-
   for (const target of [appleTouchTarget, applePrecomposedTarget]) {
-    await sharp({
-      create: {
-        width: 180,
-        height: 180,
-        channels: 4,
-        background: { r: 10, g: 10, b: 10, alpha: 1 },
-      },
-    })
-      .composite([{ input: foreground, left: 20, top: 20 }])
-      .png({ compressionLevel: 9 })
-      .toFile(target);
+    const image = await renderTrimmedSquare(180, {
+      padding: 10,
+      background: { r: 245, g: 239, b: 229, alpha: 1 },
+    });
+    await image.png({ compressionLevel: 9 }).toFile(target);
   }
 }
 
@@ -85,7 +79,11 @@ async function main() {
   await ensureReadable(sourceIcon);
   await fs.mkdir(iconsDir, { recursive: true });
 
-  const outputs = await Promise.all([writeStandardIcon(192), writeStandardIcon(512)]);
+  const outputs = await Promise.all([
+    writeStandardIcon(192),
+    writeStandardIcon(512),
+    writeStandardIcon(1024),
+  ]);
   const maskable = await writeMaskableIcon();
   await writeAppleTouchIcon();
 
