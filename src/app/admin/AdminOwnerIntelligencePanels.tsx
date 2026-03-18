@@ -1,20 +1,34 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { AdminControlTowerPanels } from "./AdminControlTowerPanels";
 import { AdminExperienceSystemPanels } from "./AdminExperienceSystemPanels";
 import type {
   AuthProviderConfig,
   AuthRegistrationStats,
   PublicSurfaceProbeHistory,
+  SiteConfiguration,
   SystemSnapshot,
 } from "./adminDashboardTypes";
 import { feedBadgeClass, formatDateTime, formatMethodLabel } from "./adminDashboardPresentation";
+
+function formatExperienceToken(value: string): string {
+  return value
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 type Props = {
   systemSnapshotLoading: boolean;
   systemSnapshot: SystemSnapshot | null;
   authProviderConfigLoading: boolean;
   authProviderConfig: AuthProviderConfig[];
+  siteConfigurationLoading: boolean;
+  siteConfiguration: SiteConfiguration | null;
+  siteConfigurationSaveBusy: boolean;
+  siteConfigurationNote: string | null;
   authStatsLoading: boolean;
   authStats: AuthRegistrationStats | null;
   publicProbeHistoryLoading: boolean;
@@ -25,6 +39,7 @@ type Props = {
   healthCheckNote: string | null;
   recrawlActionNote: string | null;
   onNavigate: (href: string) => void;
+  onSaveSiteConfiguration: (homePagePresetSlug: string) => void | Promise<void>;
   onRunPublicProbeNow: () => void | Promise<void>;
   onRunSystemHealthCheck: () => void | Promise<void>;
   onOpenFreshXCardUrl: () => void;
@@ -36,6 +51,10 @@ export function AdminOwnerIntelligencePanels({
   systemSnapshot,
   authProviderConfigLoading,
   authProviderConfig,
+  siteConfigurationLoading,
+  siteConfiguration,
+  siteConfigurationSaveBusy,
+  siteConfigurationNote,
   authStatsLoading,
   authStats,
   publicProbeHistoryLoading,
@@ -46,11 +65,30 @@ export function AdminOwnerIntelligencePanels({
   healthCheckNote,
   recrawlActionNote,
   onNavigate,
+  onSaveSiteConfiguration,
   onRunPublicProbeNow,
   onRunSystemHealthCheck,
   onOpenFreshXCardUrl,
   onCopyFreshXCardUrl,
 }: Props) {
+  const [homePresetDraft, setHomePresetDraft] = useState("");
+
+  useEffect(() => {
+    setHomePresetDraft(siteConfiguration?.homePagePresetSlug ?? "");
+  }, [siteConfiguration?.homePagePresetSlug]);
+
+  const selectedHomePreset = useMemo(
+    () =>
+      siteConfiguration?.homePresetOptions.find((option) => option.value === homePresetDraft) ??
+      null,
+    [homePresetDraft, siteConfiguration],
+  );
+  const homePresetDirty = Boolean(
+    siteConfiguration &&
+      homePresetDraft &&
+      homePresetDraft !== siteConfiguration.homePagePresetSlug,
+  );
+
   return (
     <div className="admin-card space-y-4 p-4 md:p-5">
       <div className="admin-surface space-y-3 rounded-xl p-3">
@@ -84,6 +122,126 @@ export function AdminOwnerIntelligencePanels({
         {systemSnapshot ? (
           <>
             <AdminExperienceSystemPanels compact />
+
+            <div className="rounded-lg border border-amber-300/25 bg-gradient-to-br from-amber-500/14 via-amber-500/6 to-transparent p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Homepage Command</p>
+                  <p className="text-xs opacity-75">
+                    Set the live homepage preset from the owner dashboard without touching code.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("/")}
+                    className="rounded border border-white/20 px-2 py-1 text-[11px] hover:bg-white/10"
+                  >
+                    Open Home
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("/admin/experience")}
+                    className="rounded border border-white/20 px-2 py-1 text-[11px] hover:bg-white/10"
+                  >
+                    Experience Studio
+                  </button>
+                </div>
+              </div>
+
+              {siteConfigurationLoading ? (
+                <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3 text-sm opacity-75">
+                  Loading homepage controls...
+                </div>
+              ) : null}
+
+              {!siteConfigurationLoading && !siteConfiguration ? (
+                <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3 text-sm opacity-75">
+                  Homepage controls are temporarily unavailable.
+                </div>
+              ) : null}
+
+              {siteConfiguration ? (
+                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_320px]">
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                      Live Home Preset
+                    </label>
+                    <select
+                      value={homePresetDraft}
+                      onChange={(event) => setHomePresetDraft(event.target.value)}
+                      disabled={siteConfigurationSaveBusy}
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-amber-300/50"
+                    >
+                      {siteConfiguration.homePresetOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                          {option.isSystemDefault ? " (system default)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs opacity-75">
+                      This sets the front door for the whole site. Personal experience choices still
+                      matter on the rest of the product surface.
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onSaveSiteConfiguration(homePresetDraft)}
+                        disabled={!homePresetDirty || siteConfigurationSaveBusy}
+                        className="rounded border border-amber-300/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium transition hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {siteConfigurationSaveBusy ? "Saving..." : "Save Homepage"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHomePresetDraft(siteConfiguration.homePagePresetSlug)}
+                        disabled={!homePresetDirty || siteConfigurationSaveBusy}
+                        className="rounded border border-white/20 px-3 py-1.5 text-xs transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Reset Draft
+                      </button>
+                    </div>
+
+                    {siteConfigurationNote ? (
+                      <p className="mt-3 text-xs opacity-80">{siteConfigurationNote}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                      Selected Preset
+                    </p>
+                    <p className="mt-2 text-lg font-semibold">
+                      {selectedHomePreset?.label ?? siteConfiguration.homePagePresetLabel}
+                    </p>
+                    <p className="mt-2 text-sm opacity-85">
+                      {selectedHomePreset?.summary ?? siteConfiguration.homePagePresetSummary}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] opacity-70">
+                      <span>
+                        Theme {formatExperienceToken(selectedHomePreset?.theme ?? siteConfiguration.homePagePresetTheme)}
+                      </span>
+                      <span>
+                        Edition {formatExperienceToken(selectedHomePreset?.edition ?? siteConfiguration.homePagePresetEdition)}
+                      </span>
+                      <span>
+                        Layout {formatExperienceToken(selectedHomePreset?.layout ?? siteConfiguration.homePagePresetLayout)}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-xs opacity-70">
+                      Live now: {siteConfiguration.homePagePresetLabel}
+                    </p>
+                    <p className="mt-1 text-xs opacity-70">
+                      Updated {formatDateTime(siteConfiguration.updatedAt ?? siteConfiguration.generatedAt)}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-lg border border-white/10 p-3">

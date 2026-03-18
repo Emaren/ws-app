@@ -83,6 +83,10 @@ export default function RegisterPage() {
     );
     return new Map(entries.map((provider) => [provider.id, provider]));
   }, [providerMap]);
+  const visibleSocialProviders = useMemo(
+    () => POPULAR_PROVIDER_ORDER.filter((item) => socialProviders.has(item.id)),
+    [socialProviders],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,37 +231,41 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          <div className="space-y-2">
-            {POPULAR_PROVIDER_ORDER.map((item) => {
-              const provider = socialProviders.get(item.id);
-              const enabled = Boolean(provider);
-              const loadingThis = socialLoadingId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => launchSocial(item.id, enabled)}
-                  disabled={!enabled || Boolean(socialLoadingId)}
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
-                    enabled
-                      ? "border-white/20 bg-white/5 hover:border-amber-300/40 hover:bg-white/10"
-                      : "cursor-not-allowed border-white/10 bg-white/5 opacity-50"
-                  }`}
-                >
-                  <span className={item.accent}>{item.label}</span>
-                  <span className="text-xs opacity-70">
-                    {loadingThis ? "Connecting..." : enabled ? "OAuth" : "Setup needed"}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {visibleSocialProviders.length > 0 ? (
+            <div className="space-y-2">
+              {visibleSocialProviders.map((item) => {
+                const provider = socialProviders.get(item.id);
+                const enabled = Boolean(provider);
+                const loadingThis = socialLoadingId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => launchSocial(item.id, enabled)}
+                    disabled={!enabled || Boolean(socialLoadingId)}
+                    className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition ${
+                      enabled
+                        ? "border-white/20 bg-white/5 hover:border-amber-300/40 hover:bg-white/10"
+                        : "cursor-not-allowed border-white/10 bg-white/5 opacity-50"
+                    }`}
+                  >
+                    <span className={item.accent}>{item.label}</span>
+                    <span className="text-xs opacity-70">
+                      {loadingThis ? "Connecting..." : "OAuth"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
-          <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-[0.2em] opacity-60">
-            <span className="h-px flex-1 bg-white/20" />
-            <span>Or email</span>
-            <span className="h-px flex-1 bg-white/20" />
-          </div>
+          {visibleSocialProviders.length > 0 ? (
+            <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-[0.2em] opacity-60">
+              <span className="h-px flex-1 bg-white/20" />
+              <span>Or email</span>
+              <span className="h-px flex-1 bg-white/20" />
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <input

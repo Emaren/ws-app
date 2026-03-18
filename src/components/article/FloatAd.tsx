@@ -854,26 +854,44 @@ export default function FloatAd({
 
       {isDialogOpen && (
         <div
-          className="fixed inset-0 z-[90] bg-black/70 p-4 sm:p-6"
+          className="fixed inset-0 z-[90] overflow-y-auto overscroll-contain bg-black/70 p-4 sm:p-6"
           role="presentation"
           onClick={closeDeliveryDialog}
+          style={{
+            paddingTop: "max(1rem, env(safe-area-inset-top))",
+            paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+          }}
         >
-          <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center">
+          <div className="mx-auto flex min-h-full w-full max-w-2xl items-start justify-center sm:items-center">
             <section
               role="dialog"
               aria-modal="true"
               aria-labelledby={`${key}-lead-title`}
-              className="w-full rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5"
+              className="w-full overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5"
               onClick={(event) => event.stopPropagation()}
+              style={{
+                maxHeight:
+                  "calc(100dvh - max(2rem, env(safe-area-inset-top)) - max(2rem, env(safe-area-inset-bottom)))",
+              }}
             >
-              <header className="mb-4 space-y-1">
-                <h3 id={`${key}-lead-title`} className="text-base font-semibold">
-                  Click to Buy / Deliver Now
-                </h3>
-                <p className="text-sm opacity-80">
-                  {contextItemName}
-                  {contextBusinessName ? ` - ${contextBusinessName}` : ""}
-                </p>
+              <header className="mb-4 flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <h3 id={`${key}-lead-title`} className="text-base font-semibold">
+                    Click to Buy / Deliver Now
+                  </h3>
+                  <p className="text-sm opacity-80">
+                    {contextItemName}
+                    {contextBusinessName ? ` - ${contextBusinessName}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDeliveryDialog}
+                  aria-label="Close delivery form"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-xl leading-none transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
+                  ×
+                </button>
               </header>
 
               <form className="space-y-3" onSubmit={submitDeliveryLead}>

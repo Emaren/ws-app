@@ -50,6 +50,10 @@ export default function LoginPage() {
     );
     return new Map(entries.map((provider) => [provider.id, provider]));
   }, [providerMap]);
+  const visibleSocialProviders = useMemo(
+    () => POPULAR_PROVIDER_ORDER.filter((item) => socialProviders.has(item.id)),
+    [socialProviders],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,34 +94,38 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <div className="space-y-2">
-          {POPULAR_PROVIDER_ORDER.map((item) => {
-            const provider = socialProviders.get(item.id);
-            const enabled = Boolean(provider);
-            const loadingThis = socialLoadingId === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => launchSocial(item.id, enabled)}
-                disabled={!enabled || Boolean(socialLoadingId)}
-                className={`w-full rounded-xl border px-4 py-2.5 text-left text-sm transition ${
-                  enabled
-                    ? "border-white/20 bg-white/5 hover:border-amber-300/40 hover:bg-white/10"
-                    : "cursor-not-allowed border-white/10 bg-white/5 opacity-50"
-                }`}
-              >
-                {loadingThis ? "Connecting..." : enabled ? item.label : `${item.label} (setup needed)`}
-              </button>
-            );
-          })}
-        </div>
+        {visibleSocialProviders.length > 0 ? (
+          <div className="space-y-2">
+            {visibleSocialProviders.map((item) => {
+              const provider = socialProviders.get(item.id);
+              const enabled = Boolean(provider);
+              const loadingThis = socialLoadingId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => launchSocial(item.id, enabled)}
+                  disabled={!enabled || Boolean(socialLoadingId)}
+                  className={`w-full rounded-xl border px-4 py-2.5 text-left text-sm transition ${
+                    enabled
+                      ? "border-white/20 bg-white/5 hover:border-amber-300/40 hover:bg-white/10"
+                      : "cursor-not-allowed border-white/10 bg-white/5 opacity-50"
+                  }`}
+                >
+                  {loadingThis ? "Connecting..." : item.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
-        <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-[0.18em] opacity-60">
-          <span className="h-px flex-1 bg-white/20" />
-          <span>Or email</span>
-          <span className="h-px flex-1 bg-white/20" />
-        </div>
+        {visibleSocialProviders.length > 0 ? (
+          <div className="my-4 flex items-center gap-3 text-xs uppercase tracking-[0.18em] opacity-60">
+            <span className="h-px flex-1 bg-white/20" />
+            <span>Or email</span>
+            <span className="h-px flex-1 bg-white/20" />
+          </div>
+        ) : null}
 
         <input
           type="email"

@@ -93,6 +93,32 @@ export type AuthProviderConfigResponse = {
   providers: AuthProviderConfig[];
 };
 
+export type SiteConfigurationPresetOption = {
+  value: string;
+  label: string;
+  summary: string;
+  status: string;
+  theme: string;
+  edition: string;
+  layout: string;
+  isSystemDefault: boolean;
+};
+
+export type SiteConfiguration = {
+  generatedAt: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  homePagePresetSlug: string;
+  homePagePresetLabel: string;
+  homePagePresetSummary: string;
+  homePagePresetStatus: string;
+  homePagePresetTheme: string;
+  homePagePresetEdition: string;
+  homePagePresetLayout: string;
+  homePagePresetSource: "stored" | "fallback";
+  homePresetOptions: SiteConfigurationPresetOption[];
+};
+
 type IdentityParityStatus = "MATCHED" | "ROLE_MISMATCH" | "LOCAL_ONLY" | "WSAPI_ONLY";
 type WsApiStorageBackend = "postgres" | "file-journal" | "memory";
 

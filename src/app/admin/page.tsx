@@ -11,6 +11,7 @@ import type {
   AuthProviderConfigResponse,
   AuthRegistrationStats,
   PublicSurfaceProbeHistory,
+  SiteConfiguration,
   SystemSnapshot,
 } from "./adminDashboardTypes";
 import { normalizeArticleStatus } from "@/lib/articleLifecycle";
@@ -38,6 +39,10 @@ export default function AdminDashboard() {
   const [authProviderConfig, setAuthProviderConfig] = useState<AuthProviderConfig[]>(
     [],
   );
+  const [siteConfigurationLoading, setSiteConfigurationLoading] = useState(false);
+  const [siteConfiguration, setSiteConfiguration] = useState<SiteConfiguration | null>(null);
+  const [siteConfigurationSaveBusy, setSiteConfigurationSaveBusy] = useState(false);
+  const [siteConfigurationNote, setSiteConfigurationNote] = useState<string | null>(null);
   const [systemSnapshotLoading, setSystemSnapshotLoading] = useState(false);
   const [systemSnapshot, setSystemSnapshot] = useState<SystemSnapshot | null>(null);
   const [publicProbeHistoryLoading, setPublicProbeHistoryLoading] = useState(false);
@@ -114,6 +119,71 @@ export default function AdminDashboard() {
       setAuthProviderConfig([]);
     } finally {
       setAuthProviderConfigLoading(false);
+    }
+  }
+
+  async function loadSiteConfiguration() {
+    if (!isOwnerAdmin) {
+      setSiteConfiguration(null);
+      return;
+    }
+
+    setSiteConfigurationLoading(true);
+    try {
+      const res = await fetch("/api/admin/site-configuration", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      const data = (await res.json()) as SiteConfiguration;
+      setSiteConfiguration(data);
+    } catch (error) {
+      console.error(error);
+      setSiteConfiguration(null);
+    } finally {
+      setSiteConfigurationLoading(false);
+    }
+  }
+
+  async function saveSiteConfiguration(homePagePresetSlug: string) {
+    if (!isOwnerAdmin) {
+      return;
+    }
+
+    setSiteConfigurationSaveBusy(true);
+    setSiteConfigurationNote(null);
+    try {
+      const res = await fetch("/api/admin/site-configuration", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ homePagePresetSlug }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | SiteConfiguration
+        | { message?: string }
+        | null;
+      if (!res.ok) {
+        const message =
+          data && typeof data === "object" && "message" in data && data.message
+            ? String(data.message)
+            : `Request failed (${res.status})`;
+        throw new Error(message);
+      }
+      setSiteConfiguration(data as SiteConfiguration);
+      setSiteConfigurationNote(
+        `Homepage preset updated to ${(data as SiteConfiguration).homePagePresetLabel}.`,
+      );
+    } catch (error) {
+      console.error(error);
+      setSiteConfigurationNote(
+        error instanceof Error ? error.message : "Could not update homepage preset.",
+      );
+    } finally {
+      setSiteConfigurationSaveBusy(false);
     }
   }
 
@@ -257,6 +327,7 @@ export default function AdminDashboard() {
       load(),
       loadAuthStats(),
       loadAuthProviderConfig(),
+      loadSiteConfiguration(),
       loadSystemSnapshot(),
       loadPublicProbeHistory(),
     ]);
@@ -272,6 +343,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     void loadAuthProviderConfig();
+  }, [isOwnerAdmin]);
+
+  useEffect(() => {
+    void loadSiteConfiguration();
   }, [isOwnerAdmin]);
 
   useEffect(() => {
@@ -346,6 +421,8 @@ export default function AdminDashboard() {
           loading ||
           authStatsLoading ||
           authProviderConfigLoading ||
+          siteConfigurationLoading ||
+          siteConfigurationSaveBusy ||
           systemSnapshotLoading ||
           publicProbeHistoryLoading ||
           isPending
@@ -367,6 +444,10 @@ export default function AdminDashboard() {
           systemSnapshot={systemSnapshot}
           authProviderConfigLoading={authProviderConfigLoading}
           authProviderConfig={authProviderConfig}
+          siteConfigurationLoading={siteConfigurationLoading}
+          siteConfiguration={siteConfiguration}
+          siteConfigurationSaveBusy={siteConfigurationSaveBusy}
+          siteConfigurationNote={siteConfigurationNote}
           authStatsLoading={authStatsLoading}
           authStats={authStats}
           publicProbeHistoryLoading={publicProbeHistoryLoading}
@@ -377,6 +458,7 @@ export default function AdminDashboard() {
           healthCheckNote={healthCheckNote}
           recrawlActionNote={recrawlActionNote}
           onNavigate={(href) => router.push(href)}
+          onSaveSiteConfiguration={saveSiteConfiguration}
           onRunPublicProbeNow={runPublicProbeNow}
           onRunSystemHealthCheck={runSystemHealthCheck}
           onOpenFreshXCardUrl={openFreshXCardUrl}

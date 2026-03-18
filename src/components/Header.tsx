@@ -32,7 +32,7 @@ declare global {
 }
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
@@ -174,6 +174,7 @@ function normalizeWalletStatusMessage(message: string | null | undefined): strin
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [linkedWalletAddress, setLinkedWalletAddress] = useState<string | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
@@ -205,7 +206,7 @@ export default function Header() {
   // Close popovers on route change / outside click / Esc
   useEffect(() => {
     setMenuOpen(false);
-  }, [router]);
+  }, [pathname]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -612,13 +613,14 @@ export default function Header() {
   }
 
   const mobileChipClass =
-    "shrink-0 rounded-full border border-black/15 dark:border-white/15 bg-transparent px-3 py-1.5 text-[12px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer";
+    "inline-flex min-h-11 items-center justify-center rounded-full border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-[13px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer";
 
   return (
     <header
       ref={headerRef}
       className="w-full bg-[var(--background)] text-[var(--foreground)] relative z-50"
       role="banner"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="ws-container grid min-w-0 grid-cols-[auto_1fr_auto] items-end gap-3 pt-2 pb-1 md:items-center md:gap-4 md:pt-3 md:pb-2">
         {/* Logo */}
@@ -715,15 +717,64 @@ export default function Header() {
       {/* Mobile quick actions for better discoverability */}
       {!menuOpen ? (
         <div className="ws-container md:hidden pb-2">
-          <div className="flex gap-2 overflow-x-auto whitespace-nowrap py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <ThemeCircles value={theme} onChange={updateTheme} compact />
+          <div className="space-y-2 py-1">
+            <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <ThemeCircles value={theme} onChange={updateTheme} compact />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
+                Articles
+              </button>
+              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
+                Premium
+              </button>
+
+              {session ? (
+                <>
+                  <button onClick={() => router.push("/account")} className={mobileChipClass}>
+                    Account
+                  </button>
+                  <button
+                    onClick={() => router.push(isAdmin ? "/admin" : "/community")}
+                    className={mobileChipClass}
+                  >
+                    {isAdmin ? "Admin" : "Community"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => router.push("/register")} className={mobileChipClass}>
+                    Register
+                  </button>
+                  <button onClick={() => void openLogin()} className={mobileChipClass}>
+                    Login
+                  </button>
+                </>
+              )}
+            </div>
+
             {session ? (
-              <>
-                <div className="min-w-[228px] shrink-0 rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
+              <div className="rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] opacity-75">{identityLabel}</p>
+                    {walletShortAddress ? (
+                      <p className="mt-1 truncate text-[11px] text-emerald-300/90">
+                        {walletShortAddress}
+                      </p>
+                    ) : null}
+                    {walletError ? (
+                      <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
+                        {walletError}
+                      </p>
+                    ) : null}
+                  </div>
+
                   <button
                     onClick={connectWallet}
                     disabled={walletBusy}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
+                    className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
                       walletConnected
                         ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
                         : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
@@ -735,47 +786,9 @@ export default function Header() {
                         ? "Wallet Linked"
                         : "Connect Wallet"}
                   </button>
-                  <p className="mt-1.5 truncate text-[11px] opacity-75">{identityLabel}</p>
-                  {walletShortAddress ? (
-                    <p className="mt-1 truncate text-[11px] text-emerald-300/90">
-                      {walletShortAddress}
-                    </p>
-                  ) : null}
-                  {walletError ? (
-                    <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
-                      {walletError}
-                    </p>
-                  ) : null}
                 </div>
-
-                <button onClick={() => router.push("/articles")} className={mobileChipClass}>
-                  Articles
-                </button>
-                <button onClick={() => router.push("/premium")} className={mobileChipClass}>
-                  Premium
-                </button>
-                {isAdmin ? (
-                  <button onClick={() => router.push("/admin")} className={mobileChipClass}>
-                    Admin
-                  </button>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <button onClick={() => router.push("/articles")} className={mobileChipClass}>
-                  Articles
-                </button>
-                <button onClick={() => router.push("/premium")} className={mobileChipClass}>
-                  Premium
-                </button>
-                <button onClick={() => router.push("/register")} className={mobileChipClass}>
-                  Register
-                </button>
-                <button onClick={() => void openLogin()} className={mobileChipClass}>
-                  Login
-                </button>
-              </>
-            )}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

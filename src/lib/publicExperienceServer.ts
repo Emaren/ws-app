@@ -14,6 +14,7 @@ import {
   buildSavedExperiencePresetCatalog,
   resolveUserExperienceSnapshot,
 } from "@/lib/userExperience";
+import { getConfiguredHomePagePresetSlug } from "@/lib/siteConfiguration";
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -47,7 +48,7 @@ function toUrlSearchParams(
 
 function resolvePageSelection(
   page: ExperiencePageKey,
-  snapshot: ExperiencePreferenceSnapshot | null,
+  snapshot: Partial<ExperiencePreferenceSnapshot> | null,
   customPresets: ExperiencePreset[] = [],
 ) {
   return resolveExperienceSelection(
@@ -71,6 +72,13 @@ export async function getPublicPageExperience(input: {
   );
   if (previewOverride) {
     return resolvePageSelection(input.page, previewOverride);
+  }
+
+  if (input.page === "home") {
+    const homePagePresetSlug = await getConfiguredHomePagePresetSlug();
+    return resolvePageSelection(input.page, {
+      preset: homePagePresetSlug,
+    });
   }
 
   const session = await getServerSession(authOptions);
