@@ -3,9 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { roleBadgePrefix } from "@/lib/rbac";
-import ThemeCircles from "./ThemeCircles";
 import TokenBalancesInline from "./TokenBalancesInline";
-import type { ThemeMode } from "@/lib/theme";
 
 type SessionLike = {
   user?: {
@@ -18,8 +16,6 @@ type SessionLike = {
 
 export default function MobileMenu({
   session,
-  theme,
-  setTheme,
   isAdmin,
   offersBadgeCount,
   walletConnected,
@@ -31,8 +27,6 @@ export default function MobileMenu({
   close,
 }: {
   session: SessionLike;
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
   isAdmin: boolean;
   offersBadgeCount: number;
   walletConnected: boolean;
@@ -56,11 +50,21 @@ export default function MobileMenu({
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-4 flex flex-col gap-4">
-      <div className="flex items-center justify-start">
-        <ThemeCircles value={theme} onChange={setTheme} compact />
-      </div>
-
       <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => go("/articles")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Articles
+        </button>
+
+        <button
+          onClick={() => go("/premium")}
+          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+        >
+          Premium
+        </button>
+
         <button
           onClick={() => go("/discover")}
           className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
@@ -104,27 +108,32 @@ export default function MobileMenu({
         </button>
 
         <button
-          onClick={() => go("/articles")}
-          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-        >
-          Articles
-        </button>
-
-        <button
-          onClick={() => go("/premium")}
-          className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-        >
-          Premium
-        </button>
-
-        <button
           onClick={() => go("/about")}
           className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
         >
           About
         </button>
 
-        {!session ? (
+        {session ? (
+          <>
+            <button
+              onClick={() => go("/account")}
+              className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+            >
+              Account
+            </button>
+            {isAdmin ? (
+              <button
+                onClick={() => go("/admin")}
+                className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+              >
+                Admin
+              </button>
+            ) : (
+              <span aria-hidden className="rounded-lg border border-transparent px-3 py-2" />
+            )}
+          </>
+        ) : (
           <>
             <button
               onClick={() => go("/register")}
@@ -143,15 +152,6 @@ export default function MobileMenu({
               Login
             </button>
           </>
-        ) : isAdmin ? (
-          <button
-            onClick={() => go("/admin")}
-            className="rounded-lg border border-black/10 dark:border-white/15 px-3 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-          >
-            Admin Dashboard
-          </button>
-        ) : (
-          <span aria-hidden className="rounded-lg border border-transparent px-3 py-2" />
         )}
       </div>
 

@@ -88,6 +88,25 @@ export function AdminOwnerIntelligencePanels({
       homePresetDraft &&
       homePresetDraft !== siteConfiguration.homePagePresetSlug,
   );
+  const onboardingOrigin = useMemo(() => {
+    const raw = systemSnapshot?.release.runtime.siteOrigin?.trim() || "https://wheatandstone.ca";
+    const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try {
+      return new URL(normalized).origin;
+    } catch {
+      return "https://wheatandstone.ca";
+    }
+  }, [systemSnapshot?.release.runtime.siteOrigin]);
+  const onboardingMetadataRows = useMemo(
+    () => [
+      ["Home / App domain", `${onboardingOrigin}/`],
+      ["Privacy policy", `${onboardingOrigin}/privacy`],
+      ["Terms of service", `${onboardingOrigin}/terms`],
+      ["Data deletion", `${onboardingOrigin}/data-deletion`],
+      ["1024 app icon", `${onboardingOrigin}/icons/icon-1024.png`],
+    ],
+    [onboardingOrigin],
+  );
 
   return (
     <div className="admin-card space-y-4 p-4 md:p-5">
@@ -519,7 +538,8 @@ export function AdminOwnerIntelligencePanels({
           <div>
             <h4 className="text-sm font-semibold md:text-base">OAuth Provider Readiness</h4>
             <p className="text-xs opacity-75">
-              Configure these keys on local and VPS so social login buttons become active.
+              Live env is only half the job. Use these URLs to finish the Google and Meta app
+              metadata for public onboarding.
             </p>
           </div>
           <span className="text-xs opacity-70">
@@ -569,6 +589,39 @@ export function AdminOwnerIntelligencePanels({
               ) : null}
             </tbody>
           </table>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+              Console URLs
+            </p>
+            <div className="mt-3 space-y-2 text-sm">
+              {onboardingMetadataRows.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex flex-col gap-1 rounded-lg border border-white/10 px-3 py-2"
+                >
+                  <span className="text-[11px] uppercase tracking-[0.16em] opacity-60">
+                    {label}
+                  </span>
+                  <span className="break-all text-sm opacity-90">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+              Publishing Checklist
+            </p>
+            <ul className="mt-3 space-y-2 text-sm opacity-85">
+              <li>Set the app domain to wheatandstone.ca.</li>
+              <li>Point privacy, terms, and deletion fields at the URLs listed here.</li>
+              <li>Upload the 1024 icon so Google and Meta show the real Wheat & Stone brand mark.</li>
+              <li>Keep the callback URLs in the table above inside each provider console.</li>
+            </ul>
+          </div>
         </div>
       </div>
 

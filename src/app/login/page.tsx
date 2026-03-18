@@ -174,6 +174,22 @@ export default function LoginPage() {
             Register
           </Link>
         </p>
+
+        <p className="mt-4 text-center text-xs leading-relaxed opacity-70">
+          By continuing, you agree to our{" "}
+          <Link href="/terms" className="underline underline-offset-4">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4">
+            Privacy Policy
+          </Link>
+          . Need account removal? Visit{" "}
+          <Link href="/data-deletion" className="underline underline-offset-4">
+            Data Deletion
+          </Link>
+          .
+        </p>
       </form>
     </div>
   );

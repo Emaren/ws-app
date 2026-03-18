@@ -318,7 +318,15 @@ export default function RegisterPage() {
                 required
               />
               <span className="opacity-90">
-                I agree to Terms of Service and Privacy Policy.
+                I agree to the{" "}
+                <Link href="/terms" className="underline underline-offset-4">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="underline underline-offset-4">
+                  Privacy Policy
+                </Link>
+                .
               </span>
             </label>
             <label className="flex items-start gap-2 text-sm">
@@ -350,6 +358,13 @@ export default function RegisterPage() {
             <Link href="/login" className="text-amber-200 underline">
               Sign in
             </Link>
+          </p>
+          <p className="text-center text-xs leading-relaxed opacity-70">
+            Need account removal? Review{" "}
+            <Link href="/data-deletion" className="underline underline-offset-4">
+              Data Deletion
+            </Link>{" "}
+            instructions before or after registration.
           </p>
         </article>
       </div>

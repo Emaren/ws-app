@@ -879,3 +879,54 @@ test("admin dashboard renders the TMail reset rail for an owner session", async 
   await expect(page.getByText("Pulse Readiness", { exact: true })).toBeVisible();
   await expect(page.getByText("Rewards Ops", { exact: true })).toBeVisible();
 });
+
+test("admin dashboard stays inside the mobile viewport without page-level horizontal scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.context().addCookies([
+    {
+      name: "ws-e2e-role",
+      value: "OWNER",
+      url: smokeBaseUrl,
+    },
+    {
+      name: "ws-e2e-email",
+      value: "tonyblum@me.com",
+      url: smokeBaseUrl,
+    },
+  ]);
+
+  await page.route("**/api/auth/session", async (route) => {
+    await fulfillJson(route, ownerSession);
+  });
+  await page.route("**/api/articles?scope=all", async (route) => {
+    await fulfillJson(route, []);
+  });
+  await page.route("**/api/admin/auth/registration-stats?days=30", async (route) => {
+    await fulfillJson(route, adminAuthStats);
+  });
+  await page.route("**/api/admin/auth/provider-config", async (route) => {
+    await fulfillJson(route, adminProviderConfig);
+  });
+  await page.route("**/api/admin/system/snapshot", async (route) => {
+    await fulfillJson(route, adminSystemSnapshot);
+  });
+  await page.route("**/api/admin/system/public-surface?page=1&pageSize=8", async (route) => {
+    await fulfillJson(route, { rows: [] });
+  });
+
+  await page.goto("/admin");
+
+  const metrics = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    bodyWidth: document.body.scrollWidth,
+  }));
+
+  expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+  await expect(page.getByRole("link", { name: "Dashboard Operational overview" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Commerce Console" }).first()).toBeVisible();
+});

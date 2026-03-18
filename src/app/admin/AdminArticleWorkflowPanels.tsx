@@ -48,6 +48,9 @@ export function AdminArticleWorkflowPanels({
   onNavigate,
   onDeleteArticle,
 }: Props) {
+  const shellButtonClass =
+    "w-full rounded-xl border px-3 py-2 text-left text-sm transition sm:w-auto sm:text-center";
+
   return (
     <>
       <div className="admin-card p-4 md:p-6">
@@ -58,10 +61,10 @@ export function AdminArticleWorkflowPanels({
               Role-aware article operations with mobile-first controls.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             <button
               onClick={onReload}
-              className="rounded-xl border px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-60"
+              className={`${shellButtonClass} hover:bg-white/5 disabled:opacity-60`}
               disabled={reloadBusy}
             >
               {reloadBusy ? "Loading..." : "Reload"}
@@ -70,13 +73,13 @@ export function AdminArticleWorkflowPanels({
               <>
                 <button
                   onClick={() => onNavigate("/admin/commerce")}
-                  className="rounded-xl border border-amber-300/40 bg-amber-500/15 px-3 py-2 text-sm font-medium transition hover:bg-amber-500/25"
+                  className={`${shellButtonClass} border-amber-300/40 bg-amber-500/15 font-medium hover:bg-amber-500/25`}
                 >
                   Commerce Console
                 </button>
                 <button
                   onClick={() => onNavigate("/admin/offers")}
-                  className="rounded-xl border border-red-500/45 bg-red-500/15 px-3 py-2 text-sm font-medium transition hover:bg-red-500/25"
+                  className={`${shellButtonClass} border-red-500/45 bg-red-500/15 font-medium hover:bg-red-500/25`}
                 >
                   Offers Command
                 </button>
@@ -84,19 +87,19 @@ export function AdminArticleWorkflowPanels({
                   <>
                     <button
                       onClick={() => onNavigate("/admin/access")}
-                      className="rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-2 text-sm font-medium transition hover:bg-emerald-500/25"
+                      className={`${shellButtonClass} border-emerald-400/40 bg-emerald-500/15 font-medium hover:bg-emerald-500/25`}
                     >
                       Access Control
                     </button>
                     <button
                       onClick={() => onNavigate("/admin/company")}
-                      className="rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-2 text-sm font-medium transition hover:bg-sky-500/25"
+                      className={`${shellButtonClass} border-sky-400/40 bg-sky-500/15 font-medium hover:bg-sky-500/25`}
                     >
                       Company Dashboards
                     </button>
                     <button
                       onClick={() => onNavigate("/admin/data")}
-                      className="rounded-xl border border-violet-400/40 bg-violet-500/15 px-3 py-2 text-sm font-medium transition hover:bg-violet-500/25"
+                      className={`${shellButtonClass} border-violet-400/40 bg-violet-500/15 font-medium hover:bg-violet-500/25`}
                     >
                       Data Explorer
                     </button>
@@ -106,7 +109,7 @@ export function AdminArticleWorkflowPanels({
             ) : null}
             <button
               onClick={() => onNavigate("/admin/new")}
-              className="rounded-xl border border-amber-300/40 bg-amber-200/20 px-3 py-2 text-sm font-medium transition hover:bg-amber-200/30"
+              className={`${shellButtonClass} border-amber-300/40 bg-amber-200/20 font-medium hover:bg-amber-200/30`}
             >
               New Article
             </button>

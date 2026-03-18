@@ -48,14 +48,18 @@ export default function ThemeCircles({
   value,
   onChange,
   compact = false,
+  dense = false,
+  className = "",
 }: {
   value: ThemeMode;
   onChange: (theme: ThemeMode) => void;
   compact?: boolean;
+  dense?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className={`inline-flex items-center bg-transparent ${compact ? "gap-1.5" : "gap-2"}`}
+      className={`inline-flex items-center bg-transparent ${dense ? "gap-1" : compact ? "gap-1.5" : "gap-2"} ${className}`.trim()}
       aria-label="Theme selector"
       role="group"
     >
@@ -69,11 +73,14 @@ export default function ThemeCircles({
             aria-pressed={active}
             title={`${option.label} theme`}
             onClick={() => onChange(option.value)}
-            className={`inline-flex h-6 w-6 items-center justify-center rounded-full transition cursor-pointer focus:outline-none ${
+            className={`inline-flex ${dense ? "h-5 w-5" : "h-6 w-6"} items-center justify-center rounded-full transition cursor-pointer focus:outline-none ${
               active ? "scale-105 opacity-100" : "opacity-85 hover:opacity-100"
             }`}
           >
-            <span className={`h-4 w-4 rounded-full ${option.chipClass}`} aria-hidden="true" />
+            <span
+              className={`${dense ? "h-3.5 w-3.5" : "h-4 w-4"} rounded-full ${option.chipClass}`}
+              aria-hidden="true"
+            />
           </button>
         );
       })}

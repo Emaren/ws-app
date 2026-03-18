@@ -32,12 +32,12 @@ declare global {
 }
 
 import { useSession } from "next-auth/react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopActions from "./header/DesktopActions";
 import MobileMenu from "./header/MobileMenu";
 import ThemeCircles from "./header/ThemeCircles";
-import { isEditorialRole, roleBadgePrefix } from "@/lib/rbac";
+import { isEditorialRole } from "@/lib/rbac";
 import {
   applyExperienceToDocument,
   defaultEditionSelection,
@@ -173,7 +173,6 @@ function normalizeWalletStatusMessage(message: string | null | undefined): strin
 
 export default function Header() {
   const { data: session } = useSession();
-  const router = useRouter();
   const pathname = usePathname();
 
   const [linkedWalletAddress, setLinkedWalletAddress] = useState<string | null>(null);
@@ -603,17 +602,6 @@ export default function Header() {
   const isAdmin = isEditorialRole(session?.user?.role);
   const walletConnected = Boolean(linkedWalletAddress);
   const walletShortAddress = shortWallet(linkedWalletAddress);
-  const identityLabel = session?.user?.email
-    ? `${roleBadgePrefix(session?.user?.role)} - ${session.user.email}`
-    : roleBadgePrefix(session?.user?.role);
-
-  async function openLogin() {
-    const { signIn } = await import("next-auth/react");
-    signIn();
-  }
-
-  const mobileChipClass =
-    "inline-flex min-h-11 items-center justify-center rounded-full border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-[13px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer";
 
   return (
     <header
@@ -622,17 +610,16 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[auto_1fr_auto] items-end gap-3 pt-2 pb-1 md:items-center md:gap-4 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pt-2 pb-2 md:grid-cols-[auto_1fr_auto] md:gap-4 md:pt-3 md:pb-2">
         {/* Logo */}
-        <a href="/" aria-label="Wheat & Stone home" className="flex items-center shrink-0 cursor-pointer">
+        <a href="/" aria-label="Wheat & Stone home" className="flex min-w-0 items-center shrink-0 cursor-pointer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/tlogo.png"
             alt="Wheat & Stone"
             width={560}
             height={168}
-            style={{ height: "clamp(68px, 9.5vw, 128px)", width: "auto" }}
-            className="block select-none cursor-pointer"
+            className="block h-[42px] w-auto select-none cursor-pointer sm:h-[46px] md:h-[clamp(68px,9.5vw,128px)]"
             loading="eager"
             decoding="async"
           />
@@ -676,18 +663,20 @@ export default function Header() {
           connectWallet={connectWallet}
         />
 
-        {/* Mobile hamburger — flush right in its own rail */}
+        {/* Mobile utility rail */}
         <div
-          className="md:hidden justify-self-end self-center"
-          style={{ gridColumn: 3 }}
+          className="md:hidden flex min-w-0 items-center justify-end gap-2"
+          style={{ gridColumn: 2 }}
           ref={menuBtnRef}
         >
+          <ThemeCircles value={theme} onChange={updateTheme} compact dense className="justify-end" />
           <button
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((v) => !v)}
-            className="h-11 inline-flex items-center gap-2 rounded-lg border border-black/10 bg-transparent px-3 hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10 active:scale-[0.98] transition cursor-pointer"
+            title={menuOpen ? "Close menu" : "Open menu"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-transparent hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10 active:scale-[0.98] transition cursor-pointer"
           >
             <svg
               className={`w-5 h-5 text-[var(--foreground)] opacity-90 transition-transform ${menuOpen ? "rotate-90" : ""}`}
@@ -709,89 +698,10 @@ export default function Header() {
                 </>
               )}
             </svg>
-            <span className="text-[13px] font-medium">Menu</span>
+            <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
           </button>
         </div>
       </div>
-
-      {/* Mobile quick actions for better discoverability */}
-      {!menuOpen ? (
-        <div className="ws-container md:hidden pb-2">
-          <div className="space-y-2 py-1">
-            <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              <ThemeCircles value={theme} onChange={updateTheme} compact />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => router.push("/articles")} className={mobileChipClass}>
-                Articles
-              </button>
-              <button onClick={() => router.push("/premium")} className={mobileChipClass}>
-                Premium
-              </button>
-
-              {session ? (
-                <>
-                  <button onClick={() => router.push("/account")} className={mobileChipClass}>
-                    Account
-                  </button>
-                  <button
-                    onClick={() => router.push(isAdmin ? "/admin" : "/community")}
-                    className={mobileChipClass}
-                  >
-                    {isAdmin ? "Admin" : "Community"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => router.push("/register")} className={mobileChipClass}>
-                    Register
-                  </button>
-                  <button onClick={() => void openLogin()} className={mobileChipClass}>
-                    Login
-                  </button>
-                </>
-              )}
-            </div>
-
-            {session ? (
-              <div className="rounded-xl border border-black/10 dark:border-white/10 px-3 py-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[11px] opacity-75">{identityLabel}</p>
-                    {walletShortAddress ? (
-                      <p className="mt-1 truncate text-[11px] text-emerald-300/90">
-                        {walletShortAddress}
-                      </p>
-                    ) : null}
-                    {walletError ? (
-                      <p className="mt-1 line-clamp-2 text-[11px] text-amber-300/90">
-                        {walletError}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <button
-                    onClick={connectWallet}
-                    disabled={walletBusy}
-                    className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer ${
-                      walletConnected
-                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25"
-                        : "bg-neutral-200 text-neutral-900 border-neutral-300 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-700"
-                    }`}
-                  >
-                    {walletBusy
-                      ? "Linking..."
-                      : walletConnected
-                        ? "Wallet Linked"
-                        : "Connect Wallet"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
 
       {menuOpen ? (
         <button
@@ -815,8 +725,6 @@ export default function Header() {
         <div className="mx-auto max-h-[calc(100dvh-var(--header-h)-0.5rem)] overflow-y-auto overscroll-contain">
           <MobileMenu
             session={session}
-            theme={theme}
-            setTheme={updateTheme}
             isAdmin={!!isAdmin}
             offersBadgeCount={offersBadgeCount}
             walletConnected={walletConnected}
