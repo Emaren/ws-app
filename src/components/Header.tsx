@@ -623,9 +623,10 @@ export default function Header() {
             alt="Wheat & Stone"
             width={560}
             height={168}
-            className="block h-10 w-auto select-none cursor-pointer sm:h-11 md:h-16 lg:h-20"
+            className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
+            style={{ height: "clamp(40px, 5vw, 80px)", width: "auto" }}
           />
         </a>
 
