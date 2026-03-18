@@ -623,7 +623,7 @@ export default function Header() {
             alt="Wheat & Stone"
             width={560}
             height={168}
-            className="block h-[40px] w-auto select-none cursor-pointer sm:h-[44px] md:h-[clamp(52px,5vw,82px)]"
+            className="block h-10 w-auto select-none cursor-pointer sm:h-11 md:h-16 lg:h-20"
             loading="eager"
             decoding="async"
           />
