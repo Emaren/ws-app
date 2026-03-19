@@ -610,7 +610,7 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:gap-y-0 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:gap-y-0 md:pt-3 md:pb-2">
         {/* Logo */}
         <a
           href="/"
@@ -624,10 +624,9 @@ export default function Header() {
             alt="Wheat & Stone"
             width={560}
             height={168}
-            className="block select-none cursor-pointer"
+            className="block !h-[82px] !w-auto select-none cursor-pointer md:!h-[104px]"
             loading="eager"
             decoding="async"
-            style={{ height: "clamp(72px, 7vw, 104px)", width: "auto" }}
           />
         </a>
 
@@ -671,7 +670,7 @@ export default function Header() {
 
         {/* Mobile menu button */}
         <div
-          className="md:hidden flex min-w-0 items-center justify-end overflow-hidden px-1"
+          className="md:hidden -mt-3 flex min-w-0 items-center justify-end overflow-hidden px-1"
           style={{ gridColumn: "2 / 4", gridRow: 2 }}
         >
           <ThemeCircles
