@@ -67,10 +67,11 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
   expect(geometry.themeRight ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect).not.toBeNull();
   expect(geometry.logoRect).not.toBeNull();
-  expect(geometry.themeLeft ?? 0).toBeGreaterThanOrEqual((geometry.logoRect?.right ?? 0) - 1);
-  expect(geometry.themeRight ?? 0).toBeLessThanOrEqual((geometry.menuRect?.left ?? geometry.width) + 1);
-  expect(geometry.themeTop ?? 0).toBeGreaterThanOrEqual((geometry.menuRect?.top ?? 0) - 2);
-  expect(geometry.themeBottom ?? 0).toBeLessThanOrEqual((geometry.menuRect?.bottom ?? geometry.height) + 2);
+  expect(geometry.themeTop ?? 0).toBeGreaterThanOrEqual(
+    Math.max(geometry.menuRect?.bottom ?? 0, geometry.logoRect?.bottom ?? 0) - 1,
+  );
+  expect(geometry.themeLeft ?? 0).toBeGreaterThanOrEqual(0);
+  expect(geometry.themeRight ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect?.left ?? 0).toBeGreaterThanOrEqual(0);
   expect(geometry.menuRect?.right ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect?.bottom ?? 0).toBeLessThanOrEqual(geometry.height);

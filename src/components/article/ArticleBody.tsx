@@ -7,6 +7,7 @@ import ArticleCommerceModuleView, {
 import { stripLeadingDuplicateExcerptBlock } from "./articleBodySupport";
 import WysiwygStyle from "./WysiwygStyle";
 import BigThumbs from "./BigThumbs";
+import type { SiteEdition, SiteLayout } from "@/lib/experienceSystem";
 
 function stripSingleOuterDiv(html: string): string {
   const t = html.trim();
@@ -130,13 +131,44 @@ function legacyCommerceModules(article: {
   ];
 }
 
-export default function ArticleBody({ article }: { article: ArticleBodyArticle }) {
+function editionSurfaceToneClass(edition: SiteEdition): string {
+  if (edition === "rustic") {
+    return "border-amber-300/20 bg-amber-300/[0.06]";
+  }
+  if (edition === "modern") {
+    return "border-cyan-300/15 bg-cyan-400/[0.05]";
+  }
+  if (edition === "operator") {
+    return "border-sky-400/20 bg-sky-500/[0.06]";
+  }
+  return "border-white/12 bg-white/[0.02]";
+}
+
+export default function ArticleBody({
+  article,
+  experience,
+}: {
+  article: ArticleBodyArticle;
+  experience?: {
+    edition: SiteEdition;
+    layout: SiteLayout;
+  };
+}) {
   const raw = article.content ?? "";
   const clean = sanitizeArticleHtml(raw);
   const unwrapped = stripLeadingDuplicateExcerptBlock(
     stripSingleOuterDiv(clean),
     article.excerpt,
   );
+  const edition = experience?.edition ?? "classic";
+  const layout = experience?.layout ?? "editorial";
+  const decoratedBody = layout !== "editorial";
+  const excerptShellClass = decoratedBody
+    ? `rounded-[1.75rem] border p-5 md:p-6 ${editionSurfaceToneClass(edition)}`
+    : "";
+  const bodyShellClass = decoratedBody
+    ? `rounded-[1.85rem] border p-5 md:p-7 ${editionSurfaceToneClass(edition)}`
+    : "";
 
   const hasAnyBody = unwrapped.trim().length > 0;
   const excerpt = article.excerpt?.trim() || "";
@@ -157,7 +189,7 @@ export default function ArticleBody({ article }: { article: ArticleBodyArticle }
       <BigThumbs slug={article.slug} />
 
       {hasExcerpt && (
-        <section className="ws-article mt-4 md:mt-5 mb-6 md:mb-7">
+        <section className={`mt-4 md:mt-5 mb-6 md:mb-7 ${excerptShellClass}`.trim()}>
           <h3 className="text-[1.95rem] md:text-[2.05rem] leading-tight font-semibold tracking-tight">
             Excerpt:
           </h3>
@@ -168,7 +200,7 @@ export default function ArticleBody({ article }: { article: ArticleBodyArticle }
         </section>
       )}
 
-      <article className="min-w-0 overflow-x-clip">
+      <article className={`min-w-0 overflow-x-clip ${bodyShellClass}`.trim()}>
         <div
           className="wysiwyg overflow-x-hidden
             [&>*:first-child]:mt-0 [&_hr:first-child]:mt-0
