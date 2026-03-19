@@ -99,35 +99,41 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 232,
-        mdW: 248,
-        lgW: 262,
-        h: 180,
-        mdH: 190,
-        lgH: 198,
+        w: 206,
+        mdW: 218,
+        lgW: 228,
+        h: 126,
+        mdH: 132,
+        lgH: 138,
         shape: "image" as const,
-        shapeMargin: 10,
+        shapeMargin: 8,
         shapeThreshold: 0.2,
-        scale: 1.2,
-        mdScale: 1.24,
-        lgScale: 1.28,
+        nudgeY: 2,
+        mdNudgeY: 2,
+        lgNudgeY: 3,
+        scale: 1.36,
+        mdScale: 1.42,
+        lgScale: 1.46,
       };
     }
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 186,
-        mdW: 198,
-        lgW: 210,
-        h: 88,
-        mdH: 92,
-        lgH: 96,
+        w: 172,
+        mdW: 184,
+        lgW: 194,
+        h: 62,
+        mdH: 66,
+        lgH: 70,
         shape: "image" as const,
-        shapeMargin: 10,
+        shapeMargin: 8,
         shapeThreshold: 0.15,
-        scale: 1.14,
-        mdScale: 1.17,
-        lgScale: 1.2,
+        nudgeY: 1,
+        mdNudgeY: 1,
+        lgNudgeY: 1,
+        scale: 1.2,
+        mdScale: 1.24,
+        lgScale: 1.28,
       };
     }
 
@@ -149,9 +155,9 @@ function resolveEditorialOpenShell(input: {
 }) {
   const widthClass =
     input.businessSlug === "homesteader-health"
-      ? "md:w-[16.75rem] lg:w-[17.5rem]"
+      ? "md:w-[15.5rem] lg:w-[16rem]"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:w-[15rem] lg:w-[15.5rem]"
+        ? "md:w-[14rem] lg:w-[14.5rem]"
         : input.compact
           ? "md:w-[17rem] lg:w-[17.5rem]"
           : "md:w-[18rem] lg:w-[18.75rem]";
@@ -241,7 +247,7 @@ export default function ArticleCommerceModuleView({
         className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
         style={{ clear: side }}
       >
-        <div className="group space-y-2 text-center md:space-y-2.5">
+        <div className="group space-y-0.5 text-center md:space-y-1">
           <div className="flex justify-center">
             <FloatAd
               buttonId={triggerId}
@@ -274,12 +280,12 @@ export default function ArticleCommerceModuleView({
           <button
             type="button"
             onClick={() => document.getElementById(triggerId)?.click()}
-            className="mx-auto flex w-full max-w-[16.5rem] cursor-pointer flex-col items-center gap-1.5 rounded-[1rem] bg-transparent px-1 py-1 text-center text-white/88 transition duration-300 ease-out hover:-translate-y-0.5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:text-white"
+            className="mx-auto flex w-full max-w-[14.75rem] cursor-pointer flex-col items-center gap-0.5 rounded-[1rem] bg-transparent px-1 py-0.5 text-center text-white/88 transition duration-300 ease-out hover:-translate-y-0.5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:text-white"
             aria-label={`${visibleTitle} - open delivery form`}
           >
             <h4
               className={`font-semibold tracking-tight text-white/90 ${
-                compact ? "text-[1.1rem] leading-[1.14] md:text-[1.16rem]" : "text-[1.16rem] leading-[1.14] md:text-[1.24rem]"
+                compact ? "text-[1.02rem] leading-[1.08] md:text-[1.06rem]" : "text-[1.08rem] leading-[1.08] md:text-[1.14rem]"
               }`}
             >
               {visibleTitle}
@@ -287,8 +293,8 @@ export default function ArticleCommerceModuleView({
 
             {body ? (
               <p
-                className={`mx-auto max-w-[15.5rem] leading-[1.62] text-white/62 ${
-                  compact ? "text-[0.84rem] md:text-[0.86rem]" : "text-[0.86rem] md:text-[0.9rem]"
+                className={`mx-auto max-w-[14.5rem] leading-[1.48] text-white/56 ${
+                  compact ? "text-[0.78rem] md:text-[0.8rem]" : "text-[0.8rem] md:text-[0.83rem]"
                 }`}
               >
                 {body}
