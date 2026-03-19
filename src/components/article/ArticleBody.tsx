@@ -109,7 +109,7 @@ function legacyCommerceModules(article: {
       inventoryItemName: "Homesteader Health Delivery",
       title: "Homesteader Health",
       badgeText: "Local spotlight",
-      body: "A knowledgeable health-food team with a long track record in organic sourcing, practical guidance, and shelves built around everyday wellness instead of trend-chasing.",
+      body: "A longtime northern health-food grocer with practical guidance, curated organic shelves, and the kind of everyday wellness focus that still feels personal.",
       imageSrc: "/hh.tight.h156.v3.png",
     },
     {
@@ -122,7 +122,7 @@ function legacyCommerceModules(article: {
       inventoryItemName: "Beaverlodge Butcher Shop Delivery",
       title: "Beaverlodge Butcher Shop",
       badgeText: "Butcher pickup and delivery",
-      body: "A family-run Alberta butcher shop known for custom cuts, house-made sausage, and the kind of local quality standards that still feel personal.",
+      body: "A family-run Alberta butcher shop known for custom cuts, house-made sausage, careful sourcing, and quality standards that still feel proudly local.",
       imageSrc: "/bbs.adcard.center.v4.png",
       imageAlt: "Beaverlodge Butcher Shop delivery",
     },

@@ -99,12 +99,12 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 232,
-        mdW: 248,
-        lgW: 264,
-        h: 176,
-        mdH: 188,
-        lgH: 198,
+        w: 236,
+        mdW: 272,
+        lgW: 304,
+        h: 182,
+        mdH: 206,
+        lgH: 228,
         shape: "image" as const,
         shapeMargin: 20,
         shapeThreshold: 0.2,
@@ -116,12 +116,12 @@ function resolveFloatPresentation(input: {
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 284,
-        mdW: 300,
-        lgW: 316,
-        h: 128,
-        mdH: 136,
-        lgH: 144,
+        w: 236,
+        mdW: 250,
+        lgW: 266,
+        h: 120,
+        mdH: 126,
+        lgH: 134,
         shape: "image" as const,
         shapeMargin: 20,
         shapeThreshold: 0.15,
@@ -140,6 +140,28 @@ function resolveFloatPresentation(input: {
   }
 
   return sizeProps(input.compact ? "COMPACT" : input.sizePreset);
+}
+
+function resolveEditorialOpenShell(input: {
+  side: "left" | "right";
+  businessSlug: string | null;
+  compact: boolean;
+}) {
+  const widthClass =
+    input.businessSlug === "homesteader-health"
+      ? "md:w-[24rem] lg:w-[25.5rem]"
+      : input.businessSlug === "beaverlodge-butcher-shop"
+        ? "md:w-[22.5rem] lg:w-[23.5rem]"
+        : input.compact
+          ? "md:w-[21.5rem] lg:w-[22.5rem]"
+          : "md:w-[23rem] lg:w-[24rem]";
+
+  const sideClass =
+    input.side === "left"
+      ? "md:float-left md:mr-10 lg:mr-12"
+      : "md:float-right md:ml-10 lg:ml-12";
+
+  return `${sideClass} ${widthClass}`;
 }
 
 export default function ArticleCommerceModuleView({
@@ -199,9 +221,18 @@ export default function ArticleCommerceModuleView({
     businessName && businessName.trim() && businessName.trim() !== visibleTitle ? businessName.trim() : null;
 
   if (visualStyle === "editorial-open") {
+    const wrapperClassName = resolveEditorialOpenShell({
+      side,
+      businessSlug,
+      compact,
+    });
+
     return (
-      <aside className={`my-5 text-white/95 ${compact ? "" : "md:my-6"}`}>
-        <div style={{ clear: side }}>
+      <aside
+        className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
+        style={{ clear: side }}
+      >
+        <div className={`${side === "right" ? "md:text-left" : "md:text-left"}`}>
           <FloatAd
             frameless
             label={visibleTitle}
@@ -228,14 +259,14 @@ export default function ArticleCommerceModuleView({
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/68 md:text-[11px]">
             {badgeText}
           </div>
 
           <h4
             className={`max-w-[24rem] font-semibold tracking-tight text-white ${
-              compact ? "text-[1.5rem] leading-[1.1] md:text-[1.7rem]" : "text-[1.75rem] leading-[1.04] md:text-[2rem]"
+              compact ? "text-[1.42rem] leading-[1.1] md:text-[1.55rem]" : "text-[1.6rem] leading-[1.05] md:text-[1.82rem]"
             }`}
           >
             {visibleTitle}
@@ -244,7 +275,7 @@ export default function ArticleCommerceModuleView({
           {body ? (
             <p
               className={`max-w-[42rem] leading-[1.72] text-white/80 ${
-                compact ? "text-[0.98rem] md:text-[1rem]" : "text-[1rem] md:text-[1.04rem]"
+                compact ? "text-[0.97rem] md:text-[0.98rem]" : "text-[0.98rem] md:text-[1rem]"
               }`}
             >
               {body}
@@ -264,6 +295,8 @@ export default function ArticleCommerceModuleView({
             </div>
           ) : null}
         </div>
+
+        <div style={{ clear: "both" }} />
       </aside>
     );
   }
