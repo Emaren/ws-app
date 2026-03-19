@@ -240,6 +240,12 @@ export default function ArticleCommerceModuleView({
       : businessSlug === "beaverlodge-butcher-shop"
         ? "max-w-[13.7rem] md:max-w-[14rem]"
         : "max-w-[14.5rem]";
+  const editorialTextOffsetClass =
+    businessSlug === "homesteader-health"
+      ? "-mt-1 md:-mt-1.5"
+      : businessSlug === "beaverlodge-butcher-shop"
+        ? "-mt-3 md:-mt-3.5"
+        : "";
 
   if (visualStyle === "editorial-open") {
     const wrapperClassName = resolveEditorialOpenShell({
@@ -253,7 +259,7 @@ export default function ArticleCommerceModuleView({
         className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
         style={{ clear: side }}
       >
-        <div className="group space-y-0 text-center md:space-y-0.5">
+        <div className="group space-y-0 rounded-[1rem] px-1 py-1 text-center transition-colors duration-200 ease-out hover:bg-[var(--editorial-ad-hover-bg)] focus-within:bg-[var(--editorial-ad-hover-bg)] md:space-y-0.5">
           <div className="flex justify-center">
             <FloatAd
               buttonId={triggerId}
@@ -265,9 +271,9 @@ export default function ArticleCommerceModuleView({
               imageAlt={module.imageAlt || visibleTitle}
               pad={0}
               imgFit="contain"
-              hoverTint
+              hoverTint={false}
               caption={null}
-              containerClassName="duration-200 ease-out"
+              containerClassName="duration-200 ease-out hover:ring-transparent dark:hover:ring-transparent group-hover:brightness-[0.92]"
               deliveryLeadContext={{
                 source: "LOCAL_AD",
                 articleSlug,
@@ -286,22 +292,25 @@ export default function ArticleCommerceModuleView({
           <button
             type="button"
             onClick={() => document.getElementById(triggerId)?.click()}
-            className={`mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center text-white/84 transition-colors duration-200 ease-out hover:bg-black/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:bg-black/20 group-hover:text-white ${editorialTextShellClass}`}
+            className={`mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${editorialTextShellClass} ${editorialTextOffsetClass}`}
             aria-label={`${visibleTitle} - open delivery form`}
+            style={{ color: "var(--editorial-ad-copy)" }}
           >
             <h4
-              className={`font-semibold tracking-tight text-white/90 ${
+              className={`font-semibold tracking-tight ${
                 compact ? "text-[1rem] leading-[1.05] md:text-[1.04rem]" : "text-[1.02rem] leading-[1.05] md:text-[1.08rem]"
               }`}
+              style={{ color: "var(--editorial-ad-title)" }}
             >
               {visibleTitle}
             </h4>
 
             {body ? (
               <p
-                className={`mx-auto leading-[1.42] text-white/52 ${
+                className={`mx-auto leading-[1.42] ${
                   compact ? "text-[0.74rem] md:text-[0.77rem]" : "text-[0.76rem] md:text-[0.79rem]"
                 }`}
+                style={{ color: "var(--editorial-ad-muted)" }}
               >
                 {body}
               </p>

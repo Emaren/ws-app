@@ -7,6 +7,10 @@
   --foreground:#f2efe9;
   --autofill-text:#f2efe9;
   --autofill-bg:#090909;
+  --editorial-ad-title:rgba(242,239,233,.92);
+  --editorial-ad-copy:rgba(242,239,233,.84);
+  --editorial-ad-muted:rgba(242,239,233,.58);
+  --editorial-ad-hover-bg:rgba(0,0,0,.18);
 
   /* Layout tokens */
   --page-max:1200px;
@@ -45,6 +49,10 @@
   --foreground:#171717;
   --autofill-text:#111111;
   --autofill-bg:#ffffff;
+  --editorial-ad-title:rgba(108,72,62,.94);
+  --editorial-ad-copy:rgba(102,73,66,.86);
+  --editorial-ad-muted:rgba(122,92,81,.76);
+  --editorial-ad-hover-bg:rgba(143,94,79,.08);
 }
 
 :root[data-theme="sepia"]{
@@ -52,6 +60,10 @@
   --foreground:#2f2417;
   --autofill-text:#2f2417;
   --autofill-bg:#f4ecd9;
+  --editorial-ad-title:rgba(98,72,46,.94);
+  --editorial-ad-copy:rgba(92,68,46,.84);
+  --editorial-ad-muted:rgba(115,88,61,.76);
+  --editorial-ad-hover-bg:rgba(134,96,61,.08);
 }
 
 :root[data-theme="walnut"],

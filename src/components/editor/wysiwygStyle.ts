@@ -68,6 +68,9 @@ export const WYSIWYG_CSS = `
     border-radius: .5rem;
     font-style: italic;
   }
+  :where(.wysiwyg, body) blockquote p {
+    margin: 0;
+  }
 
   /* Tables — borders and cell padding that match the editor */
   :where(.wysiwyg, body) table {

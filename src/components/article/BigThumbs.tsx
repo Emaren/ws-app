@@ -374,7 +374,9 @@ export default function BigThumbs({ slug }: Props) {
           text-align: left;
           font-variant-numeric: tabular-nums;
           color: color-mix(in oklab, var(--vote-main) 84%, #fff);
-          text-shadow: 0 0 8px color-mix(in oklab, var(--vote-main) 35%, transparent);
+          text-shadow:
+            1px 1px 0 color-mix(in oklab, var(--vote-main) 12%, #000 88%),
+            4px 5px 10px color-mix(in oklab, var(--vote-main) 26%, transparent);
           transform-origin: center;
           background: transparent;
           border: 0;
