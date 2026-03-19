@@ -99,41 +99,41 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 206,
-        mdW: 218,
-        lgW: 228,
-        h: 126,
-        mdH: 132,
-        lgH: 138,
+        w: 192,
+        mdW: 200,
+        lgW: 208,
+        h: 94,
+        mdH: 98,
+        lgH: 102,
         shape: "image" as const,
-        shapeMargin: 8,
+        shapeMargin: 6,
         shapeThreshold: 0.2,
-        nudgeY: 2,
-        mdNudgeY: 2,
-        lgNudgeY: 3,
-        scale: 1.36,
-        mdScale: 1.42,
-        lgScale: 1.46,
+        nudgeY: 1,
+        mdNudgeY: 1,
+        lgNudgeY: 2,
+        scale: 1.28,
+        mdScale: 1.32,
+        lgScale: 1.36,
       };
     }
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 172,
-        mdW: 184,
-        lgW: 194,
-        h: 62,
-        mdH: 66,
-        lgH: 70,
+        w: 188,
+        mdW: 198,
+        lgW: 208,
+        h: 74,
+        mdH: 78,
+        lgH: 82,
         shape: "image" as const,
-        shapeMargin: 8,
+        shapeMargin: 6,
         shapeThreshold: 0.15,
         nudgeY: 1,
         mdNudgeY: 1,
         lgNudgeY: 1,
-        scale: 1.2,
-        mdScale: 1.24,
-        lgScale: 1.28,
+        scale: 1.24,
+        mdScale: 1.28,
+        lgScale: 1.32,
       };
     }
 
@@ -155,9 +155,9 @@ function resolveEditorialOpenShell(input: {
 }) {
   const widthClass =
     input.businessSlug === "homesteader-health"
-      ? "md:w-[15.5rem] lg:w-[16rem]"
+      ? "md:w-[14.25rem] lg:w-[14.75rem]"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:w-[14rem] lg:w-[14.5rem]"
+        ? "md:w-[14.75rem] lg:w-[15.25rem]"
         : input.compact
           ? "md:w-[17rem] lg:w-[17.5rem]"
           : "md:w-[18rem] lg:w-[18.75rem]";
@@ -234,6 +234,12 @@ export default function ArticleCommerceModuleView({
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  const editorialTextShellClass =
+    businessSlug === "homesteader-health"
+      ? "max-w-[13.1rem] md:max-w-[13.35rem]"
+      : businessSlug === "beaverlodge-butcher-shop"
+        ? "max-w-[13.7rem] md:max-w-[14rem]"
+        : "max-w-[14.5rem]";
 
   if (visualStyle === "editorial-open") {
     const wrapperClassName = resolveEditorialOpenShell({
@@ -247,7 +253,7 @@ export default function ArticleCommerceModuleView({
         className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
         style={{ clear: side }}
       >
-        <div className="group space-y-0.5 text-center md:space-y-1">
+        <div className="group space-y-0 text-center md:space-y-0.5">
           <div className="flex justify-center">
             <FloatAd
               buttonId={triggerId}
@@ -261,7 +267,7 @@ export default function ArticleCommerceModuleView({
               imgFit="contain"
               hoverTint
               caption={null}
-              containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5 group-hover:-translate-y-0.5"
+              containerClassName="duration-200 ease-out"
               deliveryLeadContext={{
                 source: "LOCAL_AD",
                 articleSlug,
@@ -280,12 +286,12 @@ export default function ArticleCommerceModuleView({
           <button
             type="button"
             onClick={() => document.getElementById(triggerId)?.click()}
-            className="mx-auto flex w-full max-w-[14.75rem] cursor-pointer flex-col items-center gap-0.5 rounded-[1rem] bg-transparent px-1 py-0.5 text-center text-white/88 transition duration-300 ease-out hover:-translate-y-0.5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:text-white"
+            className={`mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center text-white/84 transition-colors duration-200 ease-out hover:bg-black/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 group-hover:bg-black/20 group-hover:text-white ${editorialTextShellClass}`}
             aria-label={`${visibleTitle} - open delivery form`}
           >
             <h4
               className={`font-semibold tracking-tight text-white/90 ${
-                compact ? "text-[1.02rem] leading-[1.08] md:text-[1.06rem]" : "text-[1.08rem] leading-[1.08] md:text-[1.14rem]"
+                compact ? "text-[1rem] leading-[1.05] md:text-[1.04rem]" : "text-[1.02rem] leading-[1.05] md:text-[1.08rem]"
               }`}
             >
               {visibleTitle}
@@ -293,8 +299,8 @@ export default function ArticleCommerceModuleView({
 
             {body ? (
               <p
-                className={`mx-auto max-w-[14.5rem] leading-[1.48] text-white/56 ${
-                  compact ? "text-[0.78rem] md:text-[0.8rem]" : "text-[0.8rem] md:text-[0.83rem]"
+                className={`mx-auto leading-[1.42] text-white/52 ${
+                  compact ? "text-[0.74rem] md:text-[0.77rem]" : "text-[0.76rem] md:text-[0.79rem]"
                 }`}
               >
                 {body}

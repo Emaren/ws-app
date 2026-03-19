@@ -279,7 +279,7 @@ export default function NativeCommentsSection({
             </p>
 
             {!isReply ? (
-              <div className="mt-1.5 flex items-center gap-3 text-[11px] font-medium tracking-[0.12em] md:mt-2 md:gap-4 md:uppercase md:tracking-[0.18em]">
+              <div className="mt-1.5 flex items-center gap-3 text-[12px] font-medium text-neutral-300 md:mt-2 md:gap-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -288,12 +288,12 @@ export default function NativeCommentsSection({
                     setReplyTargetId((current) => (current === comment.id ? null : comment.id));
                     setReplyBody("");
                   }}
-                  className="text-neutral-300 transition hover:text-white"
+                  className="tracking-normal text-neutral-300 transition hover:text-white"
                 >
                   {replyComposerOpen ? "Cancel reply" : "Reply"}
                 </button>
                 {replyCount > 0 ? (
-                  <span className="text-neutral-500">
+                  <span className="text-[11px] text-neutral-500">
                     {replyCount} {replyCount === 1 ? "reply" : "replies"}
                   </span>
                 ) : null}
@@ -323,9 +323,8 @@ export default function NativeCommentsSection({
                     {sendingTarget === comment.id ? "..." : <SendIcon />}
                   </button>
                 </div>
-                <div className="hidden items-center justify-between gap-3 text-[11px] text-neutral-400 md:flex">
+                <div className="hidden items-center gap-3 text-[11px] text-neutral-400 md:flex">
                   <span className="min-w-0 truncate">{identityLabel}</span>
-                  <span className="shrink-0">{trimmedReplyBody.length}/{ARTICLE_COMMENT_BODY_MAX_LENGTH}</span>
                 </div>
               </form>
             ) : null}
@@ -377,9 +376,8 @@ export default function NativeCommentsSection({
               </button>
             </div>
 
-            <div className="hidden items-center justify-between gap-3 text-[11px] text-neutral-400 md:flex">
+            <div className="hidden items-center gap-3 text-[11px] text-neutral-400 md:flex">
               <span className="min-w-0 truncate">{identityLabel}</span>
-              <span className="shrink-0">{trimmedBody.length}/{ARTICLE_COMMENT_BODY_MAX_LENGTH}</span>
             </div>
 
             {!isSignedIn ? (
