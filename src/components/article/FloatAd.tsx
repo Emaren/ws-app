@@ -236,6 +236,7 @@ function formatRewardNotice(
 }
 
 type FloatAdProps = {
+  buttonId?: string;
   label: string;
   side: "right" | "left";
   imageSrc?: string | null;
@@ -291,6 +292,7 @@ type FloatAdProps = {
 };
 
 export default function FloatAd({
+  buttonId,
   label,
   side,
   imageSrc,
@@ -796,6 +798,7 @@ export default function FloatAd({
   return (
     <>
       <button
+        id={buttonId}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={isDialogOpen}

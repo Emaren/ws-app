@@ -143,7 +143,7 @@ export default function BigThumbs({ slug }: Props) {
   }
 
   return (
-    <section className="ws-container mx-auto w-full mt-3 md:mt-4 mb-0 md:mb-0">
+    <section className="ws-container mx-auto w-full mt-4 md:mt-5 mb-1 md:mb-1">
       <div className="thumbs-wrap" role="group" aria-label="Product reactions">
         {selected === "like" ? (
           <button
@@ -249,6 +249,7 @@ export default function BigThumbs({ slug }: Props) {
           align-items: center;
           justify-content: center;
           gap: clamp(2rem, 8vw, 7rem);
+          padding-block: clamp(2px, 0.35vw, 5px);
         }
 
         .thumb-vote {
