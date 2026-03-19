@@ -189,10 +189,7 @@ export default function ArticleBody({
 
       {hasExcerpt && (
         <section className={`mt-4 md:mt-5 mb-6 md:mb-7 ${excerptShellClass}`.trim()}>
-          <h3 className="text-[1.95rem] md:text-[2.05rem] leading-tight font-semibold tracking-tight">
-            Excerpt:
-          </h3>
-          <p className="mt-2 text-[1.2rem] md:text-[1.24rem] leading-[1.58] opacity-95">
+          <p className="text-[1.2rem] md:text-[1.24rem] leading-[1.58] opacity-95">
             {excerpt}
           </p>
           <hr className="adbay-rule mt-5 md:mt-6" />
