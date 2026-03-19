@@ -615,16 +615,16 @@ export default function Header() {
         <a
           href="/"
           aria-label="Wheat & Stone home"
-          className="flex min-w-0 items-center shrink-0 cursor-pointer md:justify-self-start"
-          style={{ gridColumn: 1, gridRow: 1 }}
+          className="row-span-2 flex min-w-0 items-center self-center shrink-0 cursor-pointer md:row-span-1 md:justify-self-start"
+          style={{ gridColumn: 1 }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/tlogo.png"
+            src="/tlogo-trimmed.png"
             alt="Wheat & Stone"
-            width={560}
-            height={168}
-            className="block !h-[82px] !w-auto select-none cursor-pointer md:!h-[104px]"
+            width={891}
+            height={915}
+            className="block !h-[92px] !w-auto select-none cursor-pointer md:!h-[118px]"
             loading="eager"
             decoding="async"
           />

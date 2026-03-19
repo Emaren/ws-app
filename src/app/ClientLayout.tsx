@@ -66,7 +66,10 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       {/* ROOT CLAMP — nothing may exceed the visual viewport */}
-      <div id="viewport-clamp" className="w-full max-w-[100svw] overflow-x-clip">
+      <div
+        id="viewport-clamp"
+        className="w-full max-w-[100svw] overflow-x-clip bg-[var(--background)]"
+      >
         {isExperiencePreviewRoute ? null : (
           <>
             <div className={container}>
