@@ -610,12 +610,12 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-1 pt-2 pb-2 md:grid-cols-[auto_1fr_auto] md:grid-rows-1 md:gap-4 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:pt-3 md:pb-2">
         {/* Logo */}
         <a
           href="/"
           aria-label="Wheat & Stone home"
-          className="row-span-2 flex min-w-0 items-center shrink-0 cursor-pointer md:row-auto"
+          className="flex min-w-0 items-center shrink-0 cursor-pointer md:justify-self-start"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -626,13 +626,13 @@ export default function Header() {
             className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
-            style={{ height: "clamp(40px, 5vw, 80px)", width: "auto" }}
+            style={{ height: "clamp(52px, 5vw, 80px)", width: "auto" }}
           />
         </a>
 
         <nav
           aria-label="Primary"
-          className="hidden md:flex min-w-0 items-center justify-center gap-4 lg:gap-6 text-sm"
+          className="hidden md:flex min-w-0 items-center justify-center gap-4 justify-self-center lg:gap-6 text-sm"
         >
           {PRIMARY_NAV_LINKS.map((link) => {
             const showOffersBadge = link.href === "/offers" && offersBadgeCount > 0;
@@ -670,8 +670,21 @@ export default function Header() {
 
         {/* Mobile menu button */}
         <div
+          className="md:hidden flex min-w-0 items-center justify-center overflow-hidden px-1"
+          style={{ gridColumn: 2 }}
+        >
+          <ThemeCircles
+            value={theme}
+            onChange={updateTheme}
+            compact
+            dense
+            className="w-full justify-center"
+          />
+        </div>
+
+        <div
           className="md:hidden flex min-w-0 items-center justify-end"
-          style={{ gridColumn: 2, gridRow: 1 }}
+          style={{ gridColumn: 3 }}
           ref={menuBtnRef}
         >
           <button
@@ -704,20 +717,6 @@ export default function Header() {
             </svg>
             <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
           </button>
-        </div>
-
-        {/* Mobile theme rail */}
-        <div
-          className="md:hidden flex min-w-0 items-center justify-end"
-          style={{ gridColumn: 2, gridRow: 2 }}
-        >
-          <ThemeCircles
-            value={theme}
-            onChange={updateTheme}
-            compact
-            dense
-            className="justify-end"
-          />
         </div>
       </div>
 

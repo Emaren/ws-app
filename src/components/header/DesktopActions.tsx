@@ -71,7 +71,7 @@ export default function DesktopActions({
 
   return (
     <div
-      className="hidden md:flex whitespace-nowrap min-w-0 justify-end"
+      className="hidden min-w-0 justify-self-end whitespace-nowrap md:flex"
       style={{
         gridColumn,
       }}
@@ -106,8 +106,8 @@ export default function DesktopActions({
           <ThemeCircles value={theme} onChange={setTheme} />
         </div>
       ) : (
-        <div className="flex min-w-[280px] max-w-[44ch] flex-col items-end gap-1.5">
-          <div className="w-full flex items-center justify-end">
+        <div className="flex min-w-[260px] max-w-[360px] flex-col items-end gap-1.5">
+          <div className="flex w-full items-center justify-end gap-2">
             <button
               onClick={connectWallet}
               disabled={walletBusy}
@@ -120,26 +120,24 @@ export default function DesktopActions({
                   ? "Wallet Linked"
                   : "Connect Wallet"}
             </button>
-          </div>
-
-          <div className="w-full flex items-center justify-end gap-2">
-            <button
-              onClick={() => router.push(roleLanding)}
-              className="max-w-[34ch] truncate text-sm hover:underline underline-offset-4 cursor-pointer"
-              title={identityLabel}
-            >
-              {identityLabel}
-            </button>
 
             <button
               aria-label="Open profile"
               title="Profile"
               onClick={() => router.push("/account")}
-              className="inline-flex items-center justify-center rounded-full border p-2 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 hover:bg-neutral-100 dark:border-white/15 dark:hover:bg-neutral-900 cursor-pointer"
             >
               <ProfileIcon className="text-[var(--foreground)]" />
             </button>
           </div>
+
+          <button
+            onClick={() => router.push(roleLanding)}
+            className="w-full truncate text-right text-[12px] opacity-75 hover:opacity-100 hover:underline underline-offset-4 cursor-pointer"
+            title={identityLabel}
+          >
+            {identityLabel}
+          </button>
 
           <div className="w-full flex items-center justify-end">
             <ThemeCircles value={theme} onChange={setTheme} />

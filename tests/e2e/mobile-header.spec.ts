@@ -42,6 +42,10 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
       .filter((label) => hiddenUtilityLabels.includes(label));
     const themeRects = themeButtons.map((button) => button.getBoundingClientRect());
     const menuRect = menuButton?.getBoundingClientRect() ?? null;
+    const logoRect =
+      document
+        .querySelector('a[aria-label="Wheat & Stone home"] img')
+        ?.getBoundingClientRect() ?? null;
 
     return {
       width: window.innerWidth,
@@ -50,7 +54,9 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
       themeLeft: themeRects.length > 0 ? Math.min(...themeRects.map((rect) => rect.left)) : null,
       themeRight: themeRects.length > 0 ? Math.max(...themeRects.map((rect) => rect.right)) : null,
       themeTop: themeRects.length > 0 ? Math.min(...themeRects.map((rect) => rect.top)) : null,
+      themeBottom: themeRects.length > 0 ? Math.max(...themeRects.map((rect) => rect.bottom)) : null,
       menuRect,
+      logoRect,
       visibleUtilityLabels,
     };
   });
@@ -60,7 +66,11 @@ test("mobile header keeps only the logo rail, theme circles, and menu visible wh
   expect(geometry.themeLeft ?? 0).toBeGreaterThanOrEqual(0);
   expect(geometry.themeRight ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect).not.toBeNull();
-  expect(geometry.themeTop ?? 0).toBeGreaterThanOrEqual((geometry.menuRect?.bottom ?? 0) - 1);
+  expect(geometry.logoRect).not.toBeNull();
+  expect(geometry.themeLeft ?? 0).toBeGreaterThanOrEqual((geometry.logoRect?.right ?? 0) - 1);
+  expect(geometry.themeRight ?? 0).toBeLessThanOrEqual((geometry.menuRect?.left ?? geometry.width) + 1);
+  expect(geometry.themeTop ?? 0).toBeGreaterThanOrEqual((geometry.menuRect?.top ?? 0) - 2);
+  expect(geometry.themeBottom ?? 0).toBeLessThanOrEqual((geometry.menuRect?.bottom ?? geometry.height) + 2);
   expect(geometry.menuRect?.left ?? 0).toBeGreaterThanOrEqual(0);
   expect(geometry.menuRect?.right ?? 0).toBeLessThanOrEqual(geometry.width);
   expect(geometry.menuRect?.bottom ?? 0).toBeLessThanOrEqual(geometry.height);
