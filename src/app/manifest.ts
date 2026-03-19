@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: "Wheat & Stone",
-    short_name: "W&S",
+    short_name: "Wheat & Stone",
     description:
       "A premium organic discovery app for trusted reviews, local buying, offers, and rewards.",
     start_url: "/?source=pwa",

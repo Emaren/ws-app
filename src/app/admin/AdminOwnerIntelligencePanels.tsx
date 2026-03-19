@@ -8,6 +8,8 @@ import type {
   AuthRegistrationStats,
   PublicSurfaceProbeHistory,
   SiteConfiguration,
+  SiteDeliveryPaymentConfig,
+  SiteDeliveryPaymentMethod,
   SystemSnapshot,
 } from "./adminDashboardTypes";
 import { feedBadgeClass, formatDateTime, formatMethodLabel } from "./adminDashboardPresentation";
@@ -18,6 +20,50 @@ function formatExperienceToken(value: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function createPaymentMethodDraft(
+  overrides: Partial<SiteDeliveryPaymentMethod> = {},
+): SiteDeliveryPaymentMethod {
+  return {
+    id:
+      overrides.id ??
+      `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    label: overrides.label ?? "",
+    tokenSymbol: overrides.tokenSymbol ?? "",
+    network: overrides.network ?? "",
+    address: overrides.address ?? "",
+    note: overrides.note ?? null,
+  };
+}
+
+function sanitizeDeliveryPaymentDraft(input: {
+  title: string;
+  summary: string;
+  instructions: string;
+  methods: SiteDeliveryPaymentMethod[];
+}): SiteDeliveryPaymentConfig {
+  return {
+    title: input.title.trim(),
+    summary: input.summary.trim(),
+    instructions: input.instructions.trim(),
+    methods: input.methods
+      .map((method) => ({
+        id: method.id.trim(),
+        label: method.label.trim(),
+        tokenSymbol: method.tokenSymbol.trim().toUpperCase(),
+        network: method.network.trim(),
+        address: method.address.trim(),
+        note: method.note?.trim() ? method.note.trim() : null,
+      }))
+      .filter(
+        (method) =>
+          method.label &&
+          method.tokenSymbol &&
+          method.network &&
+          method.address,
+      ),
+  };
 }
 
 type Props = {
@@ -39,7 +85,10 @@ type Props = {
   healthCheckNote: string | null;
   recrawlActionNote: string | null;
   onNavigate: (href: string) => void;
-  onSaveSiteConfiguration: (homePagePresetSlug: string) => void | Promise<void>;
+  onSaveSiteConfiguration: (input: {
+    homePagePresetSlug?: string;
+    deliveryPaymentConfig?: SiteDeliveryPaymentConfig;
+  }) => void | Promise<void>;
   onRunPublicProbeNow: () => void | Promise<void>;
   onRunSystemHealthCheck: () => void | Promise<void>;
   onOpenFreshXCardUrl: () => void;
@@ -72,10 +121,24 @@ export function AdminOwnerIntelligencePanels({
   onCopyFreshXCardUrl,
 }: Props) {
   const [homePresetDraft, setHomePresetDraft] = useState("");
+  const [paymentTitleDraft, setPaymentTitleDraft] = useState("");
+  const [paymentSummaryDraft, setPaymentSummaryDraft] = useState("");
+  const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState("");
+  const [paymentMethodsDraft, setPaymentMethodsDraft] = useState<SiteDeliveryPaymentMethod[]>([]);
 
   useEffect(() => {
     setHomePresetDraft(siteConfiguration?.homePagePresetSlug ?? "");
   }, [siteConfiguration?.homePagePresetSlug]);
+
+  useEffect(() => {
+    const config = siteConfiguration?.deliveryPaymentConfig;
+    setPaymentTitleDraft(config?.title ?? "");
+    setPaymentSummaryDraft(config?.summary ?? "");
+    setPaymentInstructionsDraft(config?.instructions ?? "");
+    setPaymentMethodsDraft(
+      (config?.methods ?? []).map((method) => createPaymentMethodDraft(method)),
+    );
+  }, [siteConfiguration?.deliveryPaymentConfig]);
 
   const selectedHomePreset = useMemo(
     () =>
@@ -87,6 +150,32 @@ export function AdminOwnerIntelligencePanels({
     siteConfiguration &&
       homePresetDraft &&
       homePresetDraft !== siteConfiguration.homePagePresetSlug,
+  );
+  const paymentDraftValue = useMemo(
+    () =>
+      sanitizeDeliveryPaymentDraft({
+        title: paymentTitleDraft,
+        summary: paymentSummaryDraft,
+        instructions: paymentInstructionsDraft,
+        methods: paymentMethodsDraft,
+      }),
+    [paymentInstructionsDraft, paymentMethodsDraft, paymentSummaryDraft, paymentTitleDraft],
+  );
+  const savedPaymentValue = useMemo(
+    () =>
+      siteConfiguration
+        ? sanitizeDeliveryPaymentDraft({
+            title: siteConfiguration.deliveryPaymentConfig.title,
+            summary: siteConfiguration.deliveryPaymentConfig.summary,
+            instructions: siteConfiguration.deliveryPaymentConfig.instructions,
+            methods: siteConfiguration.deliveryPaymentConfig.methods,
+          })
+        : null,
+    [siteConfiguration],
+  );
+  const paymentConfigDirty = Boolean(
+    siteConfiguration &&
+      JSON.stringify(paymentDraftValue) !== JSON.stringify(savedPaymentValue),
   );
   const onboardingOrigin = useMemo(() => {
     const raw = systemSnapshot?.release.runtime.siteOrigin?.trim() || "https://wheatandstone.ca";
@@ -107,6 +196,31 @@ export function AdminOwnerIntelligencePanels({
     ],
     [onboardingOrigin],
   );
+
+  function updatePaymentMethod(
+    methodId: string,
+    field: keyof Omit<SiteDeliveryPaymentMethod, "id">,
+    value: string,
+  ) {
+    setPaymentMethodsDraft((current) =>
+      current.map((method) =>
+        method.id === methodId
+          ? {
+              ...method,
+              [field]: field === "note" ? value || null : value,
+            }
+          : method,
+      ),
+    );
+  }
+
+  function addPaymentMethod() {
+    setPaymentMethodsDraft((current) => [...current, createPaymentMethodDraft()]);
+  }
+
+  function removePaymentMethod(methodId: string) {
+    setPaymentMethodsDraft((current) => current.filter((method) => method.id !== methodId));
+  }
 
   return (
     <div className="admin-card space-y-4 p-4 md:p-5">
@@ -207,7 +321,11 @@ export function AdminOwnerIntelligencePanels({
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => onSaveSiteConfiguration(homePresetDraft)}
+                        onClick={() =>
+                          onSaveSiteConfiguration({
+                            homePagePresetSlug: homePresetDraft,
+                          })
+                        }
                         disabled={!homePresetDirty || siteConfigurationSaveBusy}
                         className="rounded border border-amber-300/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium transition hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -257,6 +375,279 @@ export function AdminOwnerIntelligencePanels({
                     <p className="mt-1 text-xs opacity-70">
                       Updated {formatDateTime(siteConfiguration.updatedAt ?? siteConfiguration.generatedAt)}
                     </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="rounded-lg border border-cyan-300/25 bg-gradient-to-br from-cyan-500/12 via-sky-500/6 to-transparent p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Delivery Crypto Command</p>
+                  <p className="text-xs opacity-75">
+                    Set the premium crypto and hybrid payment rail shown inside delivery checkout.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={addPaymentMethod}
+                    disabled={siteConfigurationSaveBusy}
+                    className="rounded border border-white/20 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Add Address
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("/articles")}
+                    className="rounded border border-white/20 px-2 py-1 text-[11px] hover:bg-white/10"
+                  >
+                    Open Articles
+                  </button>
+                </div>
+              </div>
+
+              {siteConfiguration ? (
+                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                    <div className="grid gap-3">
+                      <label className="block">
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                          Panel Title
+                        </span>
+                        <input
+                          value={paymentTitleDraft}
+                          onChange={(event) => setPaymentTitleDraft(event.target.value)}
+                          disabled={siteConfigurationSaveBusy}
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                          placeholder="Crypto & Hybrid Delivery Payment"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                          Summary
+                        </span>
+                        <textarea
+                          value={paymentSummaryDraft}
+                          onChange={(event) => setPaymentSummaryDraft(event.target.value)}
+                          disabled={siteConfigurationSaveBusy}
+                          rows={3}
+                          className="mt-2 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                          placeholder="Pay in CAD, in crypto, or split the balance between both."
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                          Settlement Instructions
+                        </span>
+                        <textarea
+                          value={paymentInstructionsDraft}
+                          onChange={(event) => setPaymentInstructionsDraft(event.target.value)}
+                          disabled={siteConfigurationSaveBusy}
+                          rows={3}
+                          className="mt-2 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                          placeholder="Use the listed addresses for the crypto portion, then settle the remaining fiat balance with Wheat & Stone."
+                        />
+                      </label>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {paymentMethodsDraft.length > 0 ? (
+                        paymentMethodsDraft.map((method, index) => (
+                          <div
+                            key={method.id}
+                            className="rounded-xl border border-white/10 bg-black/25 p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                                Address {index + 1}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => removePaymentMethod(method.id)}
+                                disabled={siteConfigurationSaveBusy}
+                                className="rounded border border-white/15 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-50"
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <label className="block">
+                                <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                                  Label
+                                </span>
+                                <input
+                                  value={method.label}
+                                  onChange={(event) =>
+                                    updatePaymentMethod(method.id, "label", event.target.value)
+                                  }
+                                  disabled={siteConfigurationSaveBusy}
+                                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                                  placeholder="Wheat & Stone Treasury"
+                                />
+                              </label>
+
+                              <label className="block">
+                                <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                                  Token
+                                </span>
+                                <input
+                                  value={method.tokenSymbol}
+                                  onChange={(event) =>
+                                    updatePaymentMethod(method.id, "tokenSymbol", event.target.value)
+                                  }
+                                  disabled={siteConfigurationSaveBusy}
+                                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm uppercase outline-none transition focus:border-cyan-300/40"
+                                  placeholder="STONE"
+                                />
+                              </label>
+
+                              <label className="block md:col-span-2">
+                                <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                                  Network
+                                </span>
+                                <input
+                                  value={method.network}
+                                  onChange={(event) =>
+                                    updatePaymentMethod(method.id, "network", event.target.value)
+                                  }
+                                  disabled={siteConfigurationSaveBusy}
+                                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                                  placeholder="TokenChain / Cosmos / USDC on Base"
+                                />
+                              </label>
+
+                              <label className="block md:col-span-2">
+                                <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                                  Address
+                                </span>
+                                <textarea
+                                  value={method.address}
+                                  onChange={(event) =>
+                                    updatePaymentMethod(method.id, "address", event.target.value)
+                                  }
+                                  disabled={siteConfigurationSaveBusy}
+                                  rows={2}
+                                  className="mt-2 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm outline-none transition focus:border-cyan-300/40"
+                                  placeholder="Paste the public receiving address"
+                                />
+                              </label>
+
+                              <label className="block md:col-span-2">
+                                <span className="text-xs uppercase tracking-[0.16em] opacity-65">
+                                  Note
+                                </span>
+                                <input
+                                  value={method.note ?? ""}
+                                  onChange={(event) =>
+                                    updatePaymentMethod(method.id, "note", event.target.value)
+                                  }
+                                  disabled={siteConfigurationSaveBusy}
+                                  className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none transition focus:border-cyan-300/40"
+                                  placeholder="Optional memo, confirmation note, or wallet hint"
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/12 bg-black/15 px-4 py-5 text-sm opacity-75">
+                          No crypto addresses configured yet. Add your $WHEAT, $STONE, or other
+                          payment rails here and they will appear in the delivery modal.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSaveSiteConfiguration({
+                            deliveryPaymentConfig: paymentDraftValue,
+                          })
+                        }
+                        disabled={!paymentConfigDirty || siteConfigurationSaveBusy}
+                        className="rounded border border-cyan-300/35 bg-cyan-400/12 px-3 py-1.5 text-xs font-medium transition hover:bg-cyan-400/18 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {siteConfigurationSaveBusy ? "Saving..." : "Save Payment Rail"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentTitleDraft(siteConfiguration.deliveryPaymentConfig.title);
+                          setPaymentSummaryDraft(siteConfiguration.deliveryPaymentConfig.summary);
+                          setPaymentInstructionsDraft(
+                            siteConfiguration.deliveryPaymentConfig.instructions,
+                          );
+                          setPaymentMethodsDraft(
+                            siteConfiguration.deliveryPaymentConfig.methods.map((method) =>
+                              createPaymentMethodDraft(method),
+                            ),
+                          );
+                        }}
+                        disabled={!paymentConfigDirty || siteConfigurationSaveBusy}
+                        className="rounded border border-white/20 px-3 py-1.5 text-xs transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Reset Payment Draft
+                      </button>
+                    </div>
+
+                    {siteConfigurationNote ? (
+                      <p className="mt-3 text-xs opacity-80">{siteConfigurationNote}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
+                      Live Payment Rail
+                    </p>
+                    <p className="mt-2 text-lg font-semibold">
+                      {paymentDraftValue.title || "Crypto & Hybrid Delivery Payment"}
+                    </p>
+                    <p className="mt-2 text-sm opacity-85">{paymentDraftValue.summary}</p>
+                    <p className="mt-3 text-xs leading-5 opacity-75">
+                      {paymentDraftValue.instructions}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] opacity-70">
+                      <span className="rounded-full border border-white/10 px-2 py-1">Fiat</span>
+                      <span className="rounded-full border border-white/10 px-2 py-1">Crypto</span>
+                      <span className="rounded-full border border-white/10 px-2 py-1">Split Payment</span>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {paymentDraftValue.methods.length > 0 ? (
+                        paymentDraftValue.methods.map((method) => (
+                          <div
+                            key={method.id}
+                            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-semibold">{method.tokenSymbol}</p>
+                                <p className="text-xs opacity-70">
+                                  {method.label} · {method.network}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="mt-3 break-all rounded-lg border border-white/8 bg-black/25 px-3 py-2 font-mono text-xs opacity-85">
+                              {method.address}
+                            </p>
+                            {method.note ? (
+                              <p className="mt-2 text-xs opacity-70">{method.note}</p>
+                            ) : null}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/12 bg-black/15 px-4 py-5 text-sm opacity-75">
+                          Once you save at least one address, the delivery dialog will show a
+                          premium copy-and-pay rail for readers.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null}

@@ -6,6 +6,7 @@ import {
   getAnalyticsSessionId,
   trackAnalyticsEvent,
 } from "@/lib/analytics/client";
+import DeliveryPaymentRail from "@/components/commerce/DeliveryPaymentRail";
 
 type ShapeMode = "rect" | "rounded" | "ellipse" | "image";
 type DeliveryLeadSource =
@@ -647,6 +648,7 @@ export default function FloatAd({
           ? `Request sent. Wheat & Stone will contact you shortly. ${rewardNotice}`
           : "Request sent. Wheat & Stone will contact you shortly.",
       );
+      window.dispatchEvent(new Event("ws-refresh-token-balances"));
       setFormState(DEFAULT_DELIVERY_FORM_STATE);
       setOrderItems([createOrderItem(contextItemName)]);
       window.setTimeout(() => {
@@ -1051,6 +1053,8 @@ export default function FloatAd({
                   Provide email or phone and we will confirm delivery details.
                 </div>
 
+                <DeliveryPaymentRail />
+
                 <label className="block text-sm">
                   <span className="mb-1 block opacity-80">Notes</span>
                   <textarea
@@ -1114,7 +1118,7 @@ export default function FloatAd({
                     disabled={isSubmitting || isCheckoutStarting}
                     className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
                   >
-                    {isCheckoutStarting ? "Redirecting..." : "Checkout with Stripe"}
+                    {isCheckoutStarting ? "Redirecting..." : "Checkout in CAD"}
                   </button>
                 </footer>
               </form>

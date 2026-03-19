@@ -36,13 +36,22 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { homePagePresetSlug?: unknown }
+    | {
+        homePagePresetSlug?: unknown;
+        deliveryPaymentConfig?: unknown;
+      }
     | null;
 
   try {
     const snapshot = await updateSiteConfiguration({
       homePagePresetSlug:
-        typeof body?.homePagePresetSlug === "string" ? body.homePagePresetSlug : null,
+        body && "homePagePresetSlug" in body && typeof body.homePagePresetSlug === "string"
+          ? body.homePagePresetSlug
+          : body && "homePagePresetSlug" in body
+            ? null
+            : undefined,
+      deliveryPaymentConfig:
+        body && "deliveryPaymentConfig" in body ? body.deliveryPaymentConfig : undefined,
     });
 
     revalidatePath("/");

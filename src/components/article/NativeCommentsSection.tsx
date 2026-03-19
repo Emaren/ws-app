@@ -98,6 +98,7 @@ export default function NativeCommentsSection({
       if (!isSignedIn) {
         setAuthorName((current) => current.trim());
       }
+      window.dispatchEvent(new Event("ws-refresh-token-balances"));
 
       if (payload.reward.granted) {
         setFeedback("Comment posted. 1 STONE landed for today.");

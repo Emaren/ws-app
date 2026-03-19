@@ -4,6 +4,10 @@ import { ReactionScope, ReactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import { getApiAuthContext } from "@/lib/apiAuth";
+import {
+  grantArticleProductVoteReward,
+  grantArticleReactionReward,
+} from "@/lib/localRewards";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -357,8 +361,18 @@ export async function PATCH(
         selected: alreadySelected
           ? null
           : (toClientType(reactionType) as ClientProductReaction),
+        rewardUserId: !alreadySelected ? reactionUserId : null,
       };
     });
+
+    if (result.rewardUserId) {
+      await grantArticleProductVoteReward({
+        userId: result.rewardUserId,
+        articleId: article.id,
+        articleSlug: article.slug,
+        reactionType: reactionType as "LIKE" | "HMM",
+      });
+    }
 
     return withActorCookie(NextResponse.json({
       scope,
@@ -473,8 +487,18 @@ export async function PATCH(
         hmm: articleCounts.hmmCount,
       },
       selected: mine.map((row) => toClientType(row.type)),
+      rewardUserId: existing ? null : reactionUserId,
     };
   });
+
+  if (result.rewardUserId) {
+    await grantArticleReactionReward({
+      userId: result.rewardUserId,
+      articleId: article.id,
+      articleSlug: article.slug,
+      reactionType: reactionType as "LIKE" | "WOW" | "HMM",
+    });
+  }
 
   return withActorCookie(NextResponse.json({
     scope,

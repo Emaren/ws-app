@@ -153,6 +153,7 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
         hmm: Math.max(0, Number(data.counts?.hmm ?? 0)),
       });
       setSelected(parseSelected(data.selected));
+      window.dispatchEvent(new Event("ws-refresh-token-balances"));
     } catch (error) {
       setSelected(previousSelected);
       setCounts(previousCounts);

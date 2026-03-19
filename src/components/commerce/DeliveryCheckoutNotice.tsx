@@ -33,7 +33,7 @@ export default function DeliveryCheckoutNotice() {
           </p>
           <p className="text-sm md:text-base">
             {success
-              ? "Payment was received and your delivery request is now reserved. Any eligible STONE or WHEAT rewards were recorded."
+              ? "Payment was received and your delivery request is now reserved. Any eligible STONE rewards were recorded."
               : "Checkout was canceled, but your delivery request details were saved. You can reopen the delivery flow whenever you are ready."}
           </p>
         </div>

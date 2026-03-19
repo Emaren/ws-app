@@ -15,6 +15,7 @@ type TokenBalance = {
 };
 
 const DEFAULT_HEADER_TOKEN_SYMBOLS = ["WHEAT", "STONE"] as const;
+const TOKEN_BALANCE_REFRESH_EVENT = "ws-refresh-token-balances";
 
 function normalizeTokenSymbol(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -108,8 +109,20 @@ export default function TokenBalancesInline({
     };
 
     void load();
+
+    const onRefresh = () => {
+      void load();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(TOKEN_BALANCE_REFRESH_EVENT, onRefresh);
+    }
+
     return () => {
       active = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener(TOKEN_BALANCE_REFRESH_EVENT, onRefresh);
+      }
     };
   }, [userId]);
 

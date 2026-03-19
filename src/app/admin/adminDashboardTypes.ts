@@ -1,3 +1,8 @@
+import type {
+  SiteDeliveryPaymentConfig,
+  SiteDeliveryPaymentMethod,
+} from "@/lib/siteConfigurationShared";
+
 export type Article = {
   id: string;
   title: string;
@@ -117,7 +122,10 @@ export type SiteConfiguration = {
   homePagePresetLayout: string;
   homePagePresetSource: "stored" | "fallback";
   homePresetOptions: SiteConfigurationPresetOption[];
+  deliveryPaymentConfig: SiteDeliveryPaymentConfig;
 };
+
+export type { SiteDeliveryPaymentConfig, SiteDeliveryPaymentMethod };
 
 type IdentityParityStatus = "MATCHED" | "ROLE_MISMATCH" | "LOCAL_ONLY" | "WSAPI_ONLY";
 type WsApiStorageBackend = "postgres" | "file-journal" | "memory";

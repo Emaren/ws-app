@@ -131,6 +131,7 @@ export default function BigThumbs({ slug }: Props) {
         hmm: Math.max(0, Number(data.counts?.hmm ?? 0)),
       });
       setSelected(data.selected === "like" || data.selected === "hmm" ? data.selected : null);
+      window.dispatchEvent(new Event("ws-refresh-token-balances"));
     } catch (error) {
       setSelected(previousSelection);
       setCounts(previousCounts);

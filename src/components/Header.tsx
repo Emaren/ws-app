@@ -627,7 +627,7 @@ export default function Header() {
             className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
-            style={{ height: "clamp(60px, 6vw, 92px)", width: "auto" }}
+            style={{ height: "clamp(72px, 7vw, 104px)", width: "auto" }}
           />
         </a>
 

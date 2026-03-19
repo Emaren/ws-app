@@ -2,12 +2,18 @@ export function describeRewardReason(reason: string | null | undefined): string 
   const normalized = typeof reason === "string" ? reason.trim().toLowerCase() : "";
 
   switch (normalized) {
+    case "delivery_placed":
+      return "Placed a delivery request";
     case "delivery_lead_participation":
       return "Requested local delivery";
     case "delivery_checkout_completed":
       return "Completed delivery checkout";
     case "delivery_checkout_contributor":
       return "Contributor checkout credit";
+    case "article_thumb_vote_participation":
+      return "Cast a product thumb vote";
+    case "article_reaction_participation":
+      return "Reacted to an article";
     case "article_comment_participation":
       return "Posted a journal comment";
     default:

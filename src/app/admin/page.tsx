@@ -12,6 +12,7 @@ import type {
   AuthRegistrationStats,
   PublicSurfaceProbeHistory,
   SiteConfiguration,
+  SiteDeliveryPaymentConfig,
   SystemSnapshot,
 } from "./adminDashboardTypes";
 import { normalizeArticleStatus } from "@/lib/articleLifecycle";
@@ -146,7 +147,10 @@ export default function AdminDashboard() {
     }
   }
 
-  async function saveSiteConfiguration(homePagePresetSlug: string) {
+  async function saveSiteConfiguration(input: {
+    homePagePresetSlug?: string;
+    deliveryPaymentConfig?: SiteDeliveryPaymentConfig;
+  }) {
     if (!isOwnerAdmin) {
       return;
     }
@@ -160,7 +164,7 @@ export default function AdminDashboard() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ homePagePresetSlug }),
+        body: JSON.stringify(input),
       });
       const data = (await res.json().catch(() => null)) as
         | SiteConfiguration
@@ -174,13 +178,16 @@ export default function AdminDashboard() {
         throw new Error(message);
       }
       setSiteConfiguration(data as SiteConfiguration);
+      const nextConfig = data as SiteConfiguration;
       setSiteConfigurationNote(
-        `Homepage preset updated to ${(data as SiteConfiguration).homePagePresetLabel}.`,
+        input.deliveryPaymentConfig
+          ? "Site settings updated. Delivery crypto and hybrid payment details are live."
+          : `Homepage preset updated to ${nextConfig.homePagePresetLabel}.`,
       );
     } catch (error) {
       console.error(error);
       setSiteConfigurationNote(
-        error instanceof Error ? error.message : "Could not update homepage preset.",
+        error instanceof Error ? error.message : "Could not update site settings.",
       );
     } finally {
       setSiteConfigurationSaveBusy(false);

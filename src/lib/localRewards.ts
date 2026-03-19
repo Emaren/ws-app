@@ -12,19 +12,21 @@ export type LocalRewardGrant = {
 const DELIVERY_REWARD_RULES = {
   leadUser: {
     token: "STONE" as const,
-    amount: 5,
-    reason: "delivery_lead_participation",
-    cooldownSeconds: 6 * 60 * 60,
+    amount: 1,
+    reason: "delivery_placed",
   },
-  checkoutUser: {
+};
+
+const ARTICLE_REWARD_RULES = {
+  productVoteUser: {
     token: "STONE" as const,
-    amount: 15,
-    reason: "delivery_checkout_completed",
+    amount: 1,
+    reason: "article_thumb_vote_participation",
   },
-  checkoutContributor: {
-    token: "WHEAT" as const,
-    amount: 4,
-    reason: "delivery_checkout_contributor",
+  articleReactionUser: {
+    token: "STONE" as const,
+    amount: 1,
+    reason: "article_reaction_participation",
   },
 };
 
@@ -53,11 +55,6 @@ function normalizeScopeKey(input: {
     return `article:${input.articleSlug}`;
   }
   return `business:${input.businessId}`;
-}
-
-function cooldownBucket(now: Date, cooldownSeconds: number): string {
-  const seconds = Math.floor(now.getTime() / 1000);
-  return String(Math.floor(seconds / cooldownSeconds));
 }
 
 function calendarDayBucket(now: Date, timeZone: string): string {
@@ -134,33 +131,21 @@ export async function grantDeliveryLeadRewards(input: {
     return [];
   }
 
-  const now = new Date();
-  const scopeKey = normalizeScopeKey(input);
-  const bucket = cooldownBucket(now, DELIVERY_REWARD_RULES.leadUser.cooldownSeconds);
-  const externalRef = [
-    "delivery-lead-user",
-    input.userId,
-    scopeKey,
-    bucket,
-  ].join(":");
-
   const grant = await createRewardCredit({
     userId: input.userId,
     businessId: input.businessId,
     token: DELIVERY_REWARD_RULES.leadUser.token,
     amount: DELIVERY_REWARD_RULES.leadUser.amount,
     reason: DELIVERY_REWARD_RULES.leadUser.reason,
-    externalRef,
+    externalRef: ["delivery-placed-user", input.leadId, input.userId].join(":"),
     metadata: {
-      ruleId: "delivery_lead_user_v1",
+      ruleId: "delivery_placed_user_v2",
       leadId: input.leadId,
       articleSlug: input.articleSlug ?? null,
       offerId: input.offerId ?? null,
       inventoryItemId: input.inventoryItemId ?? null,
       requestedQty: input.requestedQty ?? null,
-      scopeKey,
-      cooldownBucket: bucket,
-      cooldownSeconds: DELIVERY_REWARD_RULES.leadUser.cooldownSeconds,
+      scopeKey: normalizeScopeKey(input),
     },
   });
 
@@ -178,66 +163,55 @@ export async function grantDeliveryCheckoutRewards(input: {
   inventoryItemId?: string | null;
   totalCents?: number | null;
 }): Promise<LocalRewardGrant[]> {
-  const grants: LocalRewardGrant[] = [];
+  void input;
+  return [];
+}
 
-  if (input.userId) {
-    const userGrant = await createRewardCredit({
-      userId: input.userId,
-      businessId: input.businessId,
-      token: DELIVERY_REWARD_RULES.checkoutUser.token,
-      amount: DELIVERY_REWARD_RULES.checkoutUser.amount,
-      reason: DELIVERY_REWARD_RULES.checkoutUser.reason,
-      externalRef: [
-        "delivery-checkout-user",
-        input.leadId,
-        input.checkoutSessionId,
-      ].join(":"),
-      metadata: {
-        ruleId: "delivery_checkout_user_v1",
-        leadId: input.leadId,
-        checkoutSessionId: input.checkoutSessionId,
-        articleSlug: input.articleSlug ?? null,
-        offerId: input.offerId ?? null,
-        inventoryItemId: input.inventoryItemId ?? null,
-        totalCents: input.totalCents ?? null,
-      },
-    });
+export async function grantArticleProductVoteReward(input: {
+  userId: string;
+  articleId: string;
+  articleSlug: string;
+  reactionType: "LIKE" | "HMM";
+}): Promise<LocalRewardGrant | null> {
+  return createRewardCredit({
+    userId: input.userId,
+    token: ARTICLE_REWARD_RULES.productVoteUser.token,
+    amount: ARTICLE_REWARD_RULES.productVoteUser.amount,
+    reason: ARTICLE_REWARD_RULES.productVoteUser.reason,
+    externalRef: ["article-product-vote-user", input.userId, input.articleId].join(":"),
+    metadata: {
+      ruleId: "article_product_vote_user_v1",
+      articleId: input.articleId,
+      articleSlug: input.articleSlug,
+      reactionType: input.reactionType,
+    },
+  });
+}
 
-    if (userGrant) {
-      grants.push(userGrant);
-    }
-  }
-
-  if (input.contributorUserId) {
-    const contributorGrant = await createRewardCredit({
-      userId: input.contributorUserId,
-      businessId: input.businessId,
-      token: DELIVERY_REWARD_RULES.checkoutContributor.token,
-      amount: DELIVERY_REWARD_RULES.checkoutContributor.amount,
-      reason: DELIVERY_REWARD_RULES.checkoutContributor.reason,
-      externalRef: [
-        "delivery-checkout-contributor",
-        input.leadId,
-        input.checkoutSessionId,
-        input.contributorUserId,
-      ].join(":"),
-      metadata: {
-        ruleId: "delivery_checkout_contributor_v1",
-        leadId: input.leadId,
-        checkoutSessionId: input.checkoutSessionId,
-        articleSlug: input.articleSlug ?? null,
-        offerId: input.offerId ?? null,
-        inventoryItemId: input.inventoryItemId ?? null,
-        totalCents: input.totalCents ?? null,
-      },
-    });
-
-    if (contributorGrant) {
-      grants.push(contributorGrant);
-    }
-  }
-
-  return grants;
+export async function grantArticleReactionReward(input: {
+  userId: string;
+  articleId: string;
+  articleSlug: string;
+  reactionType: "LIKE" | "WOW" | "HMM";
+}): Promise<LocalRewardGrant | null> {
+  return createRewardCredit({
+    userId: input.userId,
+    token: ARTICLE_REWARD_RULES.articleReactionUser.token,
+    amount: ARTICLE_REWARD_RULES.articleReactionUser.amount,
+    reason: ARTICLE_REWARD_RULES.articleReactionUser.reason,
+    externalRef: [
+      "article-reaction-user",
+      input.userId,
+      input.articleId,
+      input.reactionType.toLowerCase(),
+    ].join(":"),
+    metadata: {
+      ruleId: "article_reaction_user_v1",
+      articleId: input.articleId,
+      articleSlug: input.articleSlug,
+      reactionType: input.reactionType,
+    },
+  });
 }
 
 export async function grantArticleCommentReward(input: {
