@@ -1,6 +1,9 @@
 // src/components/article/ArticleView.tsx
+"use client";
+
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   resolveContributorDisplayName,
   resolveContributorPublicSlug,
@@ -14,6 +17,16 @@ import ReactionsBar from "./ReactionsBar";
 import AffiliatePair from "./AffiliatePair";
 import ArticleHeaderArt from "./ArticleHeaderArt";
 import ReviewScorecard from "./ReviewScorecard";
+import {
+  readEditionFromDocument,
+  readExperienceFromClientStorage,
+  readExperiencePreviewOverrideFromUrl,
+  readLayoutFromDocument,
+} from "@/lib/experiencePreferences";
+import {
+  resolveArticleDisplayExperience,
+  sameArticleExperience,
+} from "@/lib/articleExperienceClient";
 import {
   getEditionLabel,
   getLayoutLabel,
@@ -165,6 +178,37 @@ function ExperienceSignalCard({
   );
 }
 
+function resolveClientArticleExperience(fallback: {
+  edition: SiteEdition;
+  layout: SiteLayout;
+}) {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  const preview = readExperiencePreviewOverrideFromUrl();
+  if (preview) {
+    return {
+      edition: preview.edition,
+      layout: preview.layout,
+    };
+  }
+
+  const stored = readExperienceFromClientStorage();
+  const documentLayout = readLayoutFromDocument();
+  const documentEdition = readEditionFromDocument();
+
+  return resolveArticleDisplayExperience({
+    server: fallback,
+    preview,
+    storage: stored,
+    document: {
+      edition: documentEdition ?? undefined,
+      layout: documentLayout ?? undefined,
+    },
+  });
+}
+
 export default function ArticleView({
   article,
   variant,
@@ -172,6 +216,51 @@ export default function ArticleView({
   publishedAtISOString,
   experience,
 }: Props) {
+  const [activeExperience, setActiveExperience] = useState(() => ({
+    edition: experience?.edition ?? "classic",
+    layout: experience?.layout ?? "editorial",
+  }));
+
+  useEffect(() => {
+    const syncFromDocument = () => {
+      const nextExperience = resolveClientArticleExperience({
+        edition: experience?.edition ?? "classic",
+        layout: experience?.layout ?? "editorial",
+      });
+      setActiveExperience((current) =>
+        sameArticleExperience(current, nextExperience) ? current : nextExperience,
+      );
+    };
+
+    syncFromDocument();
+
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const observer = new MutationObserver((entries) => {
+      if (
+        entries.some((entry) =>
+          ["data-layout", "data-edition", "data-preset"].includes(entry.attributeName ?? ""),
+        )
+      ) {
+        syncFromDocument();
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-layout", "data-edition", "data-preset"],
+    });
+
+    window.addEventListener("focus", syncFromDocument);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("focus", syncFromDocument);
+    };
+  }, [experience?.edition, experience?.layout]);
+
   if (!article) {
     return (
       <div className="ws-container">
@@ -186,8 +275,8 @@ export default function ArticleView({
     buildAffiliatePairFromReviewProfile(article.reviewProfile) || legacyAffiliatePair(article);
   const contributorName = resolveContributorDisplayName(article.author?.name);
   const contributorSlug = resolveContributorPublicSlug(article.author);
-  const edition = experience?.edition ?? "classic";
-  const layout = experience?.layout ?? "editorial";
+  const edition = activeExperience.edition;
+  const layout = activeExperience.layout;
   const shouldShowReviewSnapshot =
     edition === "modern" || edition === "operator" || layout === "marketplace";
   const surfaceWidthClass = articleSurfaceWidthClass(layout);

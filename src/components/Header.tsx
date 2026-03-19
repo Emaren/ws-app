@@ -610,7 +610,7 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-3 gap-y-2 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:grid-rows-1 md:gap-x-6 md:gap-y-0 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:pt-3 md:pb-2">
         {/* Logo */}
         <a
           href="/"
@@ -627,7 +627,7 @@ export default function Header() {
             className="block select-none cursor-pointer"
             loading="eager"
             decoding="async"
-            style={{ height: "clamp(56px, 5.8vw, 88px)", width: "auto" }}
+            style={{ height: "clamp(60px, 6vw, 92px)", width: "auto" }}
           />
         </a>
 
@@ -671,8 +671,21 @@ export default function Header() {
 
         {/* Mobile menu button */}
         <div
-          className="md:hidden flex min-w-0 items-center justify-end"
+          className="md:hidden flex min-w-0 items-center justify-end overflow-hidden px-1"
           style={{ gridColumn: 2, gridRow: 1 }}
+        >
+          <ThemeCircles
+            value={theme}
+            onChange={updateTheme}
+            compact
+            dense
+            className="justify-end"
+          />
+        </div>
+
+        <div
+          className="md:hidden flex min-w-0 items-center justify-end"
+          style={{ gridColumn: 3, gridRow: 1 }}
           ref={menuBtnRef}
         >
           <button
@@ -705,19 +718,6 @@ export default function Header() {
             </svg>
             <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
           </button>
-        </div>
-
-        <div
-          className="md:hidden flex min-w-0 items-center justify-center overflow-hidden px-1"
-          style={{ gridColumn: "1 / -1", gridRow: 2 }}
-        >
-          <ThemeCircles
-            value={theme}
-            onChange={updateTheme}
-            compact
-            dense
-            className="w-full justify-center"
-          />
         </div>
       </div>
 
