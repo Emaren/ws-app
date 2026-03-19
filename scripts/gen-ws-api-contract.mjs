@@ -15,6 +15,14 @@ const wsApiDistContractPath = path.resolve(
 );
 const outputPath = path.resolve(__dirname, "../src/lib/generated/wsApiContract.ts");
 
+function hasFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function statMtimeMs(filePath) {
   try {
     return fs.statSync(filePath).mtimeMs;
@@ -47,6 +55,15 @@ function ensureWsApiContractBuild() {
 }
 
 async function loadContractBuilder() {
+  if (!hasFile(wsApiSourceContractPath)) {
+    if (hasFile(outputPath)) {
+      console.log("ws-api-contract: reusing committed contract snapshot");
+      return null;
+    }
+
+    throw new Error("ws-api source contract is unavailable and no committed snapshot exists");
+  }
+
   ensureWsApiContractBuild();
 
   const moduleUrl = new URL(
@@ -62,6 +79,10 @@ async function loadContractBuilder() {
 }
 
 const buildApiContract = await loadContractBuilder();
+if (!buildApiContract) {
+  process.exit(0);
+}
+
 const contract = buildApiContract("ws-api");
 const stableContract = {
   ...contract,

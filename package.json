@@ -20,7 +20,7 @@
     "typecheck": "pnpm prisma:generate:safe && tsc --noEmit",
     "lint:eslint": "eslint src --max-warnings=0",
     "lint": "pnpm run typecheck && pnpm run lint:eslint",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "find src -name '*.test.ts' -exec tsx --test {} +",
     "test:e2e": "playwright test",
     "verify": "pnpm run lint && pnpm run test && pnpm run build",
     "ci:migrations": "scripts/ci-prisma-migrations.sh",
