@@ -65,6 +65,8 @@ export default function AdFullWidth({
   sourceContext?: string;
 }) {
   const toneCls = toneClasses(tone);
+  const visibleLabel = label.trim();
+  const ctaLabel = visibleLabel ? `Visit ${visibleLabel}` : "Visit partner";
   const [imageStage, setImageStage] = useState<ImageStage>("primary");
   const [imageReady, setImageReady] = useState(false);
   const handleClick = useCallback(() => {
@@ -94,7 +96,7 @@ export default function AdFullWidth({
         href={href}
         target="_blank"
         rel="noopener noreferrer external"
-        aria-label={`Visit ${label}`}
+        aria-label={ctaLabel}
         onClick={handleClick}
         className={[
           "group relative block w-full overflow-hidden rounded-2xl border",
@@ -117,20 +119,20 @@ export default function AdFullWidth({
           <span className="rounded-full border border-amber-400/40 bg-black/60 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
             Local Partner
           </span>
-          <span className="hidden text-xs text-neutral-200 sm:inline">Trade smarter in 30 seconds</span>
         </div>
 
-        <div className="absolute inset-x-4 top-[48px] z-10 md:inset-x-6 md:top-[56px]">
-          <p className="text-lg font-semibold text-white drop-shadow md:text-xl">{label}</p>
-          <p className="mt-1 text-xs text-white/85 md:text-sm">Smart local crypto tools and business growth automation.</p>
-        </div>
+        {visibleLabel ? (
+          <div className="absolute inset-x-4 top-[48px] z-10 md:inset-x-6 md:top-[56px]">
+            <p className="text-lg font-semibold text-white drop-shadow md:text-xl">{visibleLabel}</p>
+          </div>
+        ) : null}
 
         <div className="relative z-[2] flex h-full min-h-[196px] items-center justify-center px-3 py-12 md:min-h-[248px] md:px-6 md:py-14">
           {activeImageSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={activeImageSrc}
-              alt={label}
+              alt={visibleLabel || "Partner ad"}
               loading="lazy"
               decoding="async"
               sizes="100vw"
@@ -152,14 +154,14 @@ export default function AdFullWidth({
             />
           ) : (
             <div className="rounded-xl border border-white/20 bg-black/35 px-4 py-3 text-center text-sm font-semibold text-white md:text-base">
-              {label}
+              {visibleLabel || "Partner"}
             </div>
           )}
         </div>
 
         <div className="absolute inset-x-3 bottom-3 z-10 flex justify-end md:inset-x-5 md:bottom-4">
           <span className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black transition group-hover:opacity-90">
-            Visit TokenTap.ca
+            Visit partner
           </span>
         </div>
       </a>

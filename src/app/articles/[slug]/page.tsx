@@ -14,6 +14,25 @@ import { getPublicPageExperience } from "@/lib/publicExperienceServer";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const mountainFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Edmonton",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZoneName: "shortGeneric",
+});
+
+function formatMountainTime(dt?: Date | string | null): string | undefined {
+  if (!dt) return undefined;
+  const value = typeof dt === "string" ? new Date(dt) : dt;
+  const parts = mountainFormatter.formatToParts(value);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day} ${lookup.hour}:${lookup.minute} ${lookup.timeZoneName ?? "MT"}`;
+}
+
 function resolveSiteOrigin(): URL {
   const fallback = "https://wheatandstone.ca";
   const raw = process.env.NEXT_PUBLIC_SITE_ORIGIN?.trim() || process.env.NEXTAUTH_URL?.trim();
@@ -168,15 +187,11 @@ export default async function ArticlePage({
   // Build stable server-side timestamps to avoid hydration diffs
   const publishedAtISOString =
     article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined;
-
-  const publishedAtUTC =
-    article.publishedAt
-      ? (() => {
-          const iso = new Date(article.publishedAt).toISOString();
-          const [d, t] = iso.split("T");
-          return `${d} ${t.slice(0, 5)} UTC`;
-        })()
-      : undefined;
+  const publishedAtLabel = formatMountainTime(article.publishedAt);
+  const facebookAppId =
+    process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
+    process.env.FACEBOOK_CLIENT_ID?.trim() ||
+    null;
 
   return (
     <>
@@ -190,14 +205,14 @@ export default async function ArticlePage({
       <ArticleView
         article={article}
         variant="full"
-        publishedAtUTC={publishedAtUTC}
+        publishedAtLabel={publishedAtLabel}
         publishedAtISOString={publishedAtISOString}
         experience={pageExperience}
       />
 
       {/* Page-frame sections (containerized + clipped) */}
       <div className="ws-container overflow-x-clip mb-12 md:mb-16">
-        <CommentsSection article={article} />
+        <CommentsSection article={article} facebookAppId={facebookAppId} />
       </div>
 
       <div className="ws-container overflow-x-clip">
@@ -206,7 +221,7 @@ export default async function ArticlePage({
 
       <div className="ws-container overflow-x-clip">
         <AdFullWidth
-          label="TokenTap.ca"
+          label=""
           articleSlug={article.slug}
           sourceContext="article_bottom_ad"
         />

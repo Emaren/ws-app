@@ -12,6 +12,7 @@ function buildCommentsSrc(
   numPosts = 10,
   dark = false,
   useWebHost = false,
+  appId?: string | null,
 ) {
   const width = String(Math.max(320, Math.min(widthPx, 1200)));
   const params = new URLSearchParams({
@@ -21,9 +22,8 @@ function buildCommentsSrc(
     order_by: "reverse_time",
   });
   if (dark) params.set("colorscheme", "dark");
-  const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
-  if (appId) {
-    params.set("app_id", appId);
+  if (appId?.trim()) {
+    params.set("app_id", appId.trim());
   }
   const host = useWebHost ? "https://web.facebook.com" : "https://www.facebook.com";
   return `${host}/plugins/comments.php?${params.toString()}`;
@@ -64,7 +64,12 @@ function getRuntimeOrigin() {
   return getPublicOrigin();
 }
 
-export default function CommentsSection({ article }: Props) {
+export default function CommentsSection({
+  article,
+  facebookAppId = null,
+}: Props & {
+  facebookAppId?: string | null;
+}) {
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const [origin, setOrigin] = React.useState(() => getPublicOrigin());
@@ -95,8 +100,8 @@ export default function CommentsSection({ article }: Props) {
     };
   }, []);
 
-  const commentsSrc = buildCommentsSrc(articleUrl, w, 10, true, useWebHost);
-  const commentsPopup = `https://www.facebook.com/plugins/comments.php?href=${encodeURIComponent(articleUrl)}`;
+  const commentsSrc = buildCommentsSrc(articleUrl, w, 10, true, useWebHost, facebookAppId);
+  const commentsPopup = buildCommentsSrc(articleUrl, 980, 10, true, false, facebookAppId);
 
   React.useEffect(() => {
     setIsLoaded(false);
@@ -159,7 +164,7 @@ export default function CommentsSection({ article }: Props) {
   }, [embedRequested, isLoaded, sawFacebookMessage, useWebHost, commentsSrc]);
 
   React.useEffect(() => {
-    if (!embedRequested || !isLoaded || showFallback || sawFacebookMessage) {
+    if (!embedRequested || !isLoaded || showFallback) {
       setShowNoCommentsHint(false);
       return;
     }
@@ -169,7 +174,7 @@ export default function CommentsSection({ article }: Props) {
     }, 3000);
 
     return () => window.clearTimeout(timer);
-  }, [embedRequested, isLoaded, showFallback, sawFacebookMessage, commentsSrc]);
+  }, [embedRequested, isLoaded, showFallback, commentsSrc]);
 
   function handleIframeLoad(event: React.SyntheticEvent<HTMLIFrameElement>) {
     const frame = event.currentTarget;
@@ -234,6 +239,11 @@ export default function CommentsSection({ article }: Props) {
             <p className="mt-1 text-neutral-300">
               This avoids broken white embeds when privacy shields block third-party frames.
             </p>
+            {facebookAppId ? null : (
+              <p className="mt-2 text-neutral-300">
+                The public Facebook app id is not wired into this build yet, so the plugin may fail more often than it should.
+              </p>
+            )}
             <p className="mt-2 text-neutral-300">
               If there are no comments yet, use{" "}
               <span className="font-semibold text-neutral-100">Open Comments In Facebook</span> to be first.
@@ -279,10 +289,10 @@ export default function CommentsSection({ article }: Props) {
         {embedRequested && isLoaded && showNoCommentsHint && !showFallback ? (
           <div className="pointer-events-none absolute inset-x-4 top-16 z-10 flex justify-center md:inset-x-5 md:top-20">
             <div className="pointer-events-auto w-full max-w-[620px] rounded-xl border border-amber-300/40 bg-black/80 px-3 py-2 text-xs text-amber-100 shadow-lg backdrop-blur-sm md:text-sm">
-              <p className="font-semibold">No visible comments yet.</p>
+              <p className="font-semibold">Facebook may be returning a blank embed here.</p>
               <p className="mt-1 text-amber-100/90">
-                This usually means zero comments or browser privacy shielding.
-                Use{" "}
+                This usually means browser privacy shielding, third-party cookie blocking,
+                or a Facebook-side embed failure. Use{" "}
                 <a
                   href={commentsPopup}
                   target="_blank"
@@ -291,7 +301,7 @@ export default function CommentsSection({ article }: Props) {
                 >
                   Open Comments In Facebook
                 </a>{" "}
-                to confirm and post first.
+                to confirm the thread directly.
               </p>
             </div>
           </div>
@@ -320,9 +330,9 @@ export default function CommentsSection({ article }: Props) {
         ) : null}
         {showNoCommentsHint ? (
           <div className="mt-2 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-[12px] text-amber-100">
-            Comments iframe loaded but no visible thread was detected yet. This usually means
-            there are zero comments or browser privacy shielding is suppressing the widget.
-            Use <span className="font-semibold">Open Comments In Facebook</span> to post the first comment.
+            The Facebook iframe loaded, but the browser session still may be suppressing the
+            visible thread. Use <span className="font-semibold">Open Comments In Facebook</span>{" "}
+            to confirm the thread directly.
           </div>
         ) : null}
         <p className={`mt-2 text-[12px] text-neutral-300 ${embedRequested ? "" : "mb-1"}`}>

@@ -68,7 +68,7 @@ type ArticleWithReviewProfile = Prisma.ArticleGetPayload<{
 type Props = {
   article?: ArticleWithReviewProfile | null;
   variant: "summary" | "full";
-  publishedAtUTC?: string;
+  publishedAtLabel?: string;
   publishedAtISOString?: string;
   experience?: {
     edition: SiteEdition;
@@ -76,12 +76,23 @@ type Props = {
   };
 };
 
-const formatUTC = (dt?: Date | string | null) => {
+const mountainFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Edmonton",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZoneName: "shortGeneric",
+});
+
+const formatMountainTime = (dt?: Date | string | null) => {
   if (!dt) return "";
-  const d = typeof dt === "string" ? new Date(dt) : dt;
-  const iso = d.toISOString();
-  const [date, time] = iso.split("T");
-  return `${date} ${time.slice(0, 5)} UTC`;
+  const value = typeof dt === "string" ? new Date(dt) : dt;
+  const parts = mountainFormatter.formatToParts(value);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day} ${lookup.hour}:${lookup.minute} ${lookup.timeZoneName ?? "MT"}`;
 };
 
 function legacyAffiliatePair(article: ArticleWithReviewProfile): ReviewComparisonPair | null {
@@ -212,7 +223,7 @@ function resolveClientArticleExperience(fallback: {
 export default function ArticleView({
   article,
   variant,
-  publishedAtUTC,
+  publishedAtLabel,
   publishedAtISOString,
   experience,
 }: Props) {
@@ -279,6 +290,7 @@ export default function ArticleView({
   const layout = activeExperience.layout;
   const shouldShowReviewSnapshot =
     edition === "modern" || edition === "operator" || layout === "marketplace";
+  const showExperienceBadge = !(layout === "editorial" && edition === "classic");
   const surfaceWidthClass = articleSurfaceWidthClass(layout);
   const titleTextClass = titleScaleClass(layout, edition);
   const leadSummary =
@@ -352,7 +364,7 @@ export default function ArticleView({
           )}
           <div className="text-sm opacity-60">
             {article.publishedAt
-              ? publishedAtUTC ?? formatUTC(article.publishedAt)
+              ? publishedAtLabel ?? formatMountainTime(article.publishedAt)
               : "Unpublished"}
           </div>
           <div className="text-sm opacity-60">
@@ -389,14 +401,16 @@ export default function ArticleView({
               }
             >
               <div>
-                <div
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.28em] ${editionBadgeToneClass(edition)}`}
-                >
-                  {getLayoutLabel(layout)} Layout · {getEditionLabel(edition)} Edition
-                </div>
+                {showExperienceBadge ? (
+                  <div
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.28em] ${editionBadgeToneClass(edition)}`}
+                  >
+                    {getLayoutLabel(layout)} Layout · {getEditionLabel(edition)} Edition
+                  </div>
+                ) : null}
 
                 <h1
-                  className={`mt-4 font-semibold tracking-tight text-balance ${titleTextClass}`}
+                  className={`${showExperienceBadge ? "mt-4" : ""} font-semibold tracking-tight text-balance ${titleTextClass}`}
                 >
                   {article.title ?? "Untitled"}
                 </h1>
@@ -420,7 +434,7 @@ export default function ArticleView({
                   <div className="opacity-60">
                     {article.publishedAt ? (
                       <time dateTime={publishedAtISOString} suppressHydrationWarning>
-                        {publishedAtUTC ?? formatUTC(article.publishedAt)}
+                        {publishedAtLabel ?? formatMountainTime(article.publishedAt)}
                       </time>
                     ) : (
                       "Unpublished"
