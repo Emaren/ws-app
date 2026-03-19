@@ -240,6 +240,7 @@ type FloatAdProps = {
   side: "right" | "left";
   imageSrc?: string | null;
   imageAlt?: string;
+  flowMode?: "float" | "inline";
 
   // Card size (px)
   w?: number;
@@ -294,6 +295,7 @@ export default function FloatAd({
   side,
   imageSrc,
   imageAlt,
+  flowMode = "float",
   w,
   h,
   mdW,
@@ -434,37 +436,56 @@ export default function FloatAd({
           : "inset(0)";
 
   // Float card itself (no left:50% / translateX anywhere)
-  const floatStyle: React.CSSProperties = {
-    float: side,
-    marginTop: mt,
-    marginLeft: isLeft ? 0 : 16,
-    marginRight: isLeft ? 20 : 0,
-    marginBottom: 6,
-    width: w != null ? `${w}px` : undefined,
-    height: h != null ? `${h}px` : undefined,
-    boxSizing: "border-box",
-    lineHeight: 0,
+  const floatStyle: React.CSSProperties =
+    flowMode === "inline"
+      ? {
+          display: "block",
+          marginTop: mt,
+          marginBottom: 0,
+          width: w != null ? `${w}px` : undefined,
+          height: h != null ? `${h}px` : undefined,
+          boxSizing: "border-box",
+          lineHeight: 0,
+          borderRadius: frameless ? 0 : 14,
+          overflow: frameless ? "visible" : "hidden",
+          background: frameless
+            ? "transparent"
+            : "color-mix(in oklab, currentColor 8%, transparent)",
+          maxWidth: "100%",
+        }
+      : {
+          float: side,
+          marginTop: mt,
+          marginLeft: isLeft ? 0 : 16,
+          marginRight: isLeft ? 20 : 0,
+          marginBottom: 6,
+          width: w != null ? `${w}px` : undefined,
+          height: h != null ? `${h}px` : undefined,
+          boxSizing: "border-box",
+          lineHeight: 0,
 
-    // text wrap
-    shapeOutside: computedShapeOutside as React.CSSProperties["shapeOutside"],
-    shapeMargin: `${shapeMargin}px`,
+          // text wrap
+          shapeOutside: computedShapeOutside as React.CSSProperties["shapeOutside"],
+          shapeMargin: `${shapeMargin}px`,
 
-    borderRadius: frameless ? 0 : 14,
-    overflow: frameless ? "visible" : "hidden",
-    background: frameless
-      ? "transparent"
-      : "color-mix(in oklab, currentColor 8%, transparent)",
-    maxWidth: "100%", // defensive: never exceed container
-  };
+          borderRadius: frameless ? 0 : 14,
+          overflow: frameless ? "visible" : "hidden",
+          background: frameless
+            ? "transparent"
+            : "color-mix(in oklab, currentColor 8%, transparent)",
+          maxWidth: "100%", // defensive: never exceed container
+        };
 
   const floatStyleAny = floatStyle as React.CSSProperties & Record<string, unknown>;
-  floatStyleAny.WebkitShapeOutside = computedShapeOutside;
-  floatStyleAny.WebkitShapeMargin = `${shapeMargin}px`;
   floatStyleAny["--nudgeY"] = `${nudgeY}px`;
   floatStyleAny["--scale"] = scale;
-  if (shape === "image") {
-    floatStyleAny.shapeImageThreshold = `${shapeThreshold}`;
-    floatStyleAny.WebkitShapeImageThreshold = `${shapeThreshold}`;
+  if (flowMode === "float") {
+    floatStyleAny.WebkitShapeOutside = computedShapeOutside;
+    floatStyleAny.WebkitShapeMargin = `${shapeMargin}px`;
+    if (shape === "image") {
+      floatStyleAny.shapeImageThreshold = `${shapeThreshold}`;
+      floatStyleAny.WebkitShapeImageThreshold = `${shapeThreshold}`;
+    }
   }
 
   function openDeliveryDialog() {

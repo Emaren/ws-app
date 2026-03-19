@@ -211,11 +211,13 @@ export default async function ArticlePage({
 
       {/* Page-frame sections (containerized + clipped) */}
       <div className="ws-container overflow-x-clip mb-12 md:mb-16">
-        <NativeCommentsSection
-          articleSlug={article.slug}
-          articleTitle={article.title}
-          initialComments={initialComments}
-        />
+        <div className="ws-article">
+          <NativeCommentsSection
+            articleSlug={article.slug}
+            articleTitle={article.title}
+            initialComments={initialComments}
+          />
+        </div>
       </div>
 
       <div className="ws-container overflow-x-clip">

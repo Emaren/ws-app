@@ -232,68 +232,56 @@ export default function ArticleCommerceModuleView({
         className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
         style={{ clear: side }}
       >
-        <div className={`${side === "right" ? "md:text-left" : "md:text-left"}`}>
-          <FloatAd
-            frameless
-            label={visibleTitle}
-            side={side}
-            imageSrc={imageSrc}
-            imageAlt={module.imageAlt || visibleTitle}
-            pad={0}
-            imgFit="contain"
-            hoverTint
-            caption={null}
-            containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5"
-            deliveryLeadContext={{
-              source: "LOCAL_AD",
-              articleSlug,
-              businessSlug: businessSlug ?? undefined,
-              businessName: businessName ?? undefined,
-              offerId: offerId ?? undefined,
-              offerTitle: offerTitle ?? undefined,
-              inventoryItemId: inventoryItemId ?? undefined,
-              inventoryItemName: inventoryItemName ?? undefined,
-              returnPath,
-            }}
-            {...dimensions}
-          />
-        </div>
-
-        <div className="space-y-3.5">
-          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/68 md:text-[11px]">
-            {badgeText}
+        <div
+          className={`space-y-4 ${side === "right" ? "md:space-y-5" : "md:space-y-5"}`}
+        >
+          <div className={`flex ${side === "right" ? "justify-start md:justify-end" : "justify-start"}`}>
+            <FloatAd
+              frameless
+              flowMode="inline"
+              label={visibleTitle}
+              side={side}
+              imageSrc={imageSrc}
+              imageAlt={module.imageAlt || visibleTitle}
+              pad={0}
+              imgFit="contain"
+              hoverTint
+              caption={null}
+              containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5"
+              deliveryLeadContext={{
+                source: "LOCAL_AD",
+                articleSlug,
+                businessSlug: businessSlug ?? undefined,
+                businessName: businessName ?? undefined,
+                offerId: offerId ?? undefined,
+                offerTitle: offerTitle ?? undefined,
+                inventoryItemId: inventoryItemId ?? undefined,
+                inventoryItemName: inventoryItemName ?? undefined,
+                returnPath,
+              }}
+              {...dimensions}
+            />
           </div>
 
-          <h4
-            className={`max-w-[24rem] font-semibold tracking-tight text-white ${
-              compact ? "text-[1.42rem] leading-[1.1] md:text-[1.55rem]" : "text-[1.6rem] leading-[1.05] md:text-[1.82rem]"
-            }`}
-          >
-            {visibleTitle}
-          </h4>
-
-          {body ? (
-            <p
-              className={`max-w-[42rem] leading-[1.72] text-white/80 ${
-                compact ? "text-[0.97rem] md:text-[0.98rem]" : "text-[0.98rem] md:text-[1rem]"
+          <div className={`space-y-3 ${side === "right" ? "" : ""}`}>
+            <h4
+              className={`font-semibold tracking-tight text-white ${
+                compact ? "text-[1.34rem] leading-[1.12] md:text-[1.46rem]" : "text-[1.46rem] leading-[1.08] md:text-[1.62rem]"
               }`}
             >
-              {body}
-            </p>
-          ) : null}
+              {visibleTitle}
+            </h4>
 
-          {priceHint || visibleBusinessTag ? (
-            <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-white/62">
-              {visibleBusinessTag ? (
-                <span className="rounded-full border border-white/10 px-3 py-1">{visibleBusinessTag}</span>
-              ) : null}
-              {priceHint ? (
-                <span className="rounded-full border border-amber-300/20 bg-amber-200/8 px-3 py-1 text-amber-100/85">
-                  {priceHint}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+            {body ? (
+              <p
+                className={`leading-[1.7] text-white/80 ${
+                  compact ? "text-[0.96rem] md:text-[0.97rem]" : "text-[0.97rem] md:text-[1rem]"
+                }`}
+              >
+                {body}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div style={{ clear: "both" }} />
@@ -321,6 +309,7 @@ export default function ArticleCommerceModuleView({
             imgFit="contain"
             hoverTint
             caption={null}
+            containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5"
             deliveryLeadContext={{
               source: "LOCAL_AD",
               articleSlug,

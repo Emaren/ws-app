@@ -342,9 +342,9 @@ export default function NativeCommentsSection({
   };
 
   return (
-    <section className="pt-4 md:pt-5">
-      <div className="md:overflow-hidden md:rounded-[2rem] md:border md:border-white/10 md:bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] md:shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-1.5 pt-2.5 md:border-b md:border-t-0 md:border-white/8 md:px-5 md:pb-3 md:pt-4">
+    <section className="mx-auto w-full pt-4 md:pt-5">
+      <div className="md:overflow-hidden md:rounded-[1.9rem] md:border md:border-white/10 md:bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] md:shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-1.5 pt-2.5 md:border-b md:border-t-0 md:border-white/8 md:px-4 md:pb-2.5 md:pt-3.5">
           <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-100/75">
             Comments
           </div>
@@ -353,7 +353,7 @@ export default function NativeCommentsSection({
           </div>
         </div>
 
-        <div className="px-0 py-1.5 md:px-5 md:py-3">
+        <div className="px-0 py-1.5 md:px-4 md:py-2.5">
           <form onSubmit={handleRootSubmit} className="space-y-2 md:space-y-2.5">
             <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.25rem] md:px-3 md:py-2.5 md:bg-black/35">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold text-white md:h-9 md:w-9 md:text-sm">
@@ -417,7 +417,7 @@ export default function NativeCommentsSection({
           </form>
         </div>
 
-        <div className="px-0 pb-1 md:px-5 md:pb-5">
+        <div className="px-0 pb-1 md:px-4 md:pb-4">
           {comments.length > 0 ? (
             <div className="divide-y divide-white/6">{comments.map((comment) => renderComment(comment))}</div>
           ) : (
