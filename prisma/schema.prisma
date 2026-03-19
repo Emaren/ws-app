@@ -262,11 +262,18 @@ model Comment {
   id         String   @id @default(cuid())
   articleId  String
   userId     String?
+  parentId   String?
   authorName String?
   body       String
   createdAt  DateTime @default(now())
   article    Article  @relation(fields: [articleId], references: [id])
   author     User?    @relation(fields: [userId], references: [id])
+  parent     Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+
+  @@index([articleId, createdAt, id])
+  @@index([articleId, parentId, createdAt, id])
+  @@index([parentId, createdAt, id])
 }
 
 model Reaction {

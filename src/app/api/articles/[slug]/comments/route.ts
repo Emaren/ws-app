@@ -42,6 +42,15 @@ function normalizeBody(rawValue: unknown): string {
   return rawValue.replace(/\r\n/g, "\n").trim();
 }
 
+function normalizeParentId(rawValue: unknown): string | null {
+  if (typeof rawValue !== "string") {
+    return null;
+  }
+
+  const value = rawValue.trim();
+  return value || null;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
@@ -90,17 +99,44 @@ export async function POST(
     : null;
 
   const authorName = localUserId ? null : normalizeAuthorName(payload.authorName);
+  const parentId = normalizeParentId(payload.parentId);
+
+  let normalizedParentId: string | null = null;
+  if (parentId) {
+    const parentComment = await prisma.comment.findFirst({
+      where: {
+        id: parentId,
+        articleId: article.id,
+      },
+      select: {
+        id: true,
+        parentId: true,
+      },
+    });
+
+    if (!parentComment) {
+      return badRequest("Reply target was not found.");
+    }
+
+    if (parentComment.parentId) {
+      return badRequest("Replies can only be attached to top-level comments.");
+    }
+
+    normalizedParentId = parentComment.id;
+  }
 
   const commentRow = await prisma.comment.create({
     data: {
       articleId: article.id,
       userId: localUserId,
+      parentId: normalizedParentId,
       authorName,
       body,
     },
     select: {
       id: true,
       userId: true,
+      parentId: true,
       authorName: true,
       body: true,
       createdAt: true,

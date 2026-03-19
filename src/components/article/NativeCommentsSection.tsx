@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import type {
   ArticleCommentRewardOutcome,
   PublicArticleComment,
 } from "@/lib/articleCommentsShared";
 import {
+  appendPublicArticleComment,
   ARTICLE_COMMENT_AUTHOR_MAX_LENGTH,
   ARTICLE_COMMENT_BODY_MAX_LENGTH,
   ARTICLE_COMMENT_BODY_MIN_LENGTH,
+  countPublicArticleComments,
 } from "@/lib/articleCommentsShared";
 
 type Props = {
@@ -37,16 +39,63 @@ function viewerDisplayName(name: string | null | undefined, email: string | null
   return "Member";
 }
 
+function commentIdentityLabel(input: {
+  isSignedIn: boolean;
+  memberName: string;
+  authorName: string;
+}): string {
+  if (input.isSignedIn) {
+    return `Posting as ${input.memberName}`;
+  }
+
+  const guestName = input.authorName.trim();
+  if (guestName) {
+    return `Posting as ${guestName}`;
+  }
+
+  return "Posting as Anonymous Reader";
+}
+
+function commentInitial(label: string): string {
+  const trimmed = label.trim();
+  return trimmed ? trimmed.slice(0, 1).toUpperCase() : "W";
+}
+
+function resizeTextarea(element: HTMLTextAreaElement) {
+  element.style.height = "0px";
+  element.style.height = `${Math.min(element.scrollHeight, 132)}px`;
+}
+
+function SendIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="h-4.5 w-4.5"
+    >
+      <path d="M21 3 10 14" />
+      <path d="m21 3-7 18-4-7-7-4 18-7Z" />
+    </svg>
+  );
+}
+
 export default function NativeCommentsSection({
   articleSlug,
-  articleTitle,
+  articleTitle: _articleTitle,
   initialComments,
 }: Props) {
   const { data: session } = useSession();
   const [comments, setComments] = useState(initialComments);
   const [authorName, setAuthorName] = useState("");
   const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [sendingTarget, setSendingTarget] = useState<"root" | string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,19 +104,64 @@ export default function NativeCommentsSection({
     [articleSlug],
   );
 
-  const isSignedIn = Boolean(session?.user?.id);
-  const memberName = viewerDisplayName(session?.user?.name, session?.user?.email);
-  const trimmedBody = body.trim();
-  const canSubmit = trimmedBody.length >= ARTICLE_COMMENT_BODY_MIN_LENGTH && !sending;
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canSubmit) {
-      setError(`Comments need at least ${ARTICLE_COMMENT_BODY_MIN_LENGTH} characters.`);
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
 
-    setSending(true);
+    const storedName = window.localStorage.getItem("ws-guest-comment-name")?.trim() || "";
+    if (storedName) {
+      setAuthorName(storedName.slice(0, ARTICLE_COMMENT_AUTHOR_MAX_LENGTH));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const normalized = authorName.trim();
+    if (normalized) {
+      window.localStorage.setItem(
+        "ws-guest-comment-name",
+        normalized.slice(0, ARTICLE_COMMENT_AUTHOR_MAX_LENGTH),
+      );
+      return;
+    }
+
+    window.localStorage.removeItem("ws-guest-comment-name");
+  }, [authorName]);
+
+  const isSignedIn = Boolean(session?.user?.id);
+  const memberName = viewerDisplayName(session?.user?.name, session?.user?.email);
+  const totalComments = countPublicArticleComments(comments);
+  const trimmedBody = body.trim();
+  const trimmedReplyBody = replyBody.trim();
+  const canSubmitRoot =
+    trimmedBody.length >= ARTICLE_COMMENT_BODY_MIN_LENGTH && sendingTarget === null;
+  const canSubmitReply =
+    Boolean(replyTargetId) &&
+    trimmedReplyBody.length >= ARTICLE_COMMENT_BODY_MIN_LENGTH &&
+    sendingTarget === null;
+  const identityLabel = commentIdentityLabel({
+    isSignedIn,
+    memberName,
+    authorName,
+  });
+  function handleRootBodyChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    setBody(event.target.value);
+    resizeTextarea(event.currentTarget);
+  }
+
+  function handleReplyBodyChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    setReplyBody(event.target.value);
+    resizeTextarea(event.currentTarget);
+  }
+
+  async function submitComment(input: { bodyText: string; parentId: string | null }) {
+    const trimmed = input.bodyText.trim();
+
+    setSendingTarget(input.parentId ?? "root");
     setError(null);
     setFeedback(null);
 
@@ -79,12 +173,17 @@ export default function NativeCommentsSection({
         },
         body: JSON.stringify({
           authorName: isSignedIn ? null : authorName,
-          body: trimmedBody,
+          body: trimmed,
+          parentId: input.parentId,
         }),
         cache: "no-store",
       });
 
-      const payload = (await response.json().catch(() => null)) as CreateCommentResponse | { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as
+        | CreateCommentResponse
+        | { error?: string }
+        | null;
+
       if (!response.ok || !payload || !("comment" in payload)) {
         throw new Error(
           payload && "error" in payload && typeof payload.error === "string"
@@ -93,12 +192,19 @@ export default function NativeCommentsSection({
         );
       }
 
-      setComments((current) => [payload.comment, ...current].slice(0, 40));
-      setBody("");
+      setComments((current) => appendPublicArticleComment(current, payload.comment));
+      window.dispatchEvent(new Event("ws-refresh-token-balances"));
+
+      if (input.parentId) {
+        setReplyBody("");
+        setReplyTargetId(null);
+      } else {
+        setBody("");
+      }
+
       if (!isSignedIn) {
         setAuthorName((current) => current.trim());
       }
-      window.dispatchEvent(new Event("ws-refresh-token-balances"));
 
       if (payload.reward.granted) {
         setFeedback("Comment posted. 1 STONE landed for today.");
@@ -110,53 +216,197 @@ export default function NativeCommentsSection({
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not post comment right now.");
     } finally {
-      setSending(false);
+      setSendingTarget(null);
     }
   }
 
+  async function handleRootSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSubmitRoot) {
+      setError(`Comments need at least ${ARTICLE_COMMENT_BODY_MIN_LENGTH} characters.`);
+      return;
+    }
+
+    await submitComment({ bodyText: body, parentId: null });
+  }
+
+  async function handleReplySubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!replyTargetId || !canSubmitReply) {
+      setError(`Replies need at least ${ARTICLE_COMMENT_BODY_MIN_LENGTH} characters.`);
+      return;
+    }
+
+    await submitComment({ bodyText: replyBody, parentId: replyTargetId });
+  }
+
+  const renderComment = (comment: PublicArticleComment, depth = 0): React.ReactNode => {
+    const isReply = depth > 0;
+    const replyCount = comment.replies.length;
+    const replyComposerOpen = replyTargetId === comment.id;
+
+    return (
+      <article key={comment.id} className={isReply ? "mt-3" : "py-4 first:pt-0 last:pb-0"}>
+        <div className={`flex gap-3 ${isReply ? "" : ""}`}>
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
+            {commentInitial(comment.authorName)}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="truncate text-sm font-semibold text-white">{comment.authorName}</span>
+              <span
+                className={`hidden items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] sm:inline-flex ${
+                  comment.authorKind === "member"
+                    ? "border-amber-300/28 bg-amber-300/10 text-amber-100"
+                    : "border-white/10 bg-white/[0.04] text-neutral-300"
+                }`}
+              >
+                {comment.authorKind === "member" ? "Member" : "Guest"}
+              </span>
+              <time
+                dateTime={comment.createdAtISOString}
+                className="text-[11px] uppercase tracking-[0.12em] text-neutral-500"
+              >
+                {comment.createdAtLabel}
+              </time>
+            </div>
+
+            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-neutral-100 md:text-[15px]">
+              {comment.body}
+            </p>
+
+            {!isReply ? (
+              <div className="mt-2 flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.18em]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setFeedback(null);
+                    setReplyTargetId((current) => (current === comment.id ? null : comment.id));
+                    setReplyBody("");
+                  }}
+                  className="text-neutral-300 transition hover:text-white"
+                >
+                  {replyComposerOpen ? "Cancel reply" : "Reply"}
+                </button>
+                {replyCount > 0 ? (
+                  <span className="text-neutral-500">
+                    {replyCount} {replyCount === 1 ? "reply" : "replies"}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {replyComposerOpen ? (
+              <form onSubmit={handleReplySubmit} className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 rounded-[1.2rem] border border-white/10 bg-black/15 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:bg-black/35">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold text-white">
+                    {commentInitial(isSignedIn ? memberName : authorName || "Anonymous")}
+                  </div>
+                  <textarea
+                    rows={1}
+                    maxLength={ARTICLE_COMMENT_BODY_MAX_LENGTH}
+                    value={replyBody}
+                    onChange={handleReplyBodyChange}
+                    placeholder={`Reply to ${comment.authorName}...`}
+                    className="min-h-[22px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm leading-6 text-white outline-none placeholder:text-neutral-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canSubmitReply}
+                    aria-label="Send reply"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {sendingTarget === comment.id ? "..." : <SendIcon />}
+                  </button>
+                </div>
+                <div className="hidden items-center justify-between gap-3 text-[11px] text-neutral-400 md:flex">
+                  <span className="min-w-0 truncate">{identityLabel}</span>
+                  <span className="shrink-0">{trimmedReplyBody.length}/{ARTICLE_COMMENT_BODY_MAX_LENGTH}</span>
+                </div>
+              </form>
+            ) : null}
+
+            {replyCount > 0 ? (
+              <div className="mt-3 border-l border-white/8 pl-4">
+                {comment.replies.map((reply) => renderComment(reply, depth + 1))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <section className="pt-4 md:pt-6">
-      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
-        <div className="border-b border-white/10 px-5 py-4 md:px-6 md:py-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+      <div className="md:overflow-hidden md:rounded-[2rem] md:border md:border-white/10 md:bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] md:shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-2 pt-3 md:hidden">
+          <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-100/75">
+            Comments
+          </div>
+          <div className="inline-flex shrink-0 items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-neutral-200">
+            {totalComments} {totalComments === 1 ? "comment" : "comments"}
+          </div>
+        </div>
+
+        <div className="hidden px-4 py-4 md:block md:px-6 md:py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/70">
                 Native Discussion
               </div>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white md:text-[2rem]">
-                Journal Comments
-              </h2>
+              <h2 className="mt-1 text-[2rem] font-semibold tracking-tight text-white">Journal Comments</h2>
             </div>
-            <div className="inline-flex items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-xs font-medium text-neutral-200">
-              {comments.length} {comments.length === 1 ? "comment" : "comments"}
+
+            <div className="inline-flex shrink-0 items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-xs font-medium text-neutral-200">
+              {totalComments} {totalComments === 1 ? "comment" : "comments"}
             </div>
           </div>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-neutral-300 md:text-[15px]">
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-300">
             Keep it sharp, local, and useful. Anonymous comments are welcome, and signed-in readers earn 1 $STONE
             on one comment per day.
           </p>
         </div>
 
-        <div className="grid gap-5 px-5 py-5 md:px-6 md:py-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-[1.6rem] border border-white/10 bg-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:p-5"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-100">
-                {isSignedIn ? "Member Comment" : "Open Commenting"}
-              </span>
-              {isSignedIn ? (
-                <span className="text-sm text-neutral-300">Posting as {memberName}</span>
-              ) : (
-                <span className="text-sm text-neutral-300">No sign-in required.</span>
-              )}
+        <div className="px-0 py-2 md:border-t md:border-white/10 md:px-6 md:py-4">
+          <form onSubmit={handleRootSubmit} className="space-y-2.5">
+            <div className="flex items-center gap-2 rounded-[1.25rem] border border-white/10 bg-black/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:bg-black/35">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
+                {commentInitial(isSignedIn ? memberName : authorName || "Anonymous")}
+              </div>
+              <textarea
+                rows={1}
+                maxLength={ARTICLE_COMMENT_BODY_MAX_LENGTH}
+                value={body}
+                onChange={handleRootBodyChange}
+                placeholder="Add a comment..."
+                className="min-h-[24px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm leading-6 text-white outline-none placeholder:text-neutral-500 md:text-[15px]"
+              />
+              <button
+                type="submit"
+                disabled={!canSubmitRoot}
+                aria-label="Send comment"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {sendingTarget === "root" ? "..." : <SendIcon />}
+              </button>
+            </div>
+
+            <div className="hidden items-center justify-between gap-3 text-[11px] text-neutral-400 md:flex">
+              <span className="min-w-0 truncate">{identityLabel}</span>
+              <span className="shrink-0">{trimmedBody.length}/{ARTICLE_COMMENT_BODY_MAX_LENGTH}</span>
             </div>
 
             {!isSignedIn ? (
-              <div className="mt-4">
-                <label className="text-[11px] uppercase tracking-[0.24em] text-neutral-400" htmlFor="comment-author">
-                  Name
+              <div className="hidden items-center gap-3 md:flex">
+                <label
+                  className="text-[11px] uppercase tracking-[0.18em] text-neutral-400"
+                  htmlFor="comment-author"
+                >
+                  Display name
                 </label>
                 <input
                   id="comment-author"
@@ -165,98 +415,37 @@ export default function NativeCommentsSection({
                   value={authorName}
                   onChange={(event) => setAuthorName(event.target.value)}
                   placeholder="Anonymous Reader"
-                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-neutral-500 focus:border-amber-300/45 focus:bg-black/55"
+                  className="w-full max-w-xs rounded-full border border-white/10 bg-black/35 px-4 py-2 text-sm text-white outline-none transition placeholder:text-neutral-500 focus:border-amber-300/45 focus:bg-black/55"
                 />
+                <span className="text-xs text-neutral-500">Optional.</span>
               </div>
             ) : null}
 
-            <div className="mt-4">
-              <label className="text-[11px] uppercase tracking-[0.24em] text-neutral-400" htmlFor="comment-body">
-                Comment
-              </label>
-              <textarea
-                id="comment-body"
-                rows={6}
-                maxLength={ARTICLE_COMMENT_BODY_MAX_LENGTH}
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                placeholder={`Share your take on ${articleTitle}...`}
-                className="mt-2 min-h-[170px] w-full resize-y rounded-[1.6rem] border border-white/10 bg-black/35 px-4 py-3 text-base leading-7 text-white outline-none transition placeholder:text-neutral-500 focus:border-amber-300/45 focus:bg-black/55"
-              />
-              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-neutral-400">
-                <span>Signed-in members can claim 1 $STONE once per day by commenting.</span>
-                <span>{trimmedBody.length}/{ARTICLE_COMMENT_BODY_MAX_LENGTH}</span>
-              </div>
-            </div>
-
             {error ? (
-              <div className="mt-4 rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
                 {error}
               </div>
             ) : null}
 
             {feedback ? (
-              <div className="mt-4 rounded-2xl border border-emerald-400/35 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
                 {feedback}
               </div>
             ) : null}
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <p className="text-xs leading-5 text-neutral-400">
-                Keep it respectful and useful. Plain text only for now.
-              </p>
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-300/12 px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {sending ? "Posting..." : "Post Comment"}
-              </button>
-            </div>
           </form>
+        </div>
 
-          <div className="space-y-3 md:space-y-4">
-            {comments.length > 0 ? (
-              comments.map((comment) => (
-                <article
-                  key={comment.id}
-                  className="rounded-[1.55rem] border border-white/10 bg-black/30 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:p-5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-base font-semibold text-white">{comment.authorName}</span>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                          comment.authorKind === "member"
-                            ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
-                            : "border-white/12 bg-white/[0.04] text-neutral-300"
-                        }`}
-                      >
-                        {comment.authorKind === "member" ? "Member" : "Guest"}
-                      </span>
-                    </div>
-                    <time
-                      dateTime={comment.createdAtISOString}
-                      className="text-xs uppercase tracking-[0.16em] text-neutral-400"
-                    >
-                      {comment.createdAtLabel}
-                    </time>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-neutral-100 md:text-base">
-                    {comment.body}
-                  </p>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-[1.6rem] border border-dashed border-white/12 bg-black/20 px-5 py-8 text-center">
-                <div className="text-sm uppercase tracking-[0.24em] text-neutral-400">First Notes</div>
-                <p className="mt-3 text-lg font-medium text-white">No journal comments yet.</p>
-                <p className="mt-2 text-sm leading-6 text-neutral-300">
-                  Be the first to add a grounded take on this review.
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="px-0 pb-2 md:px-6 md:pb-6">
+          {comments.length > 0 ? (
+            <div className="divide-y divide-white/6">{comments.map((comment) => renderComment(comment))}</div>
+          ) : (
+            <div className="py-6 text-center">
+              <div className="text-sm font-medium text-white">No journal comments yet.</div>
+              <p className="mt-2 text-sm leading-6 text-neutral-400">
+                Be the first to add a grounded note to this review.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import {
   ARTICLE_COMMENT_LIST_LIMIT,
+  nestPublicArticleComments,
   type PublicArticleComment,
 } from "@/lib/articleCommentsShared";
 
@@ -19,6 +20,7 @@ const mountainFormatter = new Intl.DateTimeFormat("en-CA", {
 type CommentRow = {
   id: string;
   userId: string | null;
+  parentId: string | null;
   authorName: string | null;
   body: string;
   createdAt: Date;
@@ -58,11 +60,13 @@ function resolveDisplayName(row: CommentRow): string {
 export function toPublicArticleComment(row: CommentRow): PublicArticleComment {
   return {
     id: row.id,
+    parentId: row.parentId,
     authorName: resolveDisplayName(row),
     authorKind: row.userId ? "member" : "guest",
     body: row.body,
     createdAtISOString: row.createdAt.toISOString(),
     createdAtLabel: formatMountainTime(row.createdAt),
+    replies: [],
   };
 }
 
@@ -77,6 +81,7 @@ export async function listPublicArticleCommentsForArticle(
     select: {
       id: true,
       userId: true,
+      parentId: true,
       authorName: true,
       body: true,
       createdAt: true,
@@ -89,7 +94,7 @@ export async function listPublicArticleCommentsForArticle(
     },
   });
 
-  return rows.map(toPublicArticleComment);
+  return nestPublicArticleComments([...rows].reverse().map(toPublicArticleComment));
 }
 
 export async function getVisiblePublicArticleBySlug(slug: string) {
