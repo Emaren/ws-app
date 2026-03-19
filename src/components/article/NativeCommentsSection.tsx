@@ -246,17 +246,19 @@ export default function NativeCommentsSection({
     const replyComposerOpen = replyTargetId === comment.id;
 
     return (
-      <article key={comment.id} className={isReply ? "mt-3" : "py-4 first:pt-0 last:pb-0"}>
-        <div className={`flex gap-3 ${isReply ? "" : ""}`}>
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
+      <article key={comment.id} className={isReply ? "mt-2.5 md:mt-3" : "py-3.5 first:pt-0 last:pb-0 md:py-4"}>
+        <div className="flex gap-2.5 md:gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold text-white md:h-9 md:w-9 md:text-sm">
             {commentInitial(comment.authorName)}
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="truncate text-sm font-semibold text-white">{comment.authorName}</span>
+              <span className="truncate text-[13px] font-semibold text-white md:text-sm">
+                {comment.authorName}
+              </span>
               <span
-                className={`hidden items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] sm:inline-flex ${
+                className={`hidden items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] md:inline-flex ${
                   comment.authorKind === "member"
                     ? "border-amber-300/28 bg-amber-300/10 text-amber-100"
                     : "border-white/10 bg-white/[0.04] text-neutral-300"
@@ -266,18 +268,18 @@ export default function NativeCommentsSection({
               </span>
               <time
                 dateTime={comment.createdAtISOString}
-                className="text-[11px] uppercase tracking-[0.12em] text-neutral-500"
+                className="text-[11px] text-neutral-500 md:uppercase md:tracking-[0.12em]"
               >
                 {comment.createdAtLabel}
               </time>
             </div>
 
-            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-neutral-100 md:text-[15px]">
+            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-6 text-neutral-100 md:mt-1.5 md:text-[15px]">
               {comment.body}
             </p>
 
             {!isReply ? (
-              <div className="mt-2 flex items-center gap-4 text-[11px] font-medium uppercase tracking-[0.18em]">
+              <div className="mt-1.5 flex items-center gap-3 text-[11px] font-medium tracking-[0.12em] md:mt-2 md:gap-4 md:uppercase md:tracking-[0.18em]">
                 <button
                   type="button"
                   onClick={() => {
@@ -299,9 +301,9 @@ export default function NativeCommentsSection({
             ) : null}
 
             {replyComposerOpen ? (
-              <form onSubmit={handleReplySubmit} className="mt-3 space-y-2">
-                <div className="flex items-center gap-2 rounded-[1.2rem] border border-white/10 bg-black/15 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:bg-black/35">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold text-white">
+              <form onSubmit={handleReplySubmit} className="mt-2 space-y-2 md:mt-3">
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] md:rounded-[1.2rem] md:px-3 md:bg-black/35">
+                  <div className="flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-[11px] font-semibold text-white md:h-8 md:w-8 md:text-xs">
                     {commentInitial(isSignedIn ? memberName : authorName || "Anonymous")}
                   </div>
                   <textarea
@@ -310,13 +312,13 @@ export default function NativeCommentsSection({
                     value={replyBody}
                     onChange={handleReplyBodyChange}
                     placeholder={`Reply to ${comment.authorName}...`}
-                    className="min-h-[22px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm leading-6 text-white outline-none placeholder:text-neutral-500"
+                    className="min-h-[20px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-0.5 text-[14px] leading-6 text-white outline-none placeholder:text-neutral-500 md:min-h-[22px] md:py-1 md:text-sm"
                   />
                   <button
                     type="submit"
                     disabled={!canSubmitReply}
                     aria-label="Send reply"
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="inline-flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45 md:h-9 md:w-9"
                   >
                     {sendingTarget === comment.id ? "..." : <SendIcon />}
                   </button>
@@ -329,7 +331,7 @@ export default function NativeCommentsSection({
             ) : null}
 
             {replyCount > 0 ? (
-              <div className="mt-3 border-l border-white/8 pl-4">
+              <div className="mt-2.5 border-l border-white/8 pl-3 md:mt-3 md:pl-4">
                 {comment.replies.map((reply) => renderComment(reply, depth + 1))}
               </div>
             ) : null}
@@ -342,7 +344,7 @@ export default function NativeCommentsSection({
   return (
     <section className="pt-4 md:pt-6">
       <div className="md:overflow-hidden md:rounded-[2rem] md:border md:border-white/10 md:bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] md:shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-2 pt-3 md:px-0 md:pb-3 md:pt-4">
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-1.5 pt-2.5 md:px-0 md:pb-2.5 md:pt-4">
           <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-100/75">
             Comments
           </div>
@@ -351,10 +353,10 @@ export default function NativeCommentsSection({
           </div>
         </div>
 
-        <div className="px-0 py-2 md:px-0 md:py-2">
+        <div className="px-0 py-1.5 md:px-0 md:py-2">
           <form onSubmit={handleRootSubmit} className="space-y-2.5">
-            <div className="flex items-center gap-2 rounded-[1.25rem] border border-white/10 bg-black/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:bg-black/35">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/15 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:rounded-[1.25rem] md:px-3 md:py-2.5 md:bg-black/35">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold text-white md:h-9 md:w-9 md:text-sm">
                 {commentInitial(isSignedIn ? memberName : authorName || "Anonymous")}
               </div>
               <textarea
@@ -363,13 +365,13 @@ export default function NativeCommentsSection({
                 value={body}
                 onChange={handleRootBodyChange}
                 placeholder="Add a comment..."
-                className="min-h-[24px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm leading-6 text-white outline-none placeholder:text-neutral-500 md:text-[15px]"
+                className="min-h-[20px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent py-0.5 text-[14px] leading-6 text-white outline-none placeholder:text-neutral-500 md:min-h-[24px] md:py-1 md:text-[15px]"
               />
               <button
                 type="submit"
                 disabled={!canSubmitRoot}
                 aria-label="Send comment"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+                className="inline-flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-full border border-amber-300/35 bg-amber-300/12 text-amber-50 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-45 md:h-10 md:w-10"
               >
                 {sendingTarget === "root" ? "..." : <SendIcon />}
               </button>
@@ -402,25 +404,25 @@ export default function NativeCommentsSection({
             ) : null}
 
             {error ? (
-              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-100 md:rounded-2xl md:px-4 md:py-3 md:text-sm">
                 {error}
               </div>
             ) : null}
 
             {feedback ? (
-              <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-100 md:rounded-2xl md:px-4 md:py-3 md:text-sm">
                 {feedback}
               </div>
             ) : null}
           </form>
         </div>
 
-        <div className="px-0 pb-2 md:px-6 md:pb-6">
+        <div className="px-0 pb-1 md:px-6 md:pb-6">
           {comments.length > 0 ? (
             <div className="divide-y divide-white/6">{comments.map((comment) => renderComment(comment))}</div>
           ) : (
-            <div className="py-6 text-center">
-              <div className="text-sm font-medium text-white">No journal comments yet.</div>
+            <div className="py-5 text-center md:py-6">
+              <div className="text-sm font-medium text-white">No comments yet.</div>
               <p className="mt-2 text-sm leading-6 text-neutral-400">
                 Be the first to add a grounded note to this review.
               </p>

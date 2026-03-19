@@ -170,21 +170,10 @@ export function AdminPublicSurfacePanels({
           {systemSnapshot.publicSurface.twitterBotMeta.hasSummaryLargeImage ? "present" : "missing"}
         </span>
       </p>
-      <p className="mt-1 text-xs opacity-80">
-        Facebook target:{" "}
-        {systemSnapshot.publicSurface.facebookComments.targetArticleUrl ? (
-          <span className="font-semibold">
-            {systemSnapshot.publicSurface.facebookComments.targetArticleUrl}
-          </span>
-        ) : (
-          "No published article yet"
-        )}
-      </p>
-      <p className="mt-1 text-xs opacity-75">{systemSnapshot.publicSurface.facebookComments.note}</p>
       {systemSnapshot.publicSurface.warnings.length > 0 ? (
         <div className="mt-2 rounded-lg border border-amber-300/35 bg-amber-300/10 p-2.5">
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-100">
-            Crawler + Embed Warnings
+            Public Surface Warnings
           </p>
           <ul className="mt-1 space-y-1 text-xs text-amber-100/90">
             {systemSnapshot.publicSurface.warnings.map((warning) => (
@@ -222,16 +211,6 @@ export function AdminPublicSurfacePanels({
         >
           Open OG image
         </a>
-        {systemSnapshot.publicSurface.facebookComments.embedUrl ? (
-          <a
-            href={systemSnapshot.publicSurface.facebookComments.embedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
-          >
-            Open FB plugin URL
-          </a>
-        ) : null}
       </div>
       <div className="mt-3 rounded-lg border border-sky-300/25 bg-sky-500/10 p-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-sky-100">
@@ -308,31 +287,6 @@ export function AdminPublicSurfacePanels({
               >
                 {healthCheckBusy ? "Running health check..." : "Run full health check"}
               </button>
-            </div>
-          </li>
-          <li className="rounded border border-white/10 bg-black/20 p-2">
-            <p className="font-semibold">4. Validate Facebook comments target</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {systemSnapshot.publicSurface.facebookComments.targetArticleUrl ? (
-                <a
-                  href={systemSnapshot.publicSurface.facebookComments.targetArticleUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
-                >
-                  Open article URL
-                </a>
-              ) : null}
-              {systemSnapshot.publicSurface.facebookComments.embedUrl ? (
-                <a
-                  href={systemSnapshot.publicSurface.facebookComments.embedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded border border-white/20 px-2 py-1 hover:bg-white/10"
-                >
-                  Open FB plugin URL
-                </a>
-              ) : null}
             </div>
           </li>
         </ol>

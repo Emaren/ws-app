@@ -6,7 +6,6 @@ import type { Metadata } from "next";
 import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
-import CommentsSection from "@/components/article/CommentsSection";
 import NativeCommentsSection from "@/components/article/NativeCommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 import {
@@ -216,10 +215,6 @@ export default async function HomePage({
           articleTitle={article.title}
           initialComments={initialComments}
         />
-      </div>
-
-      <div className="ws-container overflow-x-clip mb-12 md:mb-16">
-        <CommentsSection article={article} />
       </div>
 
       <div className="ws-container overflow-x-clip">

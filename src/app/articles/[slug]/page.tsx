@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleLifecycle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
-import CommentsSection from "@/components/article/CommentsSection";
 import NativeCommentsSection from "@/components/article/NativeCommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
@@ -191,10 +190,6 @@ export default async function ArticlePage({
   const publishedAtISOString =
     article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined;
   const publishedAtLabel = formatMountainTime(article.publishedAt);
-  const facebookAppId =
-    process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
-    process.env.FACEBOOK_CLIENT_ID?.trim() ||
-    null;
   const initialComments = await listPublicArticleCommentsForArticle(article.id);
 
   return (
@@ -221,10 +216,6 @@ export default async function ArticlePage({
           articleTitle={article.title}
           initialComments={initialComments}
         />
-      </div>
-
-      <div className="ws-container overflow-x-clip mb-12 md:mb-16">
-        <CommentsSection article={article} facebookAppId={facebookAppId} />
       </div>
 
       <div className="ws-container overflow-x-clip">

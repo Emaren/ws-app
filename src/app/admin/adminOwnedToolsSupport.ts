@@ -143,10 +143,7 @@ export function buildOwnedToolsRail(snapshot: OwnedToolsSnapshot): OwnedToolCard
       label: "Public Surface",
       tone: publicSurfaceHealthy ? "good" : "warn",
       status: publicSurfaceHealthy ? "healthy" : "attention",
-      summary: compactParts([
-        `x-card ${snapshot.publicSurface.socialImageVersion}`,
-        snapshot.publicSurface.facebookComments.targetArticleUrl ? "comments wired" : "no article target",
-      ]),
+      summary: compactParts([`x-card ${snapshot.publicSurface.socialImageVersion}`, "native comments live"]),
       detail: compactParts([
         `home ${snapshot.publicSurface.homeProbe.status ?? "n/a"}`,
         `og ${snapshot.publicSurface.socialImageProbe.status ?? "n/a"}`,
