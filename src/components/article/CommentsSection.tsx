@@ -336,16 +336,35 @@ export default function CommentsSection({
           </div>
         ) : null}
         <p className={`mt-2 text-[12px] text-neutral-300 ${embedRequested ? "" : "mb-1"}`}>
-          If you don’t see comments, a privacy extension or browser setting may be blocking Facebook embeds{" "}
-          <a
-            href={commentsPopup}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 cursor-pointer"
-          >
-            — open comments in a new tab
-          </a>
-          .
+          {embedRequested ? (
+            <>
+              If this comments panel stays white or empty, Facebook is blocking or failing the
+              inline widget in this browser session.{" "}
+              <a
+                href={commentsPopup}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 cursor-pointer"
+              >
+                Open comments in a new tab
+              </a>
+              .
+            </>
+          ) : (
+            <>
+              If you don’t see comments, a privacy extension or browser setting may be blocking
+              Facebook embeds{" "}
+              <a
+                href={commentsPopup}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 cursor-pointer"
+              >
+                — open comments in a new tab
+              </a>
+              .
+            </>
+          )}
         </p>
       </div>
     </section>
