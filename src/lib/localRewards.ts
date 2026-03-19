@@ -28,6 +28,15 @@ const DELIVERY_REWARD_RULES = {
   },
 };
 
+const COMMENT_REWARD_RULES = {
+  articleCommentUser: {
+    token: "STONE" as const,
+    amount: 1,
+    reason: "article_comment_participation",
+    timeZone: "America/Edmonton",
+  },
+};
+
 function normalizeScopeKey(input: {
   businessId: string;
   articleSlug?: string | null;
@@ -49,6 +58,18 @@ function normalizeScopeKey(input: {
 function cooldownBucket(now: Date, cooldownSeconds: number): string {
   const seconds = Math.floor(now.getTime() / 1000);
   return String(Math.floor(seconds / cooldownSeconds));
+}
+
+function calendarDayBucket(now: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
 }
 
 async function createRewardCredit(input: {
@@ -217,6 +238,32 @@ export async function grantDeliveryCheckoutRewards(input: {
   }
 
   return grants;
+}
+
+export async function grantArticleCommentReward(input: {
+  userId: string;
+  articleId: string;
+  articleSlug: string;
+  commentId: string;
+}): Promise<LocalRewardGrant | null> {
+  const now = new Date();
+  const dayBucket = calendarDayBucket(now, COMMENT_REWARD_RULES.articleCommentUser.timeZone);
+
+  return createRewardCredit({
+    userId: input.userId,
+    token: COMMENT_REWARD_RULES.articleCommentUser.token,
+    amount: COMMENT_REWARD_RULES.articleCommentUser.amount,
+    reason: COMMENT_REWARD_RULES.articleCommentUser.reason,
+    externalRef: ["article-comment-user", input.userId, dayBucket].join(":"),
+    metadata: {
+      ruleId: "article_comment_user_v1",
+      articleId: input.articleId,
+      articleSlug: input.articleSlug,
+      commentId: input.commentId,
+      localDayBucket: dayBucket,
+      timeZone: COMMENT_REWARD_RULES.articleCommentUser.timeZone,
+    },
+  });
 }
 
 export async function listLocalRewardBalancesForUser(userId: string) {

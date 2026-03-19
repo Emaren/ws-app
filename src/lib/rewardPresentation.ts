@@ -8,6 +8,8 @@ export function describeRewardReason(reason: string | null | undefined): string 
       return "Completed delivery checkout";
     case "delivery_checkout_contributor":
       return "Contributor checkout credit";
+    case "article_comment_participation":
+      return "Posted a journal comment";
     default:
       if (!normalized) {
         return "Reward activity";

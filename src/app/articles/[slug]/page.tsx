@@ -5,10 +5,12 @@ import { isPubliclyVisibleArticle, normalizeArticleStatus } from "@/lib/articleL
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
+import NativeCommentsSection from "@/components/article/NativeCommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 import DeliveryCheckoutNotice from "@/components/commerce/DeliveryCheckoutNotice";
 import ActionLinks from "@/components/site/ActionLinks";
 import SocialIconsRow from "@/components/site/SocialIconsRow";
+import { listPublicArticleCommentsForArticle } from "@/lib/articleComments";
 import { getPublicPageExperience } from "@/lib/publicExperienceServer";
 
 export const dynamic = "force-dynamic";
@@ -193,6 +195,7 @@ export default async function ArticlePage({
     process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
     process.env.FACEBOOK_CLIENT_ID?.trim() ||
     null;
+  const initialComments = await listPublicArticleCommentsForArticle(article.id);
 
   return (
     <>
@@ -212,6 +215,14 @@ export default async function ArticlePage({
       />
 
       {/* Page-frame sections (containerized + clipped) */}
+      <div className="ws-container overflow-x-clip mb-12 md:mb-16">
+        <NativeCommentsSection
+          articleSlug={article.slug}
+          articleTitle={article.title}
+          initialComments={initialComments}
+        />
+      </div>
+
       <div className="ws-container overflow-x-clip mb-12 md:mb-16">
         <CommentsSection article={article} facebookAppId={facebookAppId} />
       </div>

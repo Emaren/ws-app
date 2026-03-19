@@ -7,6 +7,7 @@ import { getLatestArticle } from "@/lib/getLatestArticle";
 import ArticleViewTracker from "@/components/analytics/ArticleViewTracker";
 import ArticleView from "@/components/article/ArticleView";
 import CommentsSection from "@/components/article/CommentsSection";
+import NativeCommentsSection from "@/components/article/NativeCommentsSection";
 import AdFullWidth from "@/components/article/AdFullWidth";
 import {
   HomeAtlasSurface,
@@ -15,6 +16,7 @@ import {
 } from "@/components/home/HomeExperienceSurfaces";
 import ActionLinks from "@/components/site/ActionLinks";
 import SocialIconsRow from "@/components/site/SocialIconsRow";
+import { listPublicArticleCommentsForArticle } from "@/lib/articleComments";
 import { getHomePageStories } from "@/lib/getHomePageStories";
 import { getPublicPageExperience } from "@/lib/publicExperienceServer";
 
@@ -192,6 +194,8 @@ export default async function HomePage({
     );
   }
 
+  const initialComments = await listPublicArticleCommentsForArticle(article.id);
+
   return (
     <main className={`${container} stack stack--lg`}>
       <ArticleViewTracker
@@ -203,6 +207,14 @@ export default async function HomePage({
           article={article}
           variant="full"
           experience={pageExperience}
+        />
+      </div>
+
+      <div className="ws-container overflow-x-clip mb-12 md:mb-16">
+        <NativeCommentsSection
+          articleSlug={article.slug}
+          articleTitle={article.title}
+          initialComments={initialComments}
         />
       </div>
 

@@ -148,7 +148,8 @@ export function buildMemberValueSnapshot(input: {
   remoteRewardReport: MemberValueRemoteRewardReportInput | null;
   remoteRewardError: string | null;
 }) {
-  const now = Date.now();
+  const generatedAtMs = Date.parse(input.generatedAt);
+  const now = Number.isFinite(generatedAtMs) ? generatedAtMs : Date.now();
   const walletUserIds = new Set(input.walletLinks.map((link) => link.userId));
   const verifiedWallets7d = input.walletLinks.filter((link) => {
     const lastVerifiedAt = toIso(link.lastVerifiedAt);
