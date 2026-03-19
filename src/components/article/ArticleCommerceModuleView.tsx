@@ -1,5 +1,7 @@
 import FloatAd from "./FloatAd";
 
+type ModuleVisualStyle = "card" | "editorial-open";
+
 export type ArticleCommerceRenderableModule = {
   id?: string | null;
   placement?: "AFTER_FIRST_HEADING" | "CHECKLIST_SPLIT" | string | null;
@@ -54,38 +56,90 @@ function formatMoney(cents: number | null | undefined): string | null {
 function sizeProps(sizePreset: string | null | undefined) {
   if (sizePreset === "COMPACT") {
     return {
-      w: 290,
-      mdW: 300,
-      lgW: 315,
-      h: 128,
-      mdH: 136,
-      lgH: 145,
+      w: 322,
+      mdW: 334,
+      lgW: 346,
+      h: 178,
+      mdH: 186,
+      lgH: 194,
       shape: "image" as const,
-      shapeMargin: 12,
-      shapeThreshold: 0.45,
-      nudgeY: -6,
-      lgNudgeY: -8,
-      scale: 0.95,
-      mdScale: 0.95,
-      lgScale: 0.95,
+      shapeMargin: 16,
+      shapeThreshold: 0.42,
+      nudgeY: -4,
+      lgNudgeY: -6,
+      scale: 0.98,
+      mdScale: 0.99,
+      lgScale: 1,
     };
   }
 
   return {
-    w: 390,
-    mdW: 410,
-    lgW: 440,
-    h: 228,
-    mdH: 242,
-    lgH: 260,
+    w: 352,
+    mdW: 372,
+    lgW: 392,
+    h: 194,
+    mdH: 204,
+    lgH: 214,
     shape: "rounded" as const,
-    shapeMargin: 14,
-    nudgeY: -4,
-    lgNudgeY: -8,
-    scale: 1.05,
-    mdScale: 1.05,
-    lgScale: 1.05,
+    shapeMargin: 16,
+    nudgeY: -2,
+    lgNudgeY: -4,
+    scale: 1.01,
+    mdScale: 1.02,
+    lgScale: 1.03,
   };
+}
+
+function resolveFloatPresentation(input: {
+  businessSlug: string | null;
+  visualStyle: ModuleVisualStyle;
+  sizePreset: string | null | undefined;
+  compact: boolean;
+}) {
+  if (input.visualStyle === "editorial-open") {
+    if (input.businessSlug === "homesteader-health") {
+      return {
+        w: 232,
+        mdW: 248,
+        lgW: 264,
+        h: 176,
+        mdH: 188,
+        lgH: 198,
+        shape: "image" as const,
+        shapeMargin: 20,
+        shapeThreshold: 0.2,
+        scale: 1,
+        mdScale: 1.01,
+        lgScale: 1.02,
+      };
+    }
+
+    if (input.businessSlug === "beaverlodge-butcher-shop") {
+      return {
+        w: 284,
+        mdW: 300,
+        lgW: 316,
+        h: 128,
+        mdH: 136,
+        lgH: 144,
+        shape: "image" as const,
+        shapeMargin: 20,
+        shapeThreshold: 0.15,
+        scale: 1.02,
+        mdScale: 1.03,
+        lgScale: 1.04,
+      };
+    }
+
+    return {
+      ...sizeProps(input.compact ? "COMPACT" : input.sizePreset),
+      shape: "image" as const,
+      shapeMargin: 18,
+      shapeThreshold: 0.25,
+    };
+  }
+
+  return sizeProps(input.compact ? "COMPACT" : input.sizePreset);
 }
 
 export default function ArticleCommerceModuleView({
@@ -93,11 +147,13 @@ export default function ArticleCommerceModuleView({
   returnPath,
   module,
   compact = false,
+  visualStyle = "card",
 }: {
   articleSlug: string;
   returnPath?: string;
   module: ArticleCommerceRenderableModule;
   compact?: boolean;
+  visualStyle?: ModuleVisualStyle;
 }) {
   const businessName =
     module.business?.storeProfile?.displayName ||
@@ -111,7 +167,6 @@ export default function ArticleCommerceModuleView({
   const inventoryItemName = module.inventoryItem?.name || module.inventoryItemName || null;
   const title = module.title || offerTitle || inventoryItemName || businessName || "Local spotlight";
   const badgeText = module.badgeText || (offerTitle ? "Offer spotlight" : "Delivery spotlight");
-  const caption = module.caption || (offerTitle ? "Claim this offer" : "Click for delivery");
   const imageSrc =
     module.imageSrc ||
     module.inventoryItem?.imageUrl ||
@@ -133,11 +188,89 @@ export default function ArticleCommerceModuleView({
       .filter(Boolean)
       .join(" ");
   const side = module.side === "LEFT" ? "left" : "right";
-  const dimensions = sizeProps(compact ? "COMPACT" : module.sizePreset);
+  const dimensions = resolveFloatPresentation({
+    businessSlug,
+    visualStyle,
+    sizePreset: module.sizePreset,
+    compact,
+  });
+  const visibleTitle = title.trim() || "Local spotlight";
+  const visibleBusinessTag =
+    businessName && businessName.trim() && businessName.trim() !== visibleTitle ? businessName.trim() : null;
+
+  if (visualStyle === "editorial-open") {
+    return (
+      <aside className={`my-5 text-white/95 ${compact ? "" : "md:my-6"}`}>
+        <div style={{ clear: side }}>
+          <FloatAd
+            frameless
+            label={visibleTitle}
+            side={side}
+            imageSrc={imageSrc}
+            imageAlt={module.imageAlt || visibleTitle}
+            pad={0}
+            imgFit="contain"
+            hoverTint
+            caption={null}
+            containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5"
+            deliveryLeadContext={{
+              source: "LOCAL_AD",
+              articleSlug,
+              businessSlug: businessSlug ?? undefined,
+              businessName: businessName ?? undefined,
+              offerId: offerId ?? undefined,
+              offerTitle: offerTitle ?? undefined,
+              inventoryItemId: inventoryItemId ?? undefined,
+              inventoryItemName: inventoryItemName ?? undefined,
+              returnPath,
+            }}
+            {...dimensions}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/68 md:text-[11px]">
+            {badgeText}
+          </div>
+
+          <h4
+            className={`max-w-[24rem] font-semibold tracking-tight text-white ${
+              compact ? "text-[1.5rem] leading-[1.1] md:text-[1.7rem]" : "text-[1.75rem] leading-[1.04] md:text-[2rem]"
+            }`}
+          >
+            {visibleTitle}
+          </h4>
+
+          {body ? (
+            <p
+              className={`max-w-[42rem] leading-[1.72] text-white/80 ${
+                compact ? "text-[0.98rem] md:text-[1rem]" : "text-[1rem] md:text-[1.04rem]"
+              }`}
+            >
+              {body}
+            </p>
+          ) : null}
+
+          {priceHint || visibleBusinessTag ? (
+            <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-white/62">
+              {visibleBusinessTag ? (
+                <span className="rounded-full border border-white/10 px-3 py-1">{visibleBusinessTag}</span>
+              ) : null}
+              {priceHint ? (
+                <span className="rounded-full border border-amber-300/20 bg-amber-200/8 px-3 py-1 text-amber-100/85">
+                  {priceHint}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
-      className={`rounded-[1.75rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12),_rgba(10,10,10,0.96)_58%)] p-4 md:p-5 ${compact ? "text-sm" : ""}`}
+      className={`rounded-[1.75rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.12),_rgba(10,10,10,0.96)_58%)] p-4 md:p-5 ${compact ? "text-sm" : "lg:p-6"}`}
     >
       <div className="text-[11px] uppercase tracking-[0.24em] text-amber-100/80">
         {badgeText}
@@ -147,14 +280,14 @@ export default function ArticleCommerceModuleView({
         <div style={{ clear: side }}>
           <FloatAd
             frameless
-            label={title}
+            label={visibleTitle}
             side={side}
             imageSrc={imageSrc}
-            imageAlt={module.imageAlt || title}
+            imageAlt={module.imageAlt || visibleTitle}
             pad={0}
             imgFit="contain"
             hoverTint
-            caption={caption}
+            caption={null}
             deliveryLeadContext={{
               source: "LOCAL_AD",
               articleSlug,
@@ -171,18 +304,26 @@ export default function ArticleCommerceModuleView({
         </div>
 
         <div className={`space-y-3 ${compact ? "" : "pr-1"}`}>
-          <h4 className={`font-semibold tracking-tight ${compact ? "text-base" : "text-xl md:text-2xl"}`}>
-            {title}
+          <h4
+            className={`font-semibold tracking-tight text-white ${
+              compact ? "text-[1.25rem] leading-[1.15]" : "text-[1.55rem] leading-[1.08] md:text-[1.95rem]"
+            }`}
+          >
+            {visibleTitle}
           </h4>
           {body && (
-            <p className={`leading-relaxed opacity-85 ${compact ? "text-sm" : "text-[1rem] md:text-[1.04rem]"}`}>
+            <p
+              className={`leading-[1.68] text-white/82 ${
+                compact ? "text-[0.96rem]" : "text-[0.98rem] md:text-[1.03rem]"
+              }`}
+            >
               {body}
             </p>
           )}
 
           <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] opacity-70">
-            {businessName && (
-              <span className="rounded-full border border-neutral-700 px-3 py-1">{businessName}</span>
+            {visibleBusinessTag && (
+              <span className="rounded-full border border-neutral-700 px-3 py-1">{visibleBusinessTag}</span>
             )}
             {offerTitle && (
               <span className="rounded-full border border-neutral-700 px-3 py-1">{offerTitle}</span>

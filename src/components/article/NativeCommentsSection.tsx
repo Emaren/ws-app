@@ -342,7 +342,7 @@ export default function NativeCommentsSection({
   return (
     <section className="pt-4 md:pt-6">
       <div className="md:overflow-hidden md:rounded-[2rem] md:border md:border-white/10 md:bg-[radial-gradient(circle_at_top,_rgba(194,149,74,0.15),_rgba(8,8,8,0.97)_58%)] md:shadow-[0_30px_110px_rgba(0,0,0,0.42)]">
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-2 pt-3 md:hidden">
+        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0 pb-2 pt-3 md:px-0 md:pb-3 md:pt-4">
           <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-100/75">
             Comments
           </div>
@@ -351,27 +351,7 @@ export default function NativeCommentsSection({
           </div>
         </div>
 
-        <div className="hidden px-4 py-4 md:block md:px-6 md:py-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/70">
-                Native Discussion
-              </div>
-              <h2 className="mt-1 text-[2rem] font-semibold tracking-tight text-white">Journal Comments</h2>
-            </div>
-
-            <div className="inline-flex shrink-0 items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-xs font-medium text-neutral-200">
-              {totalComments} {totalComments === 1 ? "comment" : "comments"}
-            </div>
-          </div>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-300">
-            Keep it sharp, local, and useful. Anonymous comments are welcome, and signed-in readers earn 1 $STONE
-            on one comment per day.
-          </p>
-        </div>
-
-        <div className="px-0 py-2 md:border-t md:border-white/10 md:px-6 md:py-4">
+        <div className="px-0 py-2 md:px-0 md:py-2">
           <form onSubmit={handleRootSubmit} className="space-y-2.5">
             <div className="flex items-center gap-2 rounded-[1.25rem] border border-white/10 bg-black/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:bg-black/35">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">

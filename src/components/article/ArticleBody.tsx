@@ -107,11 +107,10 @@ function legacyCommerceModules(article: {
       businessSlug: "homesteader-health",
       businessName: "Homesteader Health",
       inventoryItemName: "Homesteader Health Delivery",
-      title: "Homesteader Health Delivery",
+      title: "Homesteader Health",
       badgeText: "Local spotlight",
-      body: "Bring the organic alternative straight to the door instead of sending the reader to a generic product page.",
+      body: "A knowledgeable health-food team with a long track record in organic sourcing, practical guidance, and shelves built around everyday wellness instead of trend-chasing.",
       imageSrc: "/hh.tight.h156.v3.png",
-      caption: "Click for delivery",
     },
     {
       id: "legacy-checklist-spotlight",
@@ -121,12 +120,11 @@ function legacyCommerceModules(article: {
       businessSlug: "beaverlodge-butcher-shop",
       businessName: "Beaverlodge Butcher Shop",
       inventoryItemName: "Beaverlodge Butcher Shop Delivery",
-      title: "Beaverlodge Butcher Shop Delivery",
+      title: "Beaverlodge Butcher Shop",
       badgeText: "Butcher pickup and delivery",
-      body: "Pair clean dairy choices with local butcher delivery so the article can convert into a real household order.",
+      body: "A family-run Alberta butcher shop known for custom cuts, house-made sausage, and the kind of local quality standards that still feel personal.",
       imageSrc: "/bbs.adcard.center.v4.png",
       imageAlt: "Beaverlodge Butcher Shop delivery",
-      caption: "Click for delivery",
     },
   ];
 }
@@ -163,6 +161,7 @@ export default function ArticleBody({
   const edition = experience?.edition ?? "classic";
   const layout = experience?.layout ?? "editorial";
   const decoratedBody = layout !== "editorial";
+  const useOpenEditorialModules = layout === "editorial" && edition === "classic";
   const excerptShellClass = decoratedBody
     ? `rounded-[1.75rem] border p-5 md:p-6 ${editionSurfaceToneClass(edition)}`
     : "";
@@ -217,13 +216,56 @@ export default function ArticleBody({
               style={{ clear: module.side === "LEFT" ? "left" : "right" }}
               className="mb-5"
             >
-              <ArticleCommerceModuleView articleSlug={article.slug} module={module} />
+              <ArticleCommerceModuleView
+                articleSlug={article.slug}
+                module={module}
+                visualStyle={useOpenEditorialModules ? "editorial-open" : "card"}
+              />
             </div>
           ))}
 
           {checklistSplit ? (
             <>
               <HtmlBlock html={checklistSplit.before} />
+              {useOpenEditorialModules && topModules.length > 0 ? (
+                <div style={{ clear: "both" }} />
+              ) : null}
+
+              {useOpenEditorialModules && primaryChecklistModule ? (
+                <>
+                  <ArticleCommerceModuleView
+                    articleSlug={article.slug}
+                    module={primaryChecklistModule}
+                    compact
+                    visualStyle="editorial-open"
+                  />
+
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                    }}
+                  />
+
+                  <div style={{ clear: "both" }} />
+
+                  {secondaryChecklistModules.map((module, index) => (
+                    <div
+                      key={module.id ?? `${module.placement}-extra-open-${index}-${module.title ?? "module"}`}
+                      className="my-5"
+                    >
+                      <ArticleCommerceModuleView
+                        articleSlug={article.slug}
+                        module={module}
+                        compact
+                        visualStyle="editorial-open"
+                      />
+                    </div>
+                  ))}
+
+                  <HtmlBlock html={checklistSplit.after} />
+                </>
+              ) : (
+                <>
               <div className="ws-checkgrid">
                 {primaryChecklistModule && (
                   <div className="ws-check-ad">
@@ -248,14 +290,21 @@ export default function ArticleBody({
                   key={module.id ?? `${module.placement}-extra-${index}-${module.title ?? "module"}`}
                   className="my-5"
                 >
-                  <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
-                </div>
-              ))}
+                    <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
+                  </div>
+                ))}
 
               <HtmlBlock html={checklistSplit.after} />
+                </>
+              )}
             </>
           ) : (
-            <HtmlBlock html={topAfter} />
+            <>
+              <HtmlBlock html={topAfter} />
+              {useOpenEditorialModules && topModules.length > 0 ? (
+                <div style={{ clear: "both" }} />
+              ) : null}
+            </>
           )}
 
           <div style={{ clear: "both" }} />
