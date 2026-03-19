@@ -99,41 +99,41 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 192,
-        mdW: 200,
-        lgW: 208,
-        h: 94,
-        mdH: 98,
-        lgH: 102,
+        w: 186,
+        mdW: 194,
+        lgW: 202,
+        h: 90,
+        mdH: 94,
+        lgH: 98,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.2,
         nudgeY: 1,
         mdNudgeY: 1,
         lgNudgeY: 2,
-        scale: 1.28,
-        mdScale: 1.32,
-        lgScale: 1.36,
+        scale: 1.22,
+        mdScale: 1.25,
+        lgScale: 1.28,
       };
     }
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 188,
-        mdW: 198,
-        lgW: 208,
-        h: 74,
-        mdH: 78,
-        lgH: 82,
+        w: 194,
+        mdW: 204,
+        lgW: 214,
+        h: 78,
+        mdH: 82,
+        lgH: 86,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.15,
         nudgeY: 1,
         mdNudgeY: 1,
         lgNudgeY: 1,
-        scale: 1.24,
-        mdScale: 1.28,
-        lgScale: 1.32,
+        scale: 1.3,
+        mdScale: 1.34,
+        lgScale: 1.38,
       };
     }
 
@@ -155,9 +155,9 @@ function resolveEditorialOpenShell(input: {
 }) {
   const widthClass =
     input.businessSlug === "homesteader-health"
-      ? "md:w-[14.25rem] lg:w-[14.75rem]"
+      ? "md:w-[13.25rem] lg:w-[13.75rem]"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:w-[14.75rem] lg:w-[15.25rem]"
+        ? "md:w-[13.5rem] lg:w-[14rem]"
         : input.compact
           ? "md:w-[17rem] lg:w-[17.5rem]"
           : "md:w-[18rem] lg:w-[18.75rem]";
@@ -236,15 +236,15 @@ export default function ArticleCommerceModuleView({
     .replace(/^-+|-+$/g, "");
   const editorialTextShellClass =
     businessSlug === "homesteader-health"
-      ? "max-w-[13.1rem] md:max-w-[13.35rem]"
+      ? "max-w-[11.8rem] md:max-w-[12.2rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "max-w-[13.7rem] md:max-w-[14rem]"
-        : "max-w-[14.5rem]";
+        ? "max-w-[12.1rem] md:max-w-[12.5rem]"
+        : "max-w-[14rem]";
   const editorialTextOffsetClass =
     businessSlug === "homesteader-health"
-      ? "-mt-1 md:-mt-1.5"
+      ? "-mt-2 md:-mt-2.5"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "-mt-3 md:-mt-3.5"
+        ? "-mt-4 md:-mt-[1.1rem]"
         : "";
 
   if (visualStyle === "editorial-open") {
@@ -256,11 +256,24 @@ export default function ArticleCommerceModuleView({
 
     return (
       <aside
-        className={`my-5 w-full text-white/95 ${wrapperClassName} ${compact ? "" : "md:my-6"}`}
+        className={`my-4 w-full ${wrapperClassName} ${compact ? "" : "md:my-5"}`}
         style={{ clear: side }}
       >
-        <div className="group space-y-0 rounded-[1rem] px-1 py-1 text-center transition-colors duration-200 ease-out hover:bg-[var(--editorial-ad-hover-bg)] focus-within:bg-[var(--editorial-ad-hover-bg)] md:space-y-0.5">
-          <div className="flex justify-center">
+        <div className="group relative overflow-hidden rounded-[1rem] px-1 py-1 text-center transition-colors duration-200 ease-out md:space-y-0.5">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[1] rounded-[1rem] bg-[var(--editorial-ad-hover-bg)] opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-1/2 z-[2] flex -translate-y-1/2 justify-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+          >
+            <span className="rounded-full bg-black/72 px-4 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
+              Buy Now
+            </span>
+          </span>
+
+          <div className="relative z-0 flex justify-center">
             <FloatAd
               buttonId={triggerId}
               frameless
@@ -273,7 +286,8 @@ export default function ArticleCommerceModuleView({
               imgFit="contain"
               hoverTint={false}
               caption={null}
-              containerClassName="duration-200 ease-out hover:ring-transparent dark:hover:ring-transparent group-hover:brightness-[0.92]"
+              hoverRing={false}
+              containerClassName="duration-200 ease-out"
               deliveryLeadContext={{
                 source: "LOCAL_AD",
                 articleSlug,
@@ -292,13 +306,13 @@ export default function ArticleCommerceModuleView({
           <button
             type="button"
             onClick={() => document.getElementById(triggerId)?.click()}
-            className={`mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${editorialTextShellClass} ${editorialTextOffsetClass}`}
+            className={`relative z-0 mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${editorialTextShellClass} ${editorialTextOffsetClass}`}
             aria-label={`${visibleTitle} - open delivery form`}
             style={{ color: "var(--editorial-ad-copy)" }}
           >
             <h4
               className={`font-semibold tracking-tight ${
-                compact ? "text-[1rem] leading-[1.05] md:text-[1.04rem]" : "text-[1.02rem] leading-[1.05] md:text-[1.08rem]"
+                compact ? "text-[0.96rem] leading-[1.02] md:text-[1rem]" : "text-[0.98rem] leading-[1.02] md:text-[1.04rem]"
               }`}
               style={{ color: "var(--editorial-ad-title)" }}
             >
@@ -308,7 +322,7 @@ export default function ArticleCommerceModuleView({
             {body ? (
               <p
                 className={`mx-auto leading-[1.42] ${
-                  compact ? "text-[0.74rem] md:text-[0.77rem]" : "text-[0.76rem] md:text-[0.79rem]"
+                  compact ? "text-[0.69rem] md:text-[0.72rem]" : "text-[0.71rem] md:text-[0.74rem]"
                 }`}
                 style={{ color: "var(--editorial-ad-muted)" }}
               >

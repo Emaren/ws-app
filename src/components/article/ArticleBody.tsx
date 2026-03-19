@@ -56,6 +56,66 @@ function extractFirstUnorderedList(html: string): null | {
   };
 }
 
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitAfterParagraphCount(html: string, count: number): {
+  before: string;
+  after: string;
+} {
+  if (count <= 0) {
+    return { before: "", after: html };
+  }
+
+  const matcher = /<p\b[\s\S]*?<\/p>/gi;
+  let match: RegExpExecArray | null;
+  let seen = 0;
+  let endIndex = 0;
+
+  while ((match = matcher.exec(html))) {
+    seen += 1;
+    endIndex = matcher.lastIndex;
+    if (seen >= count) {
+      return {
+        before: html.slice(0, endIndex),
+        after: html.slice(endIndex),
+      };
+    }
+  }
+
+  return { before: html, after: "" };
+}
+
+function splitAtMatchingHeading(
+  html: string,
+  matcher: RegExp,
+): { before: string; heading: string; after: string } {
+  const headingMatcher = /<h[23][\s\S]*?<\/h[23]>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = headingMatcher.exec(html))) {
+    const headingText = stripHtmlToText(match[0]);
+    if (!matcher.test(headingText)) {
+      continue;
+    }
+
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    return {
+      before: html.slice(0, start),
+      heading: match[0],
+      after: html.slice(end),
+    };
+  }
+
+  return { before: "", heading: "", after: html };
+}
+
 function splitAtFirstHeading(html: string): { before: string; heading: string; after: string } {
   const m = /<h[23][\s\S]*?<\/h[23]>/i.exec(html);
   if (!m) return { before: "", heading: "", after: html };
@@ -174,13 +234,23 @@ export default function ArticleBody({
   const hasExcerpt = excerpt.length > 0;
 
   const { before: topBefore, heading: topHeading, after: topAfter } = splitAtFirstHeading(unwrapped);
-  const checklistSplit = extractFirstUnorderedList(topAfter);
   const commerceModules =
     article.commerceModules.length > 0 ? article.commerceModules : legacyCommerceModules(article);
   const topModules = commerceModules.filter((module) => module.placement === "AFTER_FIRST_HEADING");
   const checklistModules = commerceModules.filter((module) => module.placement === "CHECKLIST_SPLIT");
   const primaryChecklistModule = checklistModules[0] ?? null;
   const secondaryChecklistModules = checklistModules.slice(1);
+  const topModuleIntroSplit = splitAfterParagraphCount(
+    topAfter,
+    useOpenEditorialModules && topModules.length > 0 ? 4 : 0,
+  );
+  const checklistAnchor = splitAtMatchingHeading(
+    topModuleIntroSplit.after,
+    /why we chose it/i,
+  );
+  const checklistSplit = extractFirstUnorderedList(
+    checklistAnchor.heading ? checklistAnchor.after : topModuleIntroSplit.after,
+  );
 
   return (
     <>
@@ -206,6 +276,7 @@ export default function ArticleBody({
 
           <HtmlBlock html={topBefore} />
           <HtmlBlock html={topHeading} />
+          <HtmlBlock html={topModuleIntroSplit.before} />
 
           {topModules.map((module, index) => (
             <div
@@ -223,7 +294,15 @@ export default function ArticleBody({
 
           {checklistSplit ? (
             <>
-              <HtmlBlock html={checklistSplit.before} />
+              {checklistAnchor.heading ? (
+                <>
+                  <HtmlBlock html={checklistAnchor.before} />
+                  <HtmlBlock html={checklistAnchor.heading} />
+                  <HtmlBlock html={checklistSplit.before} />
+                </>
+              ) : (
+                <HtmlBlock html={checklistSplit.before} />
+              )}
               {useOpenEditorialModules && topModules.length > 0 ? (
                 <div style={{ clear: "both" }} />
               ) : null}
@@ -297,7 +376,7 @@ export default function ArticleBody({
             </>
           ) : (
             <>
-              <HtmlBlock html={topAfter} />
+              <HtmlBlock html={topModuleIntroSplit.after} />
               {useOpenEditorialModules && topModules.length > 0 ? (
                 <div style={{ clear: "both" }} />
               ) : null}

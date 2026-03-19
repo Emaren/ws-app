@@ -249,7 +249,9 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
 
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Content</span>
-        <span className="text-xs opacity-60">Rich text: headings, lists, tables, links</span>
+        <span className="text-xs opacity-60">
+          Publishing editor: headings, nested lists, tables, links
+        </span>
       </div>
 
       <div className="border rounded-xl overflow-hidden">

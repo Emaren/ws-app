@@ -49,9 +49,9 @@
   --foreground:#171717;
   --autofill-text:#111111;
   --autofill-bg:#ffffff;
-  --editorial-ad-title:rgba(108,72,62,.94);
-  --editorial-ad-copy:rgba(102,73,66,.86);
-  --editorial-ad-muted:rgba(122,92,81,.76);
+  --editorial-ad-title:rgba(96,72,60,.94);
+  --editorial-ad-copy:rgba(109,82,68,.9);
+  --editorial-ad-muted:rgba(130,103,88,.82);
   --editorial-ad-hover-bg:rgba(143,94,79,.08);
 }
 
@@ -60,9 +60,9 @@
   --foreground:#2f2417;
   --autofill-text:#2f2417;
   --autofill-bg:#f4ecd9;
-  --editorial-ad-title:rgba(98,72,46,.94);
-  --editorial-ad-copy:rgba(92,68,46,.84);
-  --editorial-ad-muted:rgba(115,88,61,.76);
+  --editorial-ad-title:rgba(93,69,47,.95);
+  --editorial-ad-copy:rgba(107,82,57,.9);
+  --editorial-ad-muted:rgba(125,98,71,.82);
   --editorial-ad-hover-bg:rgba(134,96,61,.08);
 }
 

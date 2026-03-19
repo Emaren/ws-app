@@ -77,7 +77,9 @@ export default function NewArticle() {
 
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Content</span>
-          <span className="text-xs opacity-70">Rich text: headings, lists, tables, links</span>
+          <span className="text-xs opacity-70">
+            Publishing editor: headings, nested lists, tables, links
+          </span>
         </div>
 
         {/* Rich WYSIWYG field */}

@@ -5,6 +5,8 @@ const EXTRA_CSS = `
 /* Base rhythm */
 .wysiwyg{ line-height:1.7; color:inherit; }
 .wysiwyg p{ margin-block:0 1rem; }
+.wysiwyg p:empty,
+.wysiwyg p:has(> br:only-child){ margin-block:.35rem; min-height:.4rem; }
 
 /* Headings */
 .wysiwyg :is(h2,h3,h4){
@@ -15,11 +17,18 @@ const EXTRA_CSS = `
 .wysiwyg h4{ font-size:clamp(1rem,1.6vw,1.125rem); }
 
 /* Lists */
-.wysiwyg :is(ul,ol){ margin:0 0 1rem 1.25rem; padding-left:1.25rem; }
+.wysiwyg :is(ul,ol){ margin:0 0 1rem 1.35rem; padding-left:1.35rem; }
 .wysiwyg li{ margin:.25rem 0; }
+.wysiwyg li > p{ margin:0; }
+.wysiwyg li > :is(ul,ol){ margin-top:.45rem; margin-bottom:.45rem; }
+.wysiwyg :is(ul,ol) :is(ul,ol){ margin-left:1rem; padding-left:1rem; }
 
 /* Links */
 .wysiwyg a{ text-decoration:underline; text-underline-offset:2px; }
+
+/* Blockquote cleanup */
+.wysiwyg blockquote p:empty,
+.wysiwyg blockquote p:has(> br:only-child){ display:none; margin:0; min-height:0; }
 
 /* Images */
 .wysiwyg :is(img,a>img,figure>img){

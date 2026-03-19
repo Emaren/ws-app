@@ -160,7 +160,7 @@ export default function BigThumbs({ slug }: Props) {
               <span className="thumb-burst" />
               <ThumbIcon active />
             </span>
-            <span className="thumb-count" aria-live="polite">{counts.like}</span>
+            <span className="thumb-count" data-count={counts.like} aria-live="polite">{counts.like}</span>
           </button>
         ) : (
           <button
@@ -177,7 +177,7 @@ export default function BigThumbs({ slug }: Props) {
               <span className="thumb-burst" />
               <ThumbIcon active={false} />
             </span>
-            <span className="thumb-count" aria-live="polite">{counts.like}</span>
+            <span className="thumb-count" data-count={counts.like} aria-live="polite">{counts.like}</span>
           </button>
         )}
 
@@ -196,7 +196,7 @@ export default function BigThumbs({ slug }: Props) {
               <span className="thumb-burst" />
               <ThumbIcon down active />
             </span>
-            <span className="thumb-count" aria-live="polite">{counts.hmm}</span>
+            <span className="thumb-count" data-count={counts.hmm} aria-live="polite">{counts.hmm}</span>
           </button>
         ) : (
           <button
@@ -213,7 +213,7 @@ export default function BigThumbs({ slug }: Props) {
               <span className="thumb-burst" />
               <ThumbIcon down active={false} />
             </span>
-            <span className="thumb-count" aria-live="polite">{counts.hmm}</span>
+            <span className="thumb-count" data-count={counts.hmm} aria-live="polite">{counts.hmm}</span>
           </button>
         )}
       </div>
@@ -367,6 +367,9 @@ export default function BigThumbs({ slug }: Props) {
         }
 
         .thumb-count {
+          position: relative;
+          z-index: 0;
+          display: inline-block;
           min-width: 1.5rem;
           font-size: clamp(1.1rem, 2vw, 1.35rem);
           font-weight: 700;
@@ -374,15 +377,25 @@ export default function BigThumbs({ slug }: Props) {
           text-align: left;
           font-variant-numeric: tabular-nums;
           color: color-mix(in oklab, var(--vote-main) 84%, #fff);
-          text-shadow:
-            1px 1px 0 color-mix(in oklab, var(--vote-main) 12%, #000 88%),
-            4px 5px 10px color-mix(in oklab, var(--vote-main) 26%, transparent);
           transform-origin: center;
           background: transparent;
           border: 0;
           border-radius: 0;
           padding: 0;
           box-shadow: none;
+        }
+
+        .thumb-count::after {
+          content: attr(data-count);
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          color: color-mix(in oklab, var(--vote-main) 34%, transparent);
+          opacity: 0.34;
+          transform: translate(0.32rem, 0.48rem) scaleY(0.28) scaleX(1.08);
+          transform-origin: 50% 100%;
+          filter: blur(6px);
+          pointer-events: none;
         }
 
         .thumb-vote.is-popping .thumb-count {

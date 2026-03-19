@@ -30,6 +30,11 @@ export const WYSIWYG_CSS = `
 
   /* Paragraphs & emphasis */
   :where(.wysiwyg, body) p { margin: .8em 0; }
+  :where(.wysiwyg, body) p:empty,
+  :where(.wysiwyg, body) p:has(> br:only-child) {
+    margin: .35em 0;
+    min-height: .4em;
+  }
   :where(.wysiwyg, body) strong, :where(.wysiwyg, body) b { font-weight: 700; }
   :where(.wysiwyg, body) em, :where(.wysiwyg, body) i { font-style: italic; }
   :where(.wysiwyg, body) u { text-decoration: underline; }
@@ -44,13 +49,22 @@ export const WYSIWYG_CSS = `
   /* Lists — FORCE real bullets/numbers and spacing like in the editor */
   :where(.wysiwyg, body) ul,
   :where(.wysiwyg, body) ol {
-    margin: .75em 0 .75em 1.25em;
-    padding-left: 1.25em;
+    margin: .75em 0 .75em 1.35em;
+    padding-left: 1.35em;
     list-style-position: outside;
   }
   :where(.wysiwyg, body) ul { list-style: disc; }
   :where(.wysiwyg, body) ol { list-style: decimal; }
   :where(.wysiwyg, body) li { margin: .25em 0; }
+  :where(.wysiwyg, body) li > p { margin: 0; }
+  :where(.wysiwyg, body) li > :is(ul, ol) {
+    margin-top: .45em;
+    margin-bottom: .45em;
+  }
+  :where(.wysiwyg, body) :is(ul, ol) :is(ul, ol) {
+    margin-left: 1rem;
+    padding-left: 1rem;
+  }
 
   /* Horizontal rule */
   :where(.wysiwyg, body) hr {
@@ -70,6 +84,12 @@ export const WYSIWYG_CSS = `
   }
   :where(.wysiwyg, body) blockquote p {
     margin: 0;
+  }
+  :where(.wysiwyg, body) blockquote p:empty,
+  :where(.wysiwyg, body) blockquote p:has(> br:only-child) {
+    display: none;
+    margin: 0;
+    min-height: 0;
   }
 
   /* Tables — borders and cell padding that match the editor */

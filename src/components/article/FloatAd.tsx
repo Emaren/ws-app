@@ -268,6 +268,7 @@ type FloatAdProps = {
 
   // Hover & caption controls
   hoverTint?: boolean; // grey rounded hover bg
+  hoverRing?: boolean;
   caption?: string | null; // chip label; null = hide
   captionClassName?: string;
   captionInside?: boolean; // true = on-image (default), false = below
@@ -317,6 +318,7 @@ export default function FloatAd({
 
   frameless = true,
   hoverTint = true,
+  hoverRing = true,
   caption = "Click for Delivery",
   captionClassName,
   captionInside = true,
@@ -808,7 +810,9 @@ export default function FloatAd({
         data-cap={captionInside ? "in" : "below"}
         className={[
           "floatad block w-full p-0 text-left relative cursor-pointer ring-0 transition motion-reduce:transition-none",
-          "focus:outline-none focus-visible:ring-2 hover:ring-neutral-300 dark:hover:ring-neutral-700",
+          hoverRing
+            ? "focus:outline-none focus-visible:ring-2 hover:ring-neutral-300 dark:hover:ring-neutral-700"
+            : "focus:outline-none focus-visible:ring-2",
           chrome,
           containerClassName ?? "",
         ].join(" ")}
