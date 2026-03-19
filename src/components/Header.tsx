@@ -610,7 +610,7 @@ export default function Header() {
       role="banner"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:pt-3 md:pb-2">
+      <div className="ws-container grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 pt-2 pb-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-6 md:gap-y-0 md:pt-3 md:pb-2">
         {/* Logo */}
         <a
           href="/"
@@ -672,7 +672,7 @@ export default function Header() {
         {/* Mobile menu button */}
         <div
           className="md:hidden flex min-w-0 items-center justify-end overflow-hidden px-1"
-          style={{ gridColumn: 2, gridRow: 1 }}
+          style={{ gridColumn: "2 / 4", gridRow: 2 }}
         >
           <ThemeCircles
             value={theme}

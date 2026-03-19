@@ -69,6 +69,16 @@ function incrementCounts(current: Counts, type: ArticleReactionType): Counts {
   return { ...current, hmm: current.hmm + 1 };
 }
 
+function decrementCounts(current: Counts, type: ArticleReactionType): Counts {
+  if (type === "LIKE") {
+    return { ...current, like: Math.max(0, current.like - 1) };
+  }
+  if (type === "WOW") {
+    return { ...current, wow: Math.max(0, current.wow - 1) };
+  }
+  return { ...current, hmm: Math.max(0, current.hmm - 1) };
+}
+
 export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Props) {
   const [counts, setCounts] = useState<Counts>({ like: likeCount, wow: wowCount, hmm: hmmCount });
   const [selected, setSelected] = useState<SelectedState>(EMPTY_SELECTED);
@@ -112,14 +122,15 @@ export default function ReactionsBar({ slug, likeCount, wowCount, hmmCount }: Pr
   }, [animating]);
 
   async function react(type: ArticleReactionType) {
-    if (sending || selected[type]) return;
+    if (sending) return;
 
     const previousSelected = selected;
     const previousCounts = counts;
+    const removing = selected[type];
 
     setAnimating(type);
-    setSelected((current) => ({ ...current, [type]: true }));
-    setCounts((current) => incrementCounts(current, type));
+    setSelected((current) => ({ ...current, [type]: !current[type] }));
+    setCounts((current) => (removing ? decrementCounts(current, type) : incrementCounts(current, type)));
     setSending(true);
 
     try {

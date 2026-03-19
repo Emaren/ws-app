@@ -19,9 +19,9 @@ const mountainFormatter = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
-  hour: "2-digit",
+  hour: "numeric",
   minute: "2-digit",
-  hour12: false,
+  hour12: true,
   timeZoneName: "shortGeneric",
 });
 
@@ -30,7 +30,8 @@ function formatMountainTime(dt?: Date | string | null): string | undefined {
   const value = typeof dt === "string" ? new Date(dt) : dt;
   const parts = mountainFormatter.formatToParts(value);
   const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${lookup.year}-${lookup.month}-${lookup.day} ${lookup.hour}:${lookup.minute} ${lookup.timeZoneName ?? "MT"}`;
+  const dayPeriod = (lookup.dayPeriod ?? "").replace(/\./g, "").toLowerCase();
+  return `${lookup.year}-${lookup.month}-${lookup.day} ${lookup.hour}:${lookup.minute}${dayPeriod} ${lookup.timeZoneName ?? "MT"}`;
 }
 
 function resolveSiteOrigin(): URL {
@@ -222,6 +223,7 @@ export default async function ArticlePage({
       <div className="ws-container overflow-x-clip">
         <AdFullWidth
           label=""
+          ctaLabel="Visit TokenTap.ca"
           articleSlug={article.slug}
           sourceContext="article_bottom_ad"
         />

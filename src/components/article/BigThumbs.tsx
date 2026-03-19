@@ -15,7 +15,7 @@ type ProductReactionResponse = {
 function updateProductCounts(
   current: ProductReactionCounts,
   previous: ProductReactionType | null,
-  next: ProductReactionType,
+  next: ProductReactionType | null,
 ): ProductReactionCounts {
   const updated = { ...current };
   if (previous === "like") {
@@ -105,12 +105,12 @@ export default function BigThumbs({ slug }: Props) {
   async function react(type: ProductReactionType) {
     if (busy) return;
     setAnimating(type);
-    if (selected === type) return;
 
     const previousSelection = selected;
     const previousCounts = counts;
-    setSelected(type);
-    setCounts(updateProductCounts(previousCounts, previousSelection, type));
+    const nextSelection = selected === type ? null : type;
+    setSelected(nextSelection);
+    setCounts(updateProductCounts(previousCounts, previousSelection, nextSelection));
     setBusy(true);
 
     try {
@@ -130,7 +130,7 @@ export default function BigThumbs({ slug }: Props) {
         like: Math.max(0, Number(data.counts?.like ?? 0)),
         hmm: Math.max(0, Number(data.counts?.hmm ?? 0)),
       });
-      setSelected(data.selected === "like" || data.selected === "hmm" ? data.selected : type);
+      setSelected(data.selected === "like" || data.selected === "hmm" ? data.selected : null);
     } catch (error) {
       setSelected(previousSelection);
       setCounts(previousCounts);

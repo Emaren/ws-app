@@ -45,6 +45,7 @@ function toneClasses(tone: Tone) {
 
 export default function AdFullWidth({
   label = "TokenTap.ca",
+  ctaLabel,
   href = "https://tokentap.ca",
   tone = "amber",
   height = 248,
@@ -55,6 +56,7 @@ export default function AdFullWidth({
   sourceContext = "article_bottom_ad",
 }: {
   label?: string;
+  ctaLabel?: string;
   href?: string;
   tone?: Tone;
   height?: number;
@@ -66,7 +68,7 @@ export default function AdFullWidth({
 }) {
   const toneCls = toneClasses(tone);
   const visibleLabel = label.trim();
-  const ctaLabel = visibleLabel ? `Visit ${visibleLabel}` : "Visit partner";
+  const resolvedCtaLabel = ctaLabel?.trim() || (visibleLabel ? `Visit ${visibleLabel}` : "Visit partner");
   const [imageStage, setImageStage] = useState<ImageStage>("primary");
   const [imageReady, setImageReady] = useState(false);
   const handleClick = useCallback(() => {
@@ -96,7 +98,7 @@ export default function AdFullWidth({
         href={href}
         target="_blank"
         rel="noopener noreferrer external"
-        aria-label={ctaLabel}
+        aria-label={resolvedCtaLabel}
         onClick={handleClick}
         className={[
           "group relative block w-full overflow-hidden rounded-2xl border",
@@ -161,7 +163,7 @@ export default function AdFullWidth({
 
         <div className="absolute inset-x-3 bottom-3 z-10 flex justify-end md:inset-x-5 md:bottom-4">
           <span className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black transition group-hover:opacity-90">
-            Visit partner
+            {resolvedCtaLabel}
           </span>
         </div>
       </a>

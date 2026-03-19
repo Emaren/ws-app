@@ -320,16 +320,16 @@ export async function PATCH(
       const alreadySelected =
         existing.length === 1 && existing[0].type === reactionType;
 
-      if (!alreadySelected) {
-        await tx.reaction.deleteMany({
-          where: {
-            articleId: article.id,
-            ...actorWhere,
-            scope: ReactionScope.PRODUCT,
-            type: { in: PRODUCT_REACTION_TYPES },
-          },
-        });
+      await tx.reaction.deleteMany({
+        where: {
+          articleId: article.id,
+          ...actorWhere,
+          scope: ReactionScope.PRODUCT,
+          type: { in: PRODUCT_REACTION_TYPES },
+        },
+      });
 
+      if (!alreadySelected) {
         await tx.reaction.create({
           data: {
             articleId: article.id,
@@ -354,7 +354,9 @@ export async function PATCH(
 
       return {
         counts: mapProductCounts(rows),
-        selected: toClientType(reactionType) as ClientProductReaction,
+        selected: alreadySelected
+          ? null
+          : (toClientType(reactionType) as ClientProductReaction),
       };
     });
 
@@ -387,7 +389,31 @@ export async function PATCH(
       select: { id: true },
     });
 
-    if (!existing) {
+    if (existing) {
+      await tx.reaction.delete({
+        where: { id: existing.id },
+      });
+
+      const decrementPatch: {
+        likeCount?: { decrement: number };
+        wowCount?: { decrement: number };
+        hmmCount?: { decrement: number };
+      } = {};
+      if (reactionType === ReactionType.LIKE) {
+        decrementPatch.likeCount = { decrement: 1 };
+      }
+      if (reactionType === ReactionType.WOW) {
+        decrementPatch.wowCount = { decrement: 1 };
+      }
+      if (reactionType === ReactionType.HMM) {
+        decrementPatch.hmmCount = { decrement: 1 };
+      }
+
+      await tx.article.update({
+        where: { id: article.id },
+        data: decrementPatch,
+      });
+    } else {
       await tx.reaction.create({
         data: {
           articleId: article.id,
