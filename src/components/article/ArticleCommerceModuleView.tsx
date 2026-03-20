@@ -99,12 +99,12 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 168,
-        mdW: 174,
-        lgW: 182,
-        h: 82,
-        mdH: 86,
-        lgH: 90,
+        w: 164,
+        mdW: 170,
+        lgW: 178,
+        h: 78,
+        mdH: 82,
+        lgH: 86,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.2,
@@ -119,12 +119,12 @@ function resolveFloatPresentation(input: {
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 226,
-        mdW: 236,
-        lgW: 246,
-        h: 86,
-        mdH: 90,
-        lgH: 96,
+        w: 232,
+        mdW: 242,
+        lgW: 252,
+        h: 88,
+        mdH: 92,
+        lgH: 98,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.15,
@@ -155,26 +155,31 @@ function resolveEditorialOpenShell(input: {
 }) {
   const widthClass =
     input.businessSlug === "homesteader-health"
-      ? "md:w-[10.95rem] lg:w-[11.35rem]"
+      ? "md:w-[9.05rem] lg:w-[9.25rem]"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:w-[12.15rem] lg:w-[12.55rem]"
+        ? "md:w-[10.1rem] lg:w-[10.35rem]"
         : input.compact
           ? "md:w-[17rem] lg:w-[17.5rem]"
           : "md:w-[18rem] lg:w-[18.75rem]";
 
   const sideClass =
     input.side === "left"
-      ? "md:float-left md:mr-8 lg:mr-10"
-      : "md:float-right md:ml-8 lg:ml-10";
+      ? "md:float-left md:mr-7 lg:mr-8"
+      : "md:float-right md:ml-7 lg:ml-8";
 
   const offsetClass =
     input.businessSlug === "homesteader-health"
-      ? "md:mt-1 lg:mt-1.5"
+      ? "md:mt-2 lg:mt-2.5"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:mt-0 lg:mt-0.5"
+        ? "md:mt-0.5 lg:mt-1"
         : "";
 
   return `${sideClass} ${widthClass} ${offsetClass}`.trim();
+}
+
+function dispatchEditorialAdOpen(triggerId: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(`ws-floatad-open:${triggerId}`));
 }
 
 export default function ArticleCommerceModuleView({
@@ -243,25 +248,42 @@ export default function ArticleCommerceModuleView({
     .replace(/^-+|-+$/g, "");
   const editorialTextShellClass =
     businessSlug === "homesteader-health"
-      ? "max-w-[10.15rem] md:max-w-[10.45rem]"
+      ? "max-w-[9rem] md:max-w-[9.2rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "max-w-[10.55rem] md:max-w-[10.8rem]"
+        ? "max-w-[9.9rem] md:max-w-[10.1rem]"
         : "max-w-[14rem]";
   const editorialTextOffsetClass =
     businessSlug === "homesteader-health"
-      ? "-mt-[2.2rem] md:-mt-[2.45rem]"
+      ? "-mt-[3.45rem] md:-mt-[3.65rem] lg:-mt-[3.8rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "-mt-[3rem] md:-mt-[3.15rem]"
+        ? "-mt-[4.45rem] md:-mt-[4.65rem] lg:-mt-[4.85rem]"
         : "";
   const editorialLogoHeightClass =
     businessSlug === "homesteader-health"
-      ? "h-[6.25rem] md:h-[6.65rem] lg:h-[7rem]"
+      ? "h-[5.95rem] md:h-[6.1rem] lg:h-[6.3rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "h-[4.7rem] md:h-[5.05rem] lg:h-[5.35rem]"
+        ? "h-[4.75rem] md:h-[5rem] lg:h-[5.25rem]"
         : compact
           ? "h-[5rem] md:h-[5.3rem] lg:h-[5.6rem]"
           : "h-[5.75rem] md:h-[6rem] lg:h-[6.35rem]";
-
+  const editorialModulePadClass =
+    businessSlug === "homesteader-health"
+      ? "px-0.5 py-0"
+      : businessSlug === "beaverlodge-butcher-shop"
+        ? "px-0.5 py-0"
+        : "px-0.5 py-0";
+  const editorialCopyClass =
+    businessSlug === "beaverlodge-butcher-shop"
+      ? "text-[0.49rem] md:text-[0.53rem] leading-[1.2]"
+      : compact
+        ? "text-[0.49rem] md:text-[0.54rem] leading-[1.18]"
+        : "text-[0.5rem] md:text-[0.55rem] leading-[1.2]";
+  const editorialTitleClass =
+    businessSlug === "beaverlodge-butcher-shop"
+      ? "text-[0.85rem] leading-[1.01] md:text-[0.9rem]"
+      : compact
+        ? "text-[0.87rem] leading-[1.02] md:text-[0.91rem]"
+        : "text-[0.88rem] leading-[1.02] md:text-[0.93rem]";
   if (visualStyle === "editorial-open") {
     const wrapperClassName = resolveEditorialOpenShell({
       side,
@@ -271,24 +293,13 @@ export default function ArticleCommerceModuleView({
 
     return (
       <aside
-        className={`my-0.5 w-full ${wrapperClassName} ${compact ? "" : "md:my-1"}`}
-        style={{ clear: side }}
+        className={`my-0 w-full ${wrapperClassName} ${compact ? "" : "md:my-0.5"}`}
       >
         <FloatAd
           buttonId={triggerId}
-          frameless
-          flowMode="inline"
+          triggerOnly
           label={visibleTitle}
           side={side}
-          imageSrc={imageSrc}
-          imageAlt={module.imageAlt || visibleTitle}
-          pad={0}
-          imgFit="contain"
-          hoverTint={false}
-          caption={null}
-          hoverRing={false}
-          suppressOverlay
-          containerClassName="hidden"
           deliveryLeadContext={{
             source: "LOCAL_AD",
             articleSlug,
@@ -305,27 +316,22 @@ export default function ArticleCommerceModuleView({
 
         <button
           type="button"
-          onClick={() => document.getElementById(triggerId)?.click()}
-          className={`group relative block w-full cursor-pointer overflow-hidden rounded-[1rem] px-1 py-0.5 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40`}
+          onClick={() => dispatchEditorialAdOpen(triggerId)}
+          className={`group relative block w-full appearance-none cursor-pointer overflow-hidden rounded-[1rem] border border-transparent bg-transparent text-center outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${editorialModulePadClass}`}
           aria-label={`${visibleTitle} - open delivery form`}
         >
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[1] rounded-[1rem] bg-[var(--editorial-ad-hover-bg)] opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
-          />
-
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
+            className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center rounded-[1rem] bg-[var(--editorial-ad-hover-bg)] opacity-0 transition-opacity duration-180 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
           >
-            <span className="rounded-full bg-black/74 px-4 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
+            <span className="pointer-events-none rounded-full bg-black/58 px-3.5 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[var(--editorial-ad-hover-label)] shadow-[0_10px_28px_rgba(0,0,0,0.22)]">
               Buy Now
             </span>
           </span>
 
-          <div className="relative z-[2] flex flex-col items-center">
+          <div className="pointer-events-none relative z-[1] flex flex-col items-center gap-0">
             {imageSrc ? (
-              <div className="flex w-full justify-center">
+              <div className="relative flex w-full justify-center">
                 <img
                   src={imageSrc}
                   alt={module.imageAlt || visibleTitle}
@@ -338,13 +344,11 @@ export default function ArticleCommerceModuleView({
             ) : null}
 
             <div
-              className={`mx-auto flex flex-col items-center gap-[0.18rem] ${editorialTextShellClass} ${editorialTextOffsetClass}`}
+              className={`mx-auto flex flex-col items-center gap-[0.03rem] ${editorialTextShellClass} ${editorialTextOffsetClass}`}
               style={{ color: "var(--editorial-ad-copy)" }}
             >
               <h4
-                className={`font-semibold tracking-tight ${
-                  compact ? "text-[0.9rem] leading-[1.02] md:text-[0.93rem]" : "text-[0.92rem] leading-[1.04] md:text-[0.96rem]"
-                }`}
+                className={`font-semibold tracking-tight ${editorialTitleClass}`}
                 style={{ color: "var(--editorial-ad-title)" }}
               >
                 {visibleTitle}
@@ -352,9 +356,7 @@ export default function ArticleCommerceModuleView({
 
               {body ? (
                 <p
-                  className={`mx-auto leading-[1.36] ${
-                    compact ? "text-[0.61rem] md:text-[0.64rem]" : "text-[0.62rem] md:text-[0.66rem]"
-                  }`}
+                  className={`mx-auto ${editorialCopyClass}`}
                   style={{ color: "var(--editorial-ad-muted)" }}
                 >
                   {body}
@@ -376,7 +378,7 @@ export default function ArticleCommerceModuleView({
       </div>
 
       <div className="mt-3">
-        <div style={{ clear: side }}>
+        <div>
           <FloatAd
             frameless
             label={visibleTitle}
@@ -387,7 +389,6 @@ export default function ArticleCommerceModuleView({
             imgFit="contain"
             hoverTint
             caption={null}
-            containerClassName="transition-transform duration-300 ease-out hover:-translate-y-0.5"
             deliveryLeadContext={{
               source: "LOCAL_AD",
               articleSlug,

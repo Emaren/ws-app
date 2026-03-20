@@ -56,18 +56,35 @@ function extractFirstUnorderedList(html: string): null | {
   };
 }
 
-function stripHtmlToText(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function splitAtFirstHeading(html: string): { before: string; heading: string; after: string } {
+  const m = /<h[23][\s\S]*?<\/h[23]>/i.exec(html);
+  if (!m) return { before: "", heading: "", after: html };
+  const start = m.index!;
+  const end = start + m[0].length;
+  return { before: html.slice(0, start), heading: m[0], after: html.slice(end) };
 }
 
-function splitAfterParagraphCount(html: string, count: number): {
-  before: string;
-  after: string;
-} {
+function splitAfterFirstParagraph(html: string): { before: string; after: string } {
+  const m = /<p\b[\s\S]*?<\/p>/i.exec(html);
+  if (!m) {
+    return {
+      before: html,
+      after: "",
+    };
+  }
+
+  const start = m.index ?? 0;
+  const end = start + m[0].length;
+  return {
+    before: html.slice(0, end),
+    after: html.slice(end),
+  };
+}
+
+function splitAfterParagraphCount(
+  html: string,
+  count: number,
+): { before: string; after: string } {
   if (count <= 0) {
     return { before: "", after: html };
   }
@@ -88,28 +105,78 @@ function splitAfterParagraphCount(html: string, count: number): {
     }
   }
 
-  return { before: html, after: "" };
+  return splitAfterFirstParagraph(html);
 }
 
-function splitAtFirstHeading(html: string): { before: string; heading: string; after: string } {
-  const m = /<h[23][\s\S]*?<\/h[23]>/i.exec(html);
-  if (!m) return { before: "", heading: "", after: html };
-  const start = m.index!;
-  const end = start + m[0].length;
-  return { before: html.slice(0, start), heading: m[0], after: html.slice(end) };
+type HtmlSection = {
+  headingHtml: string;
+  headingText: string;
+  bodyHtml: string;
+};
+
+function decodeInlineEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&ndash;|&mdash;/gi, "-");
 }
 
-function splitBeforeLastHeading(html: string): { before: string; after: string } {
-  const matches = [...html.matchAll(/<h[23][\s\S]*?<\/h[23]>/gi)];
-  const last = matches.at(-1);
-  if (!last || typeof last.index !== "number") {
-    return { before: "", after: html };
+function normalizeHeadingText(html: string): string {
+  return decodeInlineEntities(html.replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function splitHeadingSections(html: string): {
+  leadHtml: string;
+  sections: HtmlSection[];
+} {
+  const matcher = /<h[23]\b[\s\S]*?<\/h[23]>/gi;
+  const matches = Array.from(html.matchAll(matcher));
+
+  if (matches.length === 0) {
+    return { leadHtml: html, sections: [] };
   }
 
-  return {
-    before: html.slice(0, last.index),
-    after: html.slice(last.index),
-  };
+  const leadHtml = html.slice(0, matches[0].index ?? 0);
+  const sections: HtmlSection[] = [];
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const current = matches[index];
+    const start = current.index ?? 0;
+    const headingHtml = current[0];
+    const headingEnd = start + headingHtml.length;
+    const nextStart = matches[index + 1]?.index ?? html.length;
+
+    sections.push({
+      headingHtml,
+      headingText: normalizeHeadingText(headingHtml),
+      bodyHtml: html.slice(headingEnd, nextStart),
+    });
+  }
+
+  return { leadHtml, sections };
+}
+
+function resolveChecklistSectionIndex(sections: HtmlSection[]): number {
+  const explicitIndex = sections.findIndex((section) =>
+    section.headingText.includes("why we chose it"),
+  );
+  if (explicitIndex >= 0) {
+    return explicitIndex;
+  }
+
+  const boxChecklistIndex = sections.findIndex((section) =>
+    /checks every box/i.test(section.bodyHtml.replace(/<[^>]+>/g, " ")),
+  );
+  if (boxChecklistIndex >= 0) {
+    return boxChecklistIndex;
+  }
+
+  return sections.findIndex((section) => /<ul\b/i.test(section.bodyHtml));
 }
 
 function HtmlBlock({ html }: { html?: string }) {
@@ -177,6 +244,76 @@ function legacyCommerceModules(article: {
   ];
 }
 
+function dedupeCommerceModules(
+  modules: ArticleCommerceRenderableModule[],
+): ArticleCommerceRenderableModule[] {
+  const seen = new Set<string>();
+
+  return modules.filter((module) => {
+    const businessIdentity = commerceModuleIdentity(module);
+    const key = businessIdentity
+      ? businessIdentity.toLowerCase()
+      : [module.placement || "", module.side || "", module.title || "", module.imageSrc || ""]
+          .join("::")
+          .toLowerCase();
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function commerceModuleIdentity(module: ArticleCommerceRenderableModule): string {
+  return (
+    module.business?.slug ||
+    module.businessSlug ||
+    module.business?.name ||
+    module.businessName ||
+    module.title ||
+    module.offer?.title ||
+    module.inventoryItem?.name ||
+    module.imageSrc ||
+    ""
+  );
+}
+
+function normalizeCommerceModuleSide(
+  side: ArticleCommerceRenderableModule["side"],
+): "left" | "right" | null {
+  if (side === "LEFT") return "left";
+  if (side === "RIGHT") return "right";
+  return null;
+}
+
+function pickPreferredCommerceModule(
+  modules: ArticleCommerceRenderableModule[],
+  options: {
+    placement: "AFTER_FIRST_HEADING" | "CHECKLIST_SPLIT";
+    side: "left" | "right";
+    excludeIdentity?: string | null;
+  },
+): ArticleCommerceRenderableModule | null {
+  const pool = modules.filter((module) => {
+    const identity = commerceModuleIdentity(module).toLowerCase();
+    return !options.excludeIdentity || identity !== options.excludeIdentity.toLowerCase();
+  });
+
+  return (
+    pool.find(
+      (module) =>
+        module.placement === options.placement &&
+        normalizeCommerceModuleSide(module.side) === options.side,
+    ) ||
+    pool.find((module) => normalizeCommerceModuleSide(module.side) === options.side) ||
+    pool.find((module) => module.placement === options.placement) ||
+    pool[0] ||
+    null
+  );
+}
+
 function editionSurfaceToneClass(edition: SiteEdition): string {
   if (edition === "rustic") {
     return "border-amber-300/20 bg-amber-300/[0.06]";
@@ -222,21 +359,39 @@ export default function ArticleBody({
   const hasExcerpt = excerpt.length > 0;
 
   const { before: topBefore, heading: topHeading, after: topAfter } = splitAtFirstHeading(unwrapped);
-  const commerceModules =
-    article.commerceModules.length > 0 ? article.commerceModules : legacyCommerceModules(article);
-  const topModules = commerceModules.filter((module) => module.placement === "AFTER_FIRST_HEADING");
-  const checklistModules = commerceModules.filter((module) => module.placement === "CHECKLIST_SPLIT");
-  const primaryChecklistModule = checklistModules[0] ?? null;
-  const secondaryChecklistModules = checklistModules.slice(1);
-  const checklistSplit = extractFirstUnorderedList(topAfter);
-  const openEditorialAnchor = useOpenEditorialModules
-    ? splitBeforeLastHeading(checklistSplit ? checklistSplit.before : topAfter)
+  const commerceModules = dedupeCommerceModules(
+    article.commerceModules.length > 0 ? article.commerceModules : legacyCommerceModules(article),
+  );
+  const topModules = commerceModules.filter(
+    (module) =>
+      module.placement === "AFTER_FIRST_HEADING" ||
+      (!module.placement && normalizeCommerceModuleSide(module.side) === "right"),
+  );
+  const primaryTopModule = pickPreferredCommerceModule(topModules, {
+    placement: "AFTER_FIRST_HEADING",
+    side: "right",
+  });
+  const checklistModules = commerceModules.filter(
+    (module) =>
+      module.placement === "CHECKLIST_SPLIT" ||
+      (!module.placement && normalizeCommerceModuleSide(module.side) === "left"),
+  );
+  const primaryChecklistModule = pickPreferredCommerceModule(checklistModules, {
+    placement: "CHECKLIST_SPLIT",
+    side: "left",
+    excludeIdentity: primaryTopModule ? commerceModuleIdentity(primaryTopModule) : null,
+  });
+  const firstChecklistSplit = extractFirstUnorderedList(topAfter);
+  const secondChecklistRelativeSplit = firstChecklistSplit
+    ? extractFirstUnorderedList(firstChecklistSplit.after)
     : null;
-  const nonEditorialBeforeChecklist = useOpenEditorialModules
-    ? ""
-    : checklistSplit
-      ? topAfter.slice(0, topAfter.indexOf(checklistSplit.ulHtml))
-      : topAfter;
+  const preChecklistHtml = firstChecklistSplit?.before ?? topAfter;
+  const editorialSections = useOpenEditorialModules ? splitHeadingSections(topAfter) : null;
+  const editorialLeadHtml = editorialSections?.leadHtml ?? "";
+  const editorialLeadSplit = splitAfterParagraphCount(editorialLeadHtml, 2);
+  const checklistSectionIndex = useOpenEditorialModules
+    ? resolveChecklistSectionIndex(editorialSections?.sections ?? [])
+    : -1;
 
   return (
     <>
@@ -264,97 +419,73 @@ export default function ArticleBody({
           <HtmlBlock html={topHeading} />
           {useOpenEditorialModules ? (
             <>
-              {checklistSplit ? (
-                <>
-                  {topModules.length > 0 ? (
-                    <>
-                      <HtmlBlock html={openEditorialAnchor?.before} />
+              <HtmlBlock html={editorialLeadSplit.before} />
 
-                      {topModules.map((module, index) => (
-                        <ArticleCommerceModuleView
-                          key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
-                          articleSlug={article.slug}
-                          module={module}
-                          visualStyle="editorial-open"
-                        />
-                      ))}
+              {primaryTopModule ? (
+                <ArticleCommerceModuleView
+                  articleSlug={article.slug}
+                  module={primaryTopModule}
+                  visualStyle="editorial-open"
+                />
+              ) : null}
 
-                      <HtmlBlock html={openEditorialAnchor?.after} />
-                    </>
-                  ) : (
-                    <HtmlBlock html={checklistSplit.before} />
-                  )}
+              <HtmlBlock html={editorialLeadSplit.after} />
 
-                  {primaryChecklistModule ? (
-                    <>
-                      <ArticleCommerceModuleView
-                        articleSlug={article.slug}
-                        module={primaryChecklistModule}
-                        compact
-                        visualStyle="editorial-open"
-                      />
+              {editorialSections?.sections.map((section, index) => {
+                const showChecklistModule = !!primaryChecklistModule && index === checklistSectionIndex;
 
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
-                        }}
-                      />
+                return (
+                  <div key={`${section.headingText}-${index}`}>
+                    <HtmlBlock html={section.headingHtml} />
 
-                      {secondaryChecklistModules.map((module, index) => (
-                        <div
-                          key={module.id ?? `${module.placement}-extra-open-${index}-${module.title ?? "module"}`}
-                          className="my-5"
-                        >
-                          <ArticleCommerceModuleView
-                            articleSlug={article.slug}
-                            module={module}
-                            compact
-                            visualStyle="editorial-open"
-                          />
-                        </div>
-                      ))}
+                    {showChecklistModule ? (
+                      (() => {
+                        const checklistSplit = extractFirstUnorderedList(section.bodyHtml);
 
-                      <HtmlBlock html={checklistSplit.after} />
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
-                        }}
-                      />
+                        if (!checklistSplit) {
+                          return (
+                            <>
+                              <ArticleCommerceModuleView
+                                articleSlug={article.slug}
+                                module={primaryChecklistModule!}
+                                compact
+                                visualStyle="editorial-open"
+                              />
+                              <HtmlBlock html={section.bodyHtml} />
+                            </>
+                          );
+                        }
 
-                      <HtmlBlock html={checklistSplit.after} />
-                    </>
-                  )}
+                        return (
+                          <>
+                            <HtmlBlock html={checklistSplit.before} />
+                            <ArticleCommerceModuleView
+                              articleSlug={article.slug}
+                              module={primaryChecklistModule!}
+                              compact
+                              visualStyle="editorial-open"
+                            />
+                            <div
+                              dangerouslySetInnerHTML={{
+                                __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                              }}
+                            />
+                            <HtmlBlock html={checklistSplit.after} />
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <HtmlBlock html={section.bodyHtml} />
+                    )}
+                  </div>
+                );
+              })}
 
-                </>
-              ) : (
-                <>
-                  {topModules.length > 0 ? (
-                    <>
-                      <HtmlBlock html={openEditorialAnchor?.before} />
-
-                      {topModules.map((module, index) => (
-                        <ArticleCommerceModuleView
-                          key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
-                          articleSlug={article.slug}
-                          module={module}
-                          visualStyle="editorial-open"
-                        />
-                      ))}
-
-                      <HtmlBlock html={openEditorialAnchor?.after} />
-                    </>
-                  ) : (
-                    <HtmlBlock html={topAfter} />
-                  )}
-                </>
-              )}
+              {(primaryTopModule || primaryChecklistModule) && <div style={{ clear: "both" }} />}
             </>
           ) : (
             <>
-              <HtmlBlock html={nonEditorialBeforeChecklist} />
+              <HtmlBlock html={preChecklistHtml} />
 
               {topModules.map((module, index) => {
                 return (
@@ -367,11 +498,54 @@ export default function ArticleBody({
                 );
               })}
 
-              {checklistSplit ? (
+              {firstChecklistSplit ? (
                 <>
-                  <HtmlBlock html={checklistSplit.before} />
+                  {secondChecklistRelativeSplit ? (
+                    <>
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: firstChecklistSplit.ulHtml,
+                        }}
+                      />
 
-                  {primaryChecklistModule ? (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: secondChecklistRelativeSplit.before,
+                        }}
+                      />
+
+                      {primaryChecklistModule ? (
+                        <>
+                          <div className="ws-checkgrid">
+                            <div className="ws-check-ad">
+                              <ArticleCommerceModuleView
+                                articleSlug={article.slug}
+                                module={primaryChecklistModule}
+                                compact
+                              />
+                            </div>
+
+                            <div
+                              className="ws-checklist-wrap"
+                              dangerouslySetInnerHTML={{
+                                __html: ensureUlHasClass(secondChecklistRelativeSplit.ulHtml, "ws-checklist"),
+                              }}
+                            />
+                          </div>
+
+                        </>
+                      ) : (
+                        <div
+                          className="ws-checklist-wrap"
+                          dangerouslySetInnerHTML={{
+                            __html: ensureUlHasClass(secondChecklistRelativeSplit.ulHtml, "ws-checklist"),
+                          }}
+                        />
+                      )}
+
+                      <HtmlBlock html={secondChecklistRelativeSplit.after} />
+                    </>
+                  ) : primaryChecklistModule ? (
                     <>
                       <div className="ws-checkgrid">
                         <div className="ws-check-ad">
@@ -385,32 +559,22 @@ export default function ArticleBody({
                         <div
                           className="ws-checklist-wrap"
                           dangerouslySetInnerHTML={{
-                            __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                            __html: ensureUlHasClass(firstChecklistSplit.ulHtml, "ws-checklist"),
                           }}
                         />
                       </div>
 
-                      {secondaryChecklistModules.map((module, index) => (
-                        <div
-                          key={module.id ?? `${module.placement}-extra-${index}-${module.title ?? "module"}`}
-                          className="my-5"
-                        >
-                          <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
-                        </div>
-                      ))}
-
-                      <HtmlBlock html={checklistSplit.after} />
+                      <HtmlBlock html={firstChecklistSplit.after} />
                     </>
                   ) : (
                     <>
                       <div
-                        className="ws-checklist-wrap"
                         dangerouslySetInnerHTML={{
-                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                          __html: firstChecklistSplit.ulHtml,
                         }}
                       />
 
-                      <HtmlBlock html={checklistSplit.after} />
+                      <HtmlBlock html={firstChecklistSplit.after} />
                     </>
                   )}
                 </>

@@ -76,6 +76,16 @@ function addSafeRelToTargetBlankLinks(html: string): string {
   });
 }
 
+function normalizeBlockquoteSpacing(html: string): string {
+  return html.replace(/<blockquote\b([^>]*)>([\s\S]*?)<\/blockquote>/gi, (_match, attrs, inner) => {
+    const cleanedInner = String(inner)
+      .replace(/<p\b[^>]*>\s*(?:<br\s*\/?>|&nbsp;|\s)*<\/p>/gi, "")
+      .trim();
+
+    return `<blockquote${attrs}>${cleanedInner}</blockquote>`;
+  });
+}
+
 export function sanitizeArticleHtml(html: string | null | undefined): string {
   if (!html || !html.trim()) {
     return "";
@@ -83,7 +93,7 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
 
   try {
     const clean = sanitizeHtml(html, SANITIZE_OPTIONS);
-    return addSafeRelToTargetBlankLinks(clean);
+    return normalizeBlockquoteSpacing(addSafeRelToTargetBlankLinks(clean));
   } catch {
     try {
       // Defensive fallback for malformed legacy URL attrs.
@@ -92,7 +102,7 @@ export function sanitizeArticleHtml(html: string | null | undefined): string {
         "",
       );
       const clean = sanitizeHtml(normalized, SANITIZE_OPTIONS);
-      return addSafeRelToTargetBlankLinks(clean);
+      return normalizeBlockquoteSpacing(addSafeRelToTargetBlankLinks(clean));
     } catch {
       // Last-resort fallback: plain text only, guaranteed no URL parsing.
       return sanitizeHtml(html, {

@@ -386,14 +386,23 @@ export default function BigThumbs({ slug }: Props) {
         }
 
         .thumb-count::after {
-          content: attr(data-count);
+          content: "";
           position: absolute;
-          inset: 0;
+          left: 48%;
+          top: 82%;
+          width: 3.1rem;
+          height: 0.52rem;
           z-index: -1;
-          color: color-mix(in oklab, var(--vote-main) 34%, transparent);
-          opacity: 0.15;
-          transform: translate(0.84rem, 0.42rem) skewX(-68deg) scaleX(2.45) scaleY(0.04);
-          transform-origin: 50% 100%;
+          border-radius: 999px;
+          background: radial-gradient(
+            ellipse at center,
+            color-mix(in oklab, var(--vote-main) 28%, transparent) 0%,
+            color-mix(in oklab, var(--vote-main) 16%, transparent) 48%,
+            transparent 78%
+          );
+          opacity: 0.33;
+          transform: translate(1.18rem, 0.26rem) skewX(-24deg) scaleX(2.45) scaleY(0.18);
+          transform-origin: 18% 50%;
           filter: blur(6px);
           pointer-events: none;
         }
