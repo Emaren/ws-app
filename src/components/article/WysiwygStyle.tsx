@@ -6,7 +6,7 @@ const EXTRA_CSS = `
 .wysiwyg{ line-height:1.7; color:inherit; }
 .wysiwyg p{ margin-block:0 1rem; }
 .wysiwyg p:empty,
-.wysiwyg p:has(> br:only-child){ margin-block:.35rem; min-height:.4rem; }
+.wysiwyg p:has(> br:only-child){ margin-block:.16rem; min-height:.16rem; }
 
 /* Headings */
 .wysiwyg :is(h2,h3,h4){
@@ -29,6 +29,8 @@ const EXTRA_CSS = `
 /* Blockquote cleanup */
 .wysiwyg blockquote p:empty,
 .wysiwyg blockquote p:has(> br:only-child){ display:none; margin:0; min-height:0; }
+.wysiwyg blockquote p + p{ margin-top:.35em; }
+.wysiwyg blockquote > :last-child{ margin-bottom:0 !important; }
 
 /* Images */
 .wysiwyg :is(img,a>img,figure>img){

@@ -49,10 +49,10 @@
   --foreground:#171717;
   --autofill-text:#111111;
   --autofill-bg:#ffffff;
-  --editorial-ad-title:rgba(96,72,60,.94);
-  --editorial-ad-copy:rgba(109,82,68,.9);
-  --editorial-ad-muted:rgba(130,103,88,.82);
-  --editorial-ad-hover-bg:rgba(143,94,79,.08);
+  --editorial-ad-title:rgba(79,56,40,.98);
+  --editorial-ad-copy:rgba(92,68,50,.95);
+  --editorial-ad-muted:rgba(103,77,57,.9);
+  --editorial-ad-hover-bg:rgba(117,84,63,.14);
 }
 
 :root[data-theme="sepia"]{
@@ -60,10 +60,10 @@
   --foreground:#2f2417;
   --autofill-text:#2f2417;
   --autofill-bg:#f4ecd9;
-  --editorial-ad-title:rgba(93,69,47,.95);
-  --editorial-ad-copy:rgba(107,82,57,.9);
-  --editorial-ad-muted:rgba(125,98,71,.82);
-  --editorial-ad-hover-bg:rgba(134,96,61,.08);
+  --editorial-ad-title:rgba(84,62,42,.98);
+  --editorial-ad-copy:rgba(96,73,50,.95);
+  --editorial-ad-muted:rgba(110,84,58,.9);
+  --editorial-ad-hover-bg:rgba(126,92,58,.14);
 }
 
 :root[data-theme="walnut"],
@@ -390,12 +390,15 @@ select:-webkit-autofill{
 
 /* ---------------- FloatAd hover overlay (DRY) --------- */
 :is(.floatad,a[data-floatkey]){ position:relative; }
-:is(.floatad,a[data-floatkey]) .floatad__overlay{
+:is(.floatad,a[data-floatkey])[data-overlay="off"] .floatad__overlay{
+  display:none !important;
+}
+:is(.floatad,a[data-floatkey]):not([data-overlay="off"]) .floatad__overlay{
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
   opacity:0; background-color:transparent; transition:opacity .15s ease, background-color .15s ease;
   pointer-events:none;
 }
-:is(.floatad,a[data-floatkey]):where(:hover,:focus-visible,:active) .floatad__overlay{
+:is(.floatad,a[data-floatkey]):not([data-overlay="off"]):where(:hover,:focus-visible,:active) .floatad__overlay{
   opacity:1; background-color:rgba(0,0,0,.30);
 }
 @media (max-width:768px){

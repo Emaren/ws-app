@@ -99,41 +99,41 @@ function resolveFloatPresentation(input: {
   if (input.visualStyle === "editorial-open") {
     if (input.businessSlug === "homesteader-health") {
       return {
-        w: 186,
-        mdW: 194,
-        lgW: 202,
-        h: 90,
-        mdH: 94,
-        lgH: 98,
+        w: 168,
+        mdW: 174,
+        lgW: 182,
+        h: 82,
+        mdH: 86,
+        lgH: 90,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.2,
         nudgeY: 1,
         mdNudgeY: 1,
         lgNudgeY: 2,
-        scale: 1.22,
-        mdScale: 1.25,
-        lgScale: 1.28,
+        scale: 1.12,
+        mdScale: 1.15,
+        lgScale: 1.18,
       };
     }
 
     if (input.businessSlug === "beaverlodge-butcher-shop") {
       return {
-        w: 194,
-        mdW: 204,
-        lgW: 214,
-        h: 78,
-        mdH: 82,
-        lgH: 86,
+        w: 226,
+        mdW: 236,
+        lgW: 246,
+        h: 86,
+        mdH: 90,
+        lgH: 96,
         shape: "image" as const,
         shapeMargin: 6,
         shapeThreshold: 0.15,
         nudgeY: 1,
         mdNudgeY: 1,
         lgNudgeY: 1,
-        scale: 1.3,
-        mdScale: 1.34,
-        lgScale: 1.38,
+        scale: 1.36,
+        mdScale: 1.4,
+        lgScale: 1.45,
       };
     }
 
@@ -155,9 +155,9 @@ function resolveEditorialOpenShell(input: {
 }) {
   const widthClass =
     input.businessSlug === "homesteader-health"
-      ? "md:w-[13.25rem] lg:w-[13.75rem]"
+      ? "md:w-[10.95rem] lg:w-[11.35rem]"
       : input.businessSlug === "beaverlodge-butcher-shop"
-        ? "md:w-[13.5rem] lg:w-[14rem]"
+        ? "md:w-[12.15rem] lg:w-[12.55rem]"
         : input.compact
           ? "md:w-[17rem] lg:w-[17.5rem]"
           : "md:w-[18rem] lg:w-[18.75rem]";
@@ -167,7 +167,14 @@ function resolveEditorialOpenShell(input: {
       ? "md:float-left md:mr-8 lg:mr-10"
       : "md:float-right md:ml-8 lg:ml-10";
 
-  return `${sideClass} ${widthClass}`;
+  const offsetClass =
+    input.businessSlug === "homesteader-health"
+      ? "md:mt-1 lg:mt-1.5"
+      : input.businessSlug === "beaverlodge-butcher-shop"
+        ? "md:mt-0 lg:mt-0.5"
+        : "";
+
+  return `${sideClass} ${widthClass} ${offsetClass}`.trim();
 }
 
 export default function ArticleCommerceModuleView({
@@ -236,16 +243,24 @@ export default function ArticleCommerceModuleView({
     .replace(/^-+|-+$/g, "");
   const editorialTextShellClass =
     businessSlug === "homesteader-health"
-      ? "max-w-[11.8rem] md:max-w-[12.2rem]"
+      ? "max-w-[10.15rem] md:max-w-[10.45rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "max-w-[12.1rem] md:max-w-[12.5rem]"
+        ? "max-w-[10.55rem] md:max-w-[10.8rem]"
         : "max-w-[14rem]";
   const editorialTextOffsetClass =
     businessSlug === "homesteader-health"
-      ? "-mt-2 md:-mt-2.5"
+      ? "-mt-[2.2rem] md:-mt-[2.45rem]"
       : businessSlug === "beaverlodge-butcher-shop"
-        ? "-mt-4 md:-mt-[1.1rem]"
+        ? "-mt-[3rem] md:-mt-[3.15rem]"
         : "";
+  const editorialLogoHeightClass =
+    businessSlug === "homesteader-health"
+      ? "h-[6.25rem] md:h-[6.65rem] lg:h-[7rem]"
+      : businessSlug === "beaverlodge-butcher-shop"
+        ? "h-[4.7rem] md:h-[5.05rem] lg:h-[5.35rem]"
+        : compact
+          ? "h-[5rem] md:h-[5.3rem] lg:h-[5.6rem]"
+          : "h-[5.75rem] md:h-[6rem] lg:h-[6.35rem]";
 
   if (visualStyle === "editorial-open") {
     const wrapperClassName = resolveEditorialOpenShell({
@@ -256,83 +271,98 @@ export default function ArticleCommerceModuleView({
 
     return (
       <aside
-        className={`my-4 w-full ${wrapperClassName} ${compact ? "" : "md:my-5"}`}
+        className={`my-0.5 w-full ${wrapperClassName} ${compact ? "" : "md:my-1"}`}
         style={{ clear: side }}
       >
-        <div className="group relative overflow-hidden rounded-[1rem] px-1 py-1 text-center transition-colors duration-200 ease-out md:space-y-0.5">
+        <FloatAd
+          buttonId={triggerId}
+          frameless
+          flowMode="inline"
+          label={visibleTitle}
+          side={side}
+          imageSrc={imageSrc}
+          imageAlt={module.imageAlt || visibleTitle}
+          pad={0}
+          imgFit="contain"
+          hoverTint={false}
+          caption={null}
+          hoverRing={false}
+          suppressOverlay
+          containerClassName="hidden"
+          deliveryLeadContext={{
+            source: "LOCAL_AD",
+            articleSlug,
+            businessSlug: businessSlug ?? undefined,
+            businessName: businessName ?? undefined,
+            offerId: offerId ?? undefined,
+            offerTitle: offerTitle ?? undefined,
+            inventoryItemId: inventoryItemId ?? undefined,
+            inventoryItemName: inventoryItemName ?? undefined,
+            returnPath,
+          }}
+          {...dimensions}
+        />
+
+        <button
+          type="button"
+          onClick={() => document.getElementById(triggerId)?.click()}
+          className={`group relative block w-full cursor-pointer overflow-hidden rounded-[1rem] px-1 py-0.5 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40`}
+          aria-label={`${visibleTitle} - open delivery form`}
+        >
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[1] rounded-[1rem] bg-[var(--editorial-ad-hover-bg)] opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+            className="pointer-events-none absolute inset-0 z-[1] rounded-[1rem] bg-[var(--editorial-ad-hover-bg)] opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
           />
+
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-1/2 z-[2] flex -translate-y-1/2 justify-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+            className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100"
           >
-            <span className="rounded-full bg-black/72 px-4 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
+            <span className="rounded-full bg-black/74 px-4 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-white shadow-[0_12px_28px_rgba(0,0,0,0.28)]">
               Buy Now
             </span>
           </span>
 
-          <div className="relative z-0 flex justify-center">
-            <FloatAd
-              buttonId={triggerId}
-              frameless
-              flowMode="inline"
-              label={visibleTitle}
-              side={side}
-              imageSrc={imageSrc}
-              imageAlt={module.imageAlt || visibleTitle}
-              pad={0}
-              imgFit="contain"
-              hoverTint={false}
-              caption={null}
-              hoverRing={false}
-              containerClassName="duration-200 ease-out"
-              deliveryLeadContext={{
-                source: "LOCAL_AD",
-                articleSlug,
-                businessSlug: businessSlug ?? undefined,
-                businessName: businessName ?? undefined,
-                offerId: offerId ?? undefined,
-                offerTitle: offerTitle ?? undefined,
-                inventoryItemId: inventoryItemId ?? undefined,
-                inventoryItemName: inventoryItemName ?? undefined,
-                returnPath,
-              }}
-              {...dimensions}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => document.getElementById(triggerId)?.click()}
-            className={`relative z-0 mx-auto flex w-full cursor-pointer flex-col items-center gap-0 rounded-[1rem] bg-transparent px-1 py-0 text-center transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 ${editorialTextShellClass} ${editorialTextOffsetClass}`}
-            aria-label={`${visibleTitle} - open delivery form`}
-            style={{ color: "var(--editorial-ad-copy)" }}
-          >
-            <h4
-              className={`font-semibold tracking-tight ${
-                compact ? "text-[0.96rem] leading-[1.02] md:text-[1rem]" : "text-[0.98rem] leading-[1.02] md:text-[1.04rem]"
-              }`}
-              style={{ color: "var(--editorial-ad-title)" }}
-            >
-              {visibleTitle}
-            </h4>
-
-            {body ? (
-              <p
-                className={`mx-auto leading-[1.42] ${
-                  compact ? "text-[0.69rem] md:text-[0.72rem]" : "text-[0.71rem] md:text-[0.74rem]"
-                }`}
-                style={{ color: "var(--editorial-ad-muted)" }}
-              >
-                {body}
-              </p>
+          <div className="relative z-[2] flex flex-col items-center">
+            {imageSrc ? (
+              <div className="flex w-full justify-center">
+                <img
+                  src={imageSrc}
+                  alt={module.imageAlt || visibleTitle}
+                  className={`pointer-events-none block w-auto ${editorialLogoHeightClass}`}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              </div>
             ) : null}
-          </button>
-        </div>
 
-        <div style={{ clear: "both" }} />
+            <div
+              className={`mx-auto flex flex-col items-center gap-[0.18rem] ${editorialTextShellClass} ${editorialTextOffsetClass}`}
+              style={{ color: "var(--editorial-ad-copy)" }}
+            >
+              <h4
+                className={`font-semibold tracking-tight ${
+                  compact ? "text-[0.9rem] leading-[1.02] md:text-[0.93rem]" : "text-[0.92rem] leading-[1.04] md:text-[0.96rem]"
+                }`}
+                style={{ color: "var(--editorial-ad-title)" }}
+              >
+                {visibleTitle}
+              </h4>
+
+              {body ? (
+                <p
+                  className={`mx-auto leading-[1.36] ${
+                    compact ? "text-[0.61rem] md:text-[0.64rem]" : "text-[0.62rem] md:text-[0.66rem]"
+                  }`}
+                  style={{ color: "var(--editorial-ad-muted)" }}
+                >
+                  {body}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </button>
       </aside>
     );
   }

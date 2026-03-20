@@ -32,8 +32,8 @@ export const WYSIWYG_CSS = `
   :where(.wysiwyg, body) p { margin: .8em 0; }
   :where(.wysiwyg, body) p:empty,
   :where(.wysiwyg, body) p:has(> br:only-child) {
-    margin: .35em 0;
-    min-height: .4em;
+    margin: .16em 0;
+    min-height: .16em;
   }
   :where(.wysiwyg, body) strong, :where(.wysiwyg, body) b { font-weight: 700; }
   :where(.wysiwyg, body) em, :where(.wysiwyg, body) i { font-style: italic; }
@@ -62,8 +62,8 @@ export const WYSIWYG_CSS = `
     margin-bottom: .45em;
   }
   :where(.wysiwyg, body) :is(ul, ol) :is(ul, ol) {
-    margin-left: 1rem;
-    padding-left: 1rem;
+    margin-left: 1.15rem;
+    padding-left: 1.15rem;
   }
 
   /* Horizontal rule */
@@ -84,6 +84,12 @@ export const WYSIWYG_CSS = `
   }
   :where(.wysiwyg, body) blockquote p {
     margin: 0;
+  }
+  :where(.wysiwyg, body) blockquote p + p {
+    margin-top: .35em;
+  }
+  :where(.wysiwyg, body) blockquote > :last-child {
+    margin-bottom: 0 !important;
   }
   :where(.wysiwyg, body) blockquote p:empty,
   :where(.wysiwyg, body) blockquote p:has(> br:only-child) {

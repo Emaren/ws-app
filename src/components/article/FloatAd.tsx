@@ -269,6 +269,7 @@ type FloatAdProps = {
   // Hover & caption controls
   hoverTint?: boolean; // grey rounded hover bg
   hoverRing?: boolean;
+  suppressOverlay?: boolean;
   caption?: string | null; // chip label; null = hide
   captionClassName?: string;
   captionInside?: boolean; // true = on-image (default), false = below
@@ -319,6 +320,7 @@ export default function FloatAd({
   frameless = true,
   hoverTint = true,
   hoverRing = true,
+  suppressOverlay = false,
   caption = "Click for Delivery",
   captionClassName,
   captionInside = true,
@@ -808,6 +810,7 @@ export default function FloatAd({
         data-floatkey={key}
         data-ad-slot={adSlot}
         data-cap={captionInside ? "in" : "below"}
+        data-overlay={suppressOverlay ? "off" : "on"}
         className={[
           "floatad block w-full p-0 text-left relative cursor-pointer ring-0 transition motion-reduce:transition-none",
           hoverRing
@@ -843,21 +846,22 @@ export default function FloatAd({
           />
         ) : null}
 
-        {/* Hover overlay (fills card, centered via flex - no 50% tricks) */}
-        <span className="floatad__overlay" aria-hidden>
-          {captionInside && caption !== null && (
-            <span
-              className={[
-                "inline-block px-3.5 py-1 rounded-full text-[14px] leading-none text-white",
-                "shadow-[0_6px_20px_rgba(0,0,0,.35)]",
-                captionClassName ?? "",
-              ].join(" ")}
-              style={{ background: "rgba(0,0,0,.68)" }}
-            >
-              {caption}
-            </span>
-          )}
-        </span>
+        {!suppressOverlay && (
+          <span className="floatad__overlay" aria-hidden>
+            {captionInside && caption !== null && (
+              <span
+                className={[
+                  "inline-block px-3.5 py-1 rounded-full text-[14px] leading-none text-white",
+                  "shadow-[0_6px_20px_rgba(0,0,0,.35)]",
+                  captionClassName ?? "",
+                ].join(" ")}
+                style={{ background: "rgba(0,0,0,.68)" }}
+              >
+                {caption}
+              </span>
+            )}
+          </span>
+        )}
       </button>
 
       {/* Caption BELOW (normal flow; never affects width) */}

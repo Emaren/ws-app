@@ -75,16 +75,22 @@ export default function NewArticle() {
           />
         </label>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Content</span>
-          <span className="text-xs opacity-70">
-            Publishing editor: headings, nested lists, tables, links
-          </span>
-        </div>
+        <div className="space-y-2">
+          <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <span className="text-sm font-medium">Content</span>
+              <p className="mt-1 text-sm opacity-75">
+                Magazine-grade structure, nested lists, tables, quotes, spacers, and cleaner
+                paragraph rhythm that matches the live article.
+              </p>
+            </div>
 
-        {/* Rich WYSIWYG field */}
-        <div className="overflow-hidden rounded-xl border">
-          <RichEditor value={content} onChange={setContent} />
+            <span className="text-xs uppercase tracking-[0.18em] opacity-60">
+              Luxury publishing surface
+            </span>
+          </div>
+
+          <RichEditor value={content} onChange={setContent} theme="light" />
         </div>
 
         <ReviewProfileFields

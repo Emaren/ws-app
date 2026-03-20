@@ -247,15 +247,22 @@ export default function Editor({ initialArticle }: { initialArticle: EditableArt
         />
       </label>
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Content</span>
-        <span className="text-xs opacity-60">
-          Publishing editor: headings, nested lists, tables, links
-        </span>
-      </div>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span className="text-sm font-medium">Content</span>
+            <p className="mt-1 text-sm opacity-75">
+              Publishing Studio keeps structure, list depth, tables, dividers, and spacing true
+              to the live article so what you craft here reads the same on the page.
+            </p>
+          </div>
 
-      <div className="border rounded-xl overflow-hidden">
-        <RichEditor value={content} onChange={setContent} />
+          <span className="text-xs uppercase tracking-[0.18em] opacity-60">
+            Luxury publishing surface
+          </span>
+        </div>
+
+        <RichEditor value={content} onChange={setContent} theme="light" />
       </div>
 
       <ReviewProfileFields

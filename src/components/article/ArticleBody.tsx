@@ -91,37 +91,25 @@ function splitAfterParagraphCount(html: string, count: number): {
   return { before: html, after: "" };
 }
 
-function splitAtMatchingHeading(
-  html: string,
-  matcher: RegExp,
-): { before: string; heading: string; after: string } {
-  const headingMatcher = /<h[23][\s\S]*?<\/h[23]>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = headingMatcher.exec(html))) {
-    const headingText = stripHtmlToText(match[0]);
-    if (!matcher.test(headingText)) {
-      continue;
-    }
-
-    const start = match.index ?? 0;
-    const end = start + match[0].length;
-    return {
-      before: html.slice(0, start),
-      heading: match[0],
-      after: html.slice(end),
-    };
-  }
-
-  return { before: "", heading: "", after: html };
-}
-
 function splitAtFirstHeading(html: string): { before: string; heading: string; after: string } {
   const m = /<h[23][\s\S]*?<\/h[23]>/i.exec(html);
   if (!m) return { before: "", heading: "", after: html };
   const start = m.index!;
   const end = start + m[0].length;
   return { before: html.slice(0, start), heading: m[0], after: html.slice(end) };
+}
+
+function splitBeforeLastHeading(html: string): { before: string; after: string } {
+  const matches = [...html.matchAll(/<h[23][\s\S]*?<\/h[23]>/gi)];
+  const last = matches.at(-1);
+  if (!last || typeof last.index !== "number") {
+    return { before: "", after: html };
+  }
+
+  return {
+    before: html.slice(0, last.index),
+    after: html.slice(last.index),
+  };
 }
 
 function HtmlBlock({ html }: { html?: string }) {
@@ -240,17 +228,15 @@ export default function ArticleBody({
   const checklistModules = commerceModules.filter((module) => module.placement === "CHECKLIST_SPLIT");
   const primaryChecklistModule = checklistModules[0] ?? null;
   const secondaryChecklistModules = checklistModules.slice(1);
-  const topModuleIntroSplit = splitAfterParagraphCount(
-    topAfter,
-    useOpenEditorialModules && topModules.length > 0 ? 4 : 0,
-  );
-  const checklistAnchor = splitAtMatchingHeading(
-    topModuleIntroSplit.after,
-    /why we chose it/i,
-  );
-  const checklistSplit = extractFirstUnorderedList(
-    checklistAnchor.heading ? checklistAnchor.after : topModuleIntroSplit.after,
-  );
+  const checklistSplit = extractFirstUnorderedList(topAfter);
+  const openEditorialAnchor = useOpenEditorialModules
+    ? splitBeforeLastHeading(checklistSplit ? checklistSplit.before : topAfter)
+    : null;
+  const nonEditorialBeforeChecklist = useOpenEditorialModules
+    ? ""
+    : checklistSplit
+      ? topAfter.slice(0, topAfter.indexOf(checklistSplit.ulHtml))
+      : topAfter;
 
   return (
     <>
@@ -276,110 +262,161 @@ export default function ArticleBody({
 
           <HtmlBlock html={topBefore} />
           <HtmlBlock html={topHeading} />
-          <HtmlBlock html={topModuleIntroSplit.before} />
-
-          {topModules.map((module, index) => (
-            <div
-              key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
-              style={{ clear: module.side === "LEFT" ? "left" : "right" }}
-              className="mb-5"
-            >
-              <ArticleCommerceModuleView
-                articleSlug={article.slug}
-                module={module}
-                visualStyle={useOpenEditorialModules ? "editorial-open" : "card"}
-              />
-            </div>
-          ))}
-
-          {checklistSplit ? (
+          {useOpenEditorialModules ? (
             <>
-              {checklistAnchor.heading ? (
+              {checklistSplit ? (
                 <>
-                  <HtmlBlock html={checklistAnchor.before} />
-                  <HtmlBlock html={checklistAnchor.heading} />
-                  <HtmlBlock html={checklistSplit.before} />
-                </>
-              ) : (
-                <HtmlBlock html={checklistSplit.before} />
-              )}
-              {useOpenEditorialModules && topModules.length > 0 ? (
-                <div style={{ clear: "both" }} />
-              ) : null}
+                  {topModules.length > 0 ? (
+                    <>
+                      <HtmlBlock html={openEditorialAnchor?.before} />
 
-              {useOpenEditorialModules && primaryChecklistModule ? (
-                <>
-                  <ArticleCommerceModuleView
-                    articleSlug={article.slug}
-                    module={primaryChecklistModule}
-                    compact
-                    visualStyle="editorial-open"
-                  />
+                      {topModules.map((module, index) => (
+                        <ArticleCommerceModuleView
+                          key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
+                          articleSlug={article.slug}
+                          module={module}
+                          visualStyle="editorial-open"
+                        />
+                      ))}
 
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
-                    }}
-                  />
+                      <HtmlBlock html={openEditorialAnchor?.after} />
+                    </>
+                  ) : (
+                    <HtmlBlock html={checklistSplit.before} />
+                  )}
 
-                  <div style={{ clear: "both" }} />
-
-                  {secondaryChecklistModules.map((module, index) => (
-                    <div
-                      key={module.id ?? `${module.placement}-extra-open-${index}-${module.title ?? "module"}`}
-                      className="my-5"
-                    >
+                  {primaryChecklistModule ? (
+                    <>
                       <ArticleCommerceModuleView
                         articleSlug={article.slug}
-                        module={module}
+                        module={primaryChecklistModule}
                         compact
                         visualStyle="editorial-open"
                       />
-                    </div>
-                  ))}
 
-                  <HtmlBlock html={checklistSplit.after} />
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                        }}
+                      />
+
+                      {secondaryChecklistModules.map((module, index) => (
+                        <div
+                          key={module.id ?? `${module.placement}-extra-open-${index}-${module.title ?? "module"}`}
+                          className="my-5"
+                        >
+                          <ArticleCommerceModuleView
+                            articleSlug={article.slug}
+                            module={module}
+                            compact
+                            visualStyle="editorial-open"
+                          />
+                        </div>
+                      ))}
+
+                      <HtmlBlock html={checklistSplit.after} />
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                        }}
+                      />
+
+                      <HtmlBlock html={checklistSplit.after} />
+                    </>
+                  )}
+
                 </>
               ) : (
                 <>
-              <div className="ws-checkgrid">
-                {primaryChecklistModule && (
-                  <div className="ws-check-ad">
-                    <ArticleCommerceModuleView
-                      articleSlug={article.slug}
-                      module={primaryChecklistModule}
-                      compact
-                    />
-                  </div>
-                )}
+                  {topModules.length > 0 ? (
+                    <>
+                      <HtmlBlock html={openEditorialAnchor?.before} />
 
-                <div
-                  className="ws-checklist-wrap"
-                  dangerouslySetInnerHTML={{
-                    __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
-                  }}
-                />
-              </div>
+                      {topModules.map((module, index) => (
+                        <ArticleCommerceModuleView
+                          key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
+                          articleSlug={article.slug}
+                          module={module}
+                          visualStyle="editorial-open"
+                        />
+                      ))}
 
-              {secondaryChecklistModules.map((module, index) => (
-                <div
-                  key={module.id ?? `${module.placement}-extra-${index}-${module.title ?? "module"}`}
-                  className="my-5"
-                >
-                    <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
-                  </div>
-                ))}
-
-              <HtmlBlock html={checklistSplit.after} />
+                      <HtmlBlock html={openEditorialAnchor?.after} />
+                    </>
+                  ) : (
+                    <HtmlBlock html={topAfter} />
+                  )}
                 </>
               )}
             </>
           ) : (
             <>
-              <HtmlBlock html={topModuleIntroSplit.after} />
-              {useOpenEditorialModules && topModules.length > 0 ? (
-                <div style={{ clear: "both" }} />
-              ) : null}
+              <HtmlBlock html={nonEditorialBeforeChecklist} />
+
+              {topModules.map((module, index) => {
+                return (
+                  <ArticleCommerceModuleView
+                    key={module.id ?? `${module.placement}-${index}-${module.title ?? "module"}`}
+                    articleSlug={article.slug}
+                    module={module}
+                    visualStyle="card"
+                  />
+                );
+              })}
+
+              {checklistSplit ? (
+                <>
+                  <HtmlBlock html={checklistSplit.before} />
+
+                  {primaryChecklistModule ? (
+                    <>
+                      <div className="ws-checkgrid">
+                        <div className="ws-check-ad">
+                          <ArticleCommerceModuleView
+                            articleSlug={article.slug}
+                            module={primaryChecklistModule}
+                            compact
+                          />
+                        </div>
+
+                        <div
+                          className="ws-checklist-wrap"
+                          dangerouslySetInnerHTML={{
+                            __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                          }}
+                        />
+                      </div>
+
+                      {secondaryChecklistModules.map((module, index) => (
+                        <div
+                          key={module.id ?? `${module.placement}-extra-${index}-${module.title ?? "module"}`}
+                          className="my-5"
+                        >
+                          <ArticleCommerceModuleView articleSlug={article.slug} module={module} compact />
+                        </div>
+                      ))}
+
+                      <HtmlBlock html={checklistSplit.after} />
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="ws-checklist-wrap"
+                        dangerouslySetInnerHTML={{
+                          __html: ensureUlHasClass(checklistSplit.ulHtml, "ws-checklist"),
+                        }}
+                      />
+
+                      <HtmlBlock html={checklistSplit.after} />
+                    </>
+                  )}
+                </>
+              ) : (
+                <HtmlBlock html={topAfter} />
+              )}
             </>
           )}
 

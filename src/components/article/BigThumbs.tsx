@@ -391,8 +391,8 @@ export default function BigThumbs({ slug }: Props) {
           inset: 0;
           z-index: -1;
           color: color-mix(in oklab, var(--vote-main) 34%, transparent);
-          opacity: 0.34;
-          transform: translate(0.32rem, 0.48rem) scaleY(0.28) scaleX(1.08);
+          opacity: 0.15;
+          transform: translate(0.84rem, 0.42rem) skewX(-68deg) scaleX(2.45) scaleY(0.04);
           transform-origin: 50% 100%;
           filter: blur(6px);
           pointer-events: none;
