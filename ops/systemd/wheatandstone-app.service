@@ -1,0 +1,48 @@
+[Unit]
+Description=WheatAndStone App (Next.js)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=tony
+Group=tony
+WorkingDirectory=/var/www/WheatAndStone/ws-app
+Environment=NODE_ENV=production
+Environment=PORT=3010
+EnvironmentFile=-/etc/wheatandstone/wheatandstone-web.env
+ExecStartPre=/usr/bin/bash -lc 'fuser -k -n tcp 3010 2>/dev/null || true'
+ExecStart=/usr/bin/node /var/www/WheatAndStone/ws-app/node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3010
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=30
+ExecStopPost=/usr/bin/bash -lc 'fuser -k -n tcp 3010 2>/dev/null || true'
+Restart=always
+RestartSec=3
+SuccessExitStatus=143
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+NoExecPaths=/tmp /var/tmp /dev/shm
+ReadWritePaths=-/var/www/WheatAndStone/ws-app/.next/cache
+ReadWritePaths=/var/www/WheatAndStone/ws-app/public/uploads/experience-studio
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
