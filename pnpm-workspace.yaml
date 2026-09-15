@@ -1,5 +1,10 @@
 packages:
   - "."
+overrides:
+  postcss: '8.5.28'
+  browserslist: '4.28.9'
+  baseline-browser-mapping: '2.11.23'
+  deepmerge-ts: '8.0.2'
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

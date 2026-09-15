@@ -13,6 +13,14 @@ for (const rule of [
   if (!unit.includes(rule)) throw new Error(`missing hardening rule: ${rule}`);
 }
 const workspace = fs.readFileSync("pnpm-workspace.yaml", "utf8");
+for (const line of [
+  "postcss: '8.5.28'",
+  "browserslist: '4.28.9'",
+  "baseline-browser-mapping: '2.11.23'",
+  "deepmerge-ts: '8.0.2'",
+]) {
+  if (!workspace.includes(line)) throw new Error(`missing security override: ${line}`);
+}
 for (const name of ["@prisma/client", "@prisma/engines", "bcrypt", "esbuild", "prisma", "sharp", "unrs-resolver"]) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   if (!new RegExp(`['\"]?${escaped}['\"]?: true`).test(workspace)) throw new Error(`native build not explicitly approved: ${name}`);
