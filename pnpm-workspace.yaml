@@ -1,5 +1,16 @@
 packages:
   - "."
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  bcrypt: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@babel/core@7.29.1'
+  - dompurify@3.3.4
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'

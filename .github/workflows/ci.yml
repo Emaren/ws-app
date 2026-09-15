@@ -56,6 +56,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security posture gate
+        id: security
+        continue-on-error: true
+        run: pnpm run security:check
+
+      - name: Production dependency audit
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --prod
+
       - name: Migration gate
         id: migrations
         continue-on-error: true
@@ -79,6 +89,8 @@ jobs:
       - name: Gate summary
         if: always()
         env:
+          SECURITY_OUTCOME: ${{ steps.security.outcome }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
           MIGRATIONS_OUTCOME: ${{ steps.migrations.outcome }}
           LINT_OUTCOME: ${{ steps.lint.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
@@ -113,6 +125,8 @@ jobs:
             echo
             echo "| Gate | Result |"
             echo "| --- | --- |"
+            gate_line "security-posture" "$SECURITY_OUTCOME"
+            gate_line "production-audit" "$AUDIT_OUTCOME"
             gate_line "migrations" "$MIGRATIONS_OUTCOME"
             gate_line "lint" "$LINT_OUTCOME"
             gate_line "test" "$TEST_OUTCOME"
