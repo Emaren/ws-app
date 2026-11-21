@@ -58,22 +58,20 @@ pnpm dev
 
 ## Local Postgres troubleshooting
 
-If `pnpm prisma:migrate:deploy` fails with `P1010` (access denied) and your machine already has another Postgres stack on `5432`, run Wheat & Stone Postgres on `5433` instead:
+If `pnpm prisma:migrate:deploy` fails with `P1010` and another local database already occupies port 5432, provision a **unique local-only** PostgreSQL password and bind the test database to loopback on 5433. Never reuse production credentials.
 
 ```bash
+export WS_DEV_PG_PASSWORD="$(openssl rand -hex 32)"
 docker rm -f ws-postgres >/dev/null 2>&1 || true
-docker run --name ws-postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=wheatandstone \
-  -p 5433:5432 -d postgres:16
+docker run --name ws-postgres \\
+  -e POSTGRES_USER=postgres \\
+  -e POSTGRES_PASSWORD="$WS_DEV_PG_PASSWORD" \\
+  -e POSTGRES_DB=wheatandstone \\
+  -p 127.0.0.1:5433:5432 -d postgres:16
+export DATABASE_URL="postgresql://postgres:${WS_DEV_PG_PASSWORD}@127.0.0.1:5433/wheatandstone?schema=public"
 ```
 
-Then update `DATABASE_URL`:
-
-```bash
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/wheatandstone?schema=public
-```
+Keep the generated values in a private shell or local secret manager; do not commit them. Existing PostgreSQL data volumes require an explicit database-role password change—changing a container environment variable alone does not rotate the already-created role. GitHub CI creates independent ephemeral credentials for each run and never uses production database credentials.
 
 ## Environment variables
 
