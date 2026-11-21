@@ -13,7 +13,23 @@ permissions:
   contents: read
 
 jobs:
+  prepare_ci:
+    name: generate-one-run-test-credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      db_password: ${{ steps.generate.outputs.db_password }}
+      nextauth_secret: ${{ steps.generate.outputs.nextauth_secret }}
+    steps:
+      - name: Generate independent ephemeral CI credentials
+        id: generate
+        shell: bash
+        run: |
+          echo "db_password=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
+          echo "nextauth_secret=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
+
   verify:
+    needs: prepare_ci
     name: lint-test-build-migrations
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -22,7 +38,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: ${{ needs.prepare_ci.outputs.db_password }}
           POSTGRES_DB: wheatandstone
         ports:
           - 5432:5432
@@ -32,8 +48,8 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/wheatandstone?schema=public
-      NEXTAUTH_SECRET: ci-nextauth-secret
+      DATABASE_URL: postgresql://postgres:${{ needs.prepare_ci.outputs.db_password }}@127.0.0.1:5432/wheatandstone?schema=public
+      NEXTAUTH_SECRET: ${{ needs.prepare_ci.outputs.nextauth_secret }}
       NEXTAUTH_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SITE_ORIGIN: http://127.0.0.1:3000
       WS_API_BASE_URL: http://127.0.0.1:3012
