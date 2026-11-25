@@ -14,7 +14,7 @@
     "preview:start": "NEXT_DIST_DIR=.next-preview next start -H 127.0.0.1 -p ${PORT:-3111}",
     "//4": "---- plain build (uses .env.production; default .next dir) ----",
     "ws-api:contract:generate": "node scripts/gen-ws-api-contract.mjs",
-    "prisma:generate:safe": "DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:5432/wheatandstone?schema=public} prisma generate",
+    "prisma:generate:safe": "DATABASE_URL=${DATABASE_URL:-postgresql://generate_only@127.0.0.1:1/generate_only} prisma generate",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "pretypecheck": "pnpm run ws-api:contract:generate && node scripts/clean-typecheck-state.mjs",
     "typecheck": "pnpm prisma:generate:safe && tsc --noEmit",

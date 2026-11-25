@@ -157,3 +157,5 @@ The workflow always publishes a gate summary table and fails the run if any gate
 - Lint currently maps to TypeScript checks only (eslint not yet configured)
 - Frontend unit coverage is still minimal around article lifecycle helpers
 - Prisma role enum/migrations are not yet aligned to the full `OWNER/ADMIN/EDITOR/CONTRIBUTOR/USER` model
+
+CI creates a fresh masked credential pair within the verification job and starts a loopback-only disposable PostgreSQL container. Migrations require an explicit DATABASE_URL. The Prisma generation-only fallback targets an unusable loopback endpoint with no password; it is not an application or migration connection default.
