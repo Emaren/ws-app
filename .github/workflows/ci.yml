@@ -17,23 +17,7 @@ jobs:
     name: lint-test-build-migrations
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: wheatandstone
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d wheatandstone"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/wheatandstone?schema=public
-      NEXTAUTH_SECRET: ci-nextauth-secret
       NEXTAUTH_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_SITE_ORIGIN: http://127.0.0.1:3000
       WS_API_BASE_URL: http://127.0.0.1:3012
@@ -41,6 +25,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start isolated PostgreSQL with ephemeral credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          db_password="$(openssl rand -hex 32)"
+          auth_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$db_password"
+          echo "::add-mask::$auth_secret"
+          export POSTGRES_PASSWORD="$db_password"
+          docker run --detach --rm --name ws-ci-postgres \
+            --publish 127.0.0.1:5432:5432 \
+            --env POSTGRES_USER=postgres --env POSTGRES_PASSWORD \
+            --env POSTGRES_DB=wheatandstone postgres:16 >/dev/null
+          ready=0
+          for attempt in {1..60}; do
+            if docker exec ws-ci-postgres pg_isready -U postgres -d wheatandstone >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+          {
+            printf 'DATABASE_URL=postgresql://postgres:%s@127.0.0.1:5432/wheatandstone?schema=public\n' "$db_password"
+            printf 'NEXTAUTH_SECRET=%s\n' "$auth_secret"
+          } >> "$GITHUB_ENV"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -139,3 +150,7 @@ jobs:
             echo "::error::One or more ws-app CI gates failed."
             exit 1
           fi
+
+      - name: Stop isolated PostgreSQL
+        if: always()
+        run: docker rm -f ws-ci-postgres >/dev/null 2>&1 || true
