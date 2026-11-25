@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-for (const [name, expected] of [["next", "15.5.24"], ["react", "19.1.9"], ["react-dom", "19.1.9"]]) {
+for (const [name, expected] of [["next", "15.5.29"], ["react", "19.1.9"], ["react-dom", "19.1.9"]]) {
   if (pkg.dependencies?.[name] !== expected) throw new Error(`${name} must remain pinned to ${expected}`);
 }
 const unit = fs.readFileSync("ops/systemd/wheatandstone-app.service", "utf8");
@@ -18,6 +18,11 @@ for (const line of [
   "browserslist: '4.28.9'",
   "baseline-browser-mapping: '2.11.23'",
   "deepmerge-ts: '8.0.2'",
+  "effect: '3.22.1'",
+  "dompurify: '3.4.17'",
+  "source-map-js: '1.2.2'",
+  "qs: '6.16.1'",
+  "sharp: '0.35.5'",
 ]) {
   if (!workspace.includes(line)) throw new Error(`missing security override: ${line}`);
 }
